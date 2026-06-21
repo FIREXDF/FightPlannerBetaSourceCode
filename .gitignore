@@ -37,8 +37,7 @@ desktop.ini
 .crowdinrc
 
 # Electron
-*.asar 
-scripts/bump-version.js
+*.asar
 worker.js
 CSS MANAGER/
 worker-supabase.js
