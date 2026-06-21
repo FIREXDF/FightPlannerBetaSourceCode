@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FightPlanner Tutorial</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    .tutorial-window {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 1.2s ease;
+    }
+
+    .tutorial-window.white-bg {
+      background: #ffffff;
+    }
+
+    #lottie-animation {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      z-index: 1;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    .welcome-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 2;
+      opacity: 0;
+      transition: all 1s ease;
+    }
+
+    .welcome-text.show {
+      opacity: 1;
+    }
+
+    .welcome-text.move-up {
+      top: 8%;
+      transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .welcome-text h1 {
+      font-size: 42px;
+      font-weight: 700;
+      color: #7a9bff;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .welcome-text p {
+      font-size: 16px;
+      color: #6b7280;
+      font-weight: 500;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    .screenshot-preview {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translate(-50%, 0);
+      width: 94%;
+      max-width: 1430px;
+      opacity: 0;
+      z-index: 1;
+      transition: all 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .screenshot-preview.show {
+      opacity: 1;
+    }
+
+    .screenshot-preview.slide-up {
+      top: 18%;
+    }
+
+    .screenshot-preview img {
+      width: 100%;
+      height: auto;
+      display: block;
+      filter: blur(12px);
+      transition: filter 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .screenshot-preview.clear img {
+      filter: blur(0);
+    }
+
+    .tutorial-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: rgba(20, 20, 20, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 24px;
+      width: 90%;
+      max-width: 760px;
+      max-height: 85vh;
+      min-height: 300px;
+      box-shadow:
+        0 24px 48px -12px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      z-index: 4;
+      opacity: 0;
+      transition:
+        opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+        max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tutorial-container.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .tutorial-close {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 10;
+      font-size: 16px;
+    }
+
+    .tutorial-close:hover {
+      background: rgba(255, 77, 77, 0.15);
+      color: #ff4d4d;
+      transform: rotate(90deg);
+    }
+
+    .tutorial-progress {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      padding: 32px 20px 20px;
+      background: transparent;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tutorial-progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      transition:
+        all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+      overflow: visible;
+    }
+
+    .tutorial-progress-dot:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.3);
+    }
+
+    .tutorial-progress-dot.active {
+      width: 36px;
+      background: #7a9bff;
+      box-shadow:
+        0 0 20px rgba(122, 155, 255, 0.6),
+        0 0 10px rgba(122, 155, 255, 0.3);
+      animation: dotPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes dotPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(122, 155, 255, 0.6), 0 0 10px rgba(122, 155, 255, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 24px rgba(122, 155, 255, 0.8), 0 0 14px rgba(122, 155, 255, 0.5);
+      }
+    }
+
+    .tutorial-progress-dot.completed {
+      background: rgba(122, 155, 255, 0.6);
+      width: 8px;
+      box-shadow: 0 0 8px rgba(122, 155, 255, 0.4);
+    }
+
+    .tutorial-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 36px 24px;
+      transition:
+        opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tutorial-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tutorial-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .tutorial-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .tutorial-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .tutorial-step {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tutorial-step-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .tutorial-step-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #7a9bff, #5a7bf0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 8px 16px -4px rgba(90, 123, 240, 0.4);
+      position: relative;
+    }
+
+    .tutorial-step-icon::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      background: linear-gradient(rgba(255, 255, 255, 0.2), transparent);
+    }
+
+    .tutorial-step-icon i {
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .tutorial-step-title {
+      flex: 1;
+    }
+
+    .tutorial-step-title h2 {
+      margin: 0 0 4px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .tutorial-step-title p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 400;
+    }
+
+    .tutorial-step-content {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .tutorial-navigation {
+      padding: 24px 32px;
+      background: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tutorial-nav-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .tutorial-btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .tutorial-btn i {
+      font-size: 16px;
+    }
+
+    .tutorial-btn-primary {
+      background: #fff;
+      color: #111;
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+    }
+
+    .tutorial-btn-primary:hover {
+      background: #f0f0f0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(255, 255, 255, 0.15);
+    }
+
+    .tutorial-btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .tutorial-btn-secondary {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.5);
+      border: 1px solid transparent;
+    }
+
+    .tutorial-btn-secondary:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tutorial-btn-ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border: 1px solid transparent;
+    }
+
+    .tutorial-btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    a[href*='discord.gg'] {
+      color: #7a9bff !important;
+      text-decoration: none !important;
+      font-weight: 600 !important;
+      border-bottom: 1px solid rgba(122, 155, 255, 0.3) !important;
+      transition: all 0.2s ease !important;
+      cursor: pointer !important;
+    }
+
+    a[href*='discord.gg']:hover {
+      color: #9ab5ff !important;
+      border-bottom-color: rgba(122, 155, 255, 0.6) !important;
+      text-shadow: 0 0 8px rgba(122, 155, 255, 0.4) !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="tutorial-window">
+    <div id="lottie-animation"></div>
+
+    <div class="welcome-text" id="welcome-text">
+      <h1 data-i18n="tutorial.welcomeTitle">Welcome to FightPlanner 4</h1>
+      <p data-i18n="tutorial.welcomeSubtitle">Your Ultimate Mod Manager</p>
+    </div>
+
+    <div class="screenshot-preview" id="screenshot-preview">
+      <img src="../images/app-screenshot.png" alt="FightPlanner Interface" id="screenshot-img" />
+    </div>
+
+    <div class="tutorial-container" id="tutorial-container">
+      <button class="tutorial-close" id="close-btn">
+        <i class="bi bi-x-lg"></i>
+      </button>
+
+      <div class="tutorial-progress" id="progress-dots"></div>
+
+      <div class="tutorial-content" id="tutorial-content"></div>
+
+      <div class="tutorial-navigation">
+        <button class="tutorial-btn tutorial-btn-secondary" id="skip-btn" data-i18n="tutorial.skipTutorial">
+          Skip Tutorial
+        </button>
+        <div class="tutorial-nav-buttons">
+          <button class="tutorial-btn tutorial-btn-ghost" id="prev-btn" style="display: none"
+            data-i18n="tutorial.previous">
+            <i class="bi bi-arrow-left"></i> Previous
+          </button>
+          <button class="tutorial-btn tutorial-btn-primary" id="next-btn" data-i18n="tutorial.next">
+            Next <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../out/renderer/js/tutorial-steps.js"></script>
+</body>
+
+</html>

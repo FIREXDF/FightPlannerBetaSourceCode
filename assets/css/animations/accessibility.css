@@ -1,0 +1,225 @@
+body.reduced-animations * {
+  animation-duration: 0.15s !important;
+  transition-duration: 0.15s !important;
+}
+
+/* Keep spinners spinning at normal speed */
+body.reduced-animations .slot-usage-spinner,
+body.reduced-animations .install-preview-loading,
+body.reduced-animations [class*='loading'] i,
+body.reduced-animations [class*='spinner'] {
+  animation-duration: 1s !important;
+}
+
+body.reduced-animations .modal-overlay {
+  backdrop-filter: none !important;
+  transition: opacity 0.1s ease !important;
+}
+
+body.reduced-animations .modal-overlay[style*='display: block'] {
+  backdrop-filter: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+body.reduced-animations .modal {
+  filter: none !important;
+  transition:
+    opacity 0.1s ease,
+    transform 0.1s ease !important;
+}
+
+body.reduced-animations .modal[style*='display: block'] {
+  animation: modalSlideInReduced 0.15s ease forwards !important;
+  opacity: 1 !important;
+}
+
+@keyframes modalSlideInReduced {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+}
+
+body.reduced-animations .modal.closing {
+  animation: modalSlideOutReduced 0.15s ease forwards !important;
+}
+
+@keyframes modalSlideOutReduced {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-10px);
+  }
+}
+
+body.reduced-animations .context-menu {
+  filter: none !important;
+  animation: contextMenuFadeInReduced 0.15s ease forwards !important;
+  pointer-events: all !important;
+}
+
+body.reduced-animations .context-menu:not([style*='display: none']) {
+  pointer-events: all !important;
+}
+
+@keyframes contextMenuFadeInReduced {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+}
+
+body.reduced-animations .context-menu.closing {
+  animation: contextMenuFadeOutReduced 0.1s ease forwards !important;
+}
+
+@keyframes contextMenuFadeOutReduced {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+body.reduced-animations .action-btn:hover {
+  transform: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.reduced-animations .action-btn:active {
+  transform: none !important;
+}
+
+body.reduced-animations .input-btn:hover {
+  transform: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.reduced-animations .input-btn:active {
+  transform: none !important;
+}
+
+body.reduced-animations .input-field:focus {
+  box-shadow: 0 0 0 2px rgba(255, 51, 102, 0.2) !important;
+  transform: none !important;
+}
+
+body.reduced-animations * {
+  scroll-behavior: auto !important;
+}
+
+body.reduced-animations .bottom-bar.drag-active {
+  transition: none !important;
+}
+
+body.reduced-animations .bottom-bar-drag-overlay,
+body.no-animations .bottom-bar-drag-overlay {
+  transition: none !important;
+}
+
+body.reduced-animations .bottom-bar:not(.drag-active) .bottom-bar-drag-overlay,
+body.no-animations .bottom-bar:not(.drag-active) .bottom-bar-drag-overlay {
+  opacity: 0 !important;
+  transform: translateY(0) !important;
+  pointer-events: none !important;
+}
+
+body.reduced-animations .bottom-bar.drag-active .bottom-bar-drag-overlay,
+body.no-animations .bottom-bar.drag-active .bottom-bar-drag-overlay {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+body.reduced-animations .bottom-bar-drag-overlay i {
+  animation: none !important;
+}
+
+body.no-animations .bottom-bar-drag-overlay i {
+  animation: none !important;
+}
+
+body.reduced-animations .tab-content {
+  will-change: auto !important;
+}
+
+body.reduced-animations .mod-item {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+body.reduced-animations .mod-info-item {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+body.reduced-animations .mod-info-content {
+  animation: none !important;
+}
+
+body.reduced-animations .preview-area {
+  transition: height 0.12s ease !important;
+}
+
+body.reduced-animations .preview-area.no-preview {
+  height: 80px !important;
+}
+
+body.reduced-animations .preview-stack-card,
+body.reduced-animations .preview-stack-card img {
+  transition: none !important;
+  animation: none !important;
+}
+
+body.reduced-animations .preview-stack-card {
+  filter: none !important;
+}
+
+@keyframes previewExitAnimationReduced {
+  0% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+    filter: none;
+  }
+}
+
+body.no-animations .preview-area {
+  transition: none !important;
+}
+
+body.no-animations .preview-stack-card,
+body.no-animations .preview-stack-card img {
+  transition: none !important;
+  animation: none !important;
+}
+
+body.no-animations .preview-stack-card {
+  filter: none !important;
+}

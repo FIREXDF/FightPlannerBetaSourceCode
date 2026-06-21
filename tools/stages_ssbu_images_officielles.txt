@@ -1,0 +1,120 @@
+Official SSBU stage image links
+Official page used: https://www.smashbros.com/en_US/stage/
+Source XML order field: I8 hash="0x0ACB22637C"
+Note: one official site image link per playable stage; special entries like Random/Training are excluded.
+
+1 | BattleField | Battlefield | https://www.smashbros.com/assets_v2/img/stage/stage_img1.jpg
+2 | BattleFieldS | Small Battlefield | https://www.smashbros.com/assets_v2/img/stage/stage_img104.jpg
+3 | BattleFieldL | Big Battlefield | https://www.smashbros.com/assets_v2/img/stage/stage_img2.jpg
+4 | End | Final Destination | https://www.smashbros.com/assets_v2/img/stage/stage_img3.jpg
+5 | Mario_Castle64 | Peach's Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img4.jpg
+6 | DK_Jungle | Kongo Jungle | https://www.smashbros.com/assets_v2/img/stage/stage_img5.jpg
+7 | Zelda_Hyrule | Hyrule Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img6.jpg
+8 | Yoshi_Story | Super Happy Tree | https://www.smashbros.com/assets_v2/img/stage/stage_img7.jpg
+9 | Kirby_Pupupu64 | Dream Land | https://www.smashbros.com/assets_v2/img/stage/stage_img8.jpg
+10 | Poke_Yamabuki | Saffron City | https://www.smashbros.com/assets_v2/img/stage/stage_img9_en.jpg
+11 | Mario_Past64 | Mushroom Kingdom | https://www.smashbros.com/assets_v2/img/stage/stage_img10.jpg
+12 | Mario_CastleDx | Princess Peach's Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img11.jpg
+13 | Mario_Rainbow | Rainbow Cruise | https://www.smashbros.com/assets_v2/img/stage/stage_img12.jpg
+14 | DK_WaterFall | Kongo Falls | https://www.smashbros.com/assets_v2/img/stage/stage_img13.jpg
+15 | DK_Lodge | Jungle Japes | https://www.smashbros.com/assets_v2/img/stage/stage_img14.jpg
+16 | Zelda_Greatbay | Great Bay | https://www.smashbros.com/assets_v2/img/stage/stage_img15.jpg
+17 | Zelda_Temple | Temple | https://www.smashbros.com/assets_v2/img/stage/stage_img16.jpg
+18 | Metroid_ZebesDx | Brinstar | https://www.smashbros.com/assets_v2/img/stage/stage_img17.jpg
+19 | Yoshi_Yoster | Yoshi's Island (Melee) | https://www.smashbros.com/assets_v2/img/stage/stage_img18.jpg
+20 | Yoshi_CartBoard | Yoshi's Story | https://www.smashbros.com/assets_v2/img/stage/stage_img19.jpg
+21 | Kirby_Fountain | Fountain of Dreams | https://www.smashbros.com/assets_v2/img/stage/stage_img20.jpg
+22 | Kirby_Greens | Green Greens | https://www.smashbros.com/assets_v2/img/stage/stage_img21.jpg
+23 | Fox_Corneria | Corneria | https://www.smashbros.com/assets_v2/img/stage/stage_img22.jpg
+24 | Fox_Venom | Venom | https://www.smashbros.com/assets_v2/img/stage/stage_img23.jpg
+25 | Poke_Stadium | Pokemon Stadium | https://www.smashbros.com/assets_v2/img/stage/stage_img24.jpg
+26 | Mother_Onett | Onett | https://www.smashbros.com/assets_v2/img/stage/stage_img25.jpg
+27 | Mario_PastUsa | Mushroom Kingdom II | https://www.smashbros.com/assets_v2/img/stage/stage_img26.jpg
+28 | Metroid_Kraid | Brinstar Depths | https://www.smashbros.com/assets_v2/img/stage/stage_img27.jpg
+29 | Fzero_Bigblue | Big Blue | https://www.smashbros.com/assets_v2/img/stage/stage_img28.jpg
+30 | Mother_Fourside | Fourside | https://www.smashbros.com/assets_v2/img/stage/stage_img29.jpg
+31 | Mario_Dolpic | Delfino Plaza | https://www.smashbros.com/assets_v2/img/stage/stage_img30.jpg
+32 | Mario_PastX | Mushroomy Kingdom | https://www.smashbros.com/assets_v2/img/stage/stage_img31.jpg
+33 | Kart_CircuitX | Figure-8 Circuit | https://www.smashbros.com/assets_v2/img/stage/stage_img32.jpg
+34 | Wario_Madein | WarioWare, Inc. | https://www.smashbros.com/assets_v2/img/stage/stage_img33.jpg
+35 | Zelda_Oldin | Bridge of Eldin | https://www.smashbros.com/assets_v2/img/stage/stage_img34.jpg
+36 | Metroid_Norfair | Norfair | https://www.smashbros.com/assets_v2/img/stage/stage_img35.jpg
+37 | Metroid_Orpheon | Frigate Orpheon | https://www.smashbros.com/assets_v2/img/stage/stage_img36.jpg
+38 | Yoshi_Island | Yoshi's Island | https://www.smashbros.com/assets_v2/img/stage/stage_img37.jpg
+39 | Kirby_Halberd | Halberd | https://www.smashbros.com/assets_v2/img/stage/stage_img38.jpg
+40 | Fox_LylatCruise | Lylat Cruise | https://www.smashbros.com/assets_v2/img/stage/stage_img39.jpg
+41 | Poke_Stadium2 | Pokemon Stadium 2 | https://www.smashbros.com/assets_v2/img/stage/stage_img40.jpg
+42 | Fzero_Porttown | Port Town Aero Dive | https://www.smashbros.com/assets_v2/img/stage/stage_img41.jpg
+43 | FE_Siege | Castle Siege | https://www.smashbros.com/assets_v2/img/stage/stage_img42.jpg
+44 | Pikmin_Planet | Distant Planet | https://www.smashbros.com/assets_v2/img/stage/stage_img43.jpg
+45 | Animal_Village | Smashville | https://www.smashbros.com/assets_v2/img/stage/stage_img44.jpg
+46 | Mother_Newpork | New Pork City | https://www.smashbros.com/assets_v2/img/stage/stage_img45.jpg
+47 | Ice_Top | Summit | https://www.smashbros.com/assets_v2/img/stage/stage_img46.jpg
+48 | Icarus_SkyWorld | Skyworld | https://www.smashbros.com/assets_v2/img/stage/stage_img47.jpg
+49 | MG_Shadowmoses | Shadow Moses Island | https://www.smashbros.com/assets_v2/img/stage/stage_img48.jpg
+50 | LuigiMansion | Luigi's Mansion | https://www.smashbros.com/assets_v2/img/stage/stage_img49.jpg
+51 | Zelda_Pirates | Pirate Ship | https://www.smashbros.com/assets_v2/img/stage/stage_img50.jpg
+52 | Poke_Tengam | Spear Pillar | https://www.smashbros.com/assets_v2/img/stage/stage_img51.jpg
+53 | 75m | 75 m | https://www.smashbros.com/assets_v2/img/stage/stage_img52.jpg
+54 | MarioBros | Mario Bros. | https://www.smashbros.com/assets_v2/img/stage/stage_img53.jpg
+55 | Plankton | Hanenbow | https://www.smashbros.com/assets_v2/img/stage/stage_img54.jpg
+56 | Sonic_Greenhill | Green Hill Zone | https://www.smashbros.com/assets_v2/img/stage/stage_img55.jpg
+57 | Mario_3DLand | 3D Land | https://www.smashbros.com/assets_v2/img/stage/stage_img56.jpg
+58 | Mario_NewBros2 | Golden Plains | https://www.smashbros.com/assets_v2/img/stage/stage_img57.jpg
+59 | Mario_Paper | Paper Mario | https://www.smashbros.com/assets_v2/img/stage/stage_img58.jpg
+60 | Zelda_Gerudo | Gerudo Valley | https://www.smashbros.com/assets_v2/img/stage/stage_img59.jpg
+61 | Zelda_Train | Spirit Train | https://www.smashbros.com/assets_v2/img/stage/stage_img60.jpg
+62 | Kirby_Gameboy | Dream Land GB | https://www.smashbros.com/assets_v2/img/stage/stage_img61.jpg
+63 | Poke_Unova | Unova Pokemon League | https://www.smashbros.com/assets_v2/img/stage/stage_img62.jpg
+64 | Poke_Tower | Prism Tower | https://www.smashbros.com/assets_v2/img/stage/stage_img63.jpg
+65 | Fzero_Mutecity3DS | Mute City SNES | https://www.smashbros.com/assets_v2/img/stage/stage_img64.jpg
+66 | Mother_Magicant | Magicant | https://www.smashbros.com/assets_v2/img/stage/stage_img65.jpg
+67 | FE_Arena | Arena Ferox | https://www.smashbros.com/assets_v2/img/stage/stage_img66.jpg
+68 | Icarus_Uprising | Reset Bomb Forest | https://www.smashbros.com/assets_v2/img/stage/stage_img67.jpg
+69 | Animal_Island | Tortimer Island | https://www.smashbros.com/assets_v2/img/stage/stage_img68.jpg
+70 | BalloonFight | Balloon Fight | https://www.smashbros.com/assets_v2/img/stage/stage_img69.jpg
+71 | NintenDogs | Living Room | https://www.smashbros.com/assets_v2/img/stage/stage_img70.jpg
+72 | StreetPass | Find Mii | https://www.smashbros.com/assets_v2/img/stage/stage_img71.jpg
+73 | Tomodachi | Tomodachi Life | https://www.smashbros.com/assets_v2/img/stage/stage_img72.jpg
+74 | Pictochat2 | PictoChat 2 | https://www.smashbros.com/assets_v2/img/stage/stage_img73_en.jpg
+75 | Mario_Uworld | Mushroom Kingdom U | https://www.smashbros.com/assets_v2/img/stage/stage_img74.jpg
+76 | Mario_Galaxy | Mario Galaxy | https://www.smashbros.com/assets_v2/img/stage/stage_img75.jpg
+77 | Kart_CircuitFor | Mario Circuit | https://www.smashbros.com/assets_v2/img/stage/stage_img76.jpg
+78 | Zelda_Skyward | Skyloft | https://www.smashbros.com/assets_v2/img/stage/stage_img77.jpg
+79 | Kirby_Cave | The Great Cave Offensive | https://www.smashbros.com/assets_v2/img/stage/stage_img78.jpg
+80 | Poke_Kalos | Kalos Pokemon League | https://www.smashbros.com/assets_v2/img/stage/stage_img79.jpg
+81 | FE_Colloseum | Coliseum | https://www.smashbros.com/assets_v2/img/stage/stage_img80.jpg
+82 | FlatZoneX | Flat Zone X | https://www.smashbros.com/assets_v2/img/stage/stage_img81_en.jpg
+83 | Icarus_Angeland | Palutena's Temple | https://www.smashbros.com/assets_v2/img/stage/stage_img82.jpg
+84 | Wario_Gamer | Gamer | https://www.smashbros.com/assets_v2/img/stage/stage_img83.jpg
+85 | Pikmin_Garden | Garden of Hope | https://www.smashbros.com/assets_v2/img/stage/stage_img84.jpg
+86 | Animal_City | Town and City | https://www.smashbros.com/assets_v2/img/stage/stage_img85_en.jpg
+87 | WiiFit | Wii Fit Studio | https://www.smashbros.com/assets_v2/img/stage/stage_img86.jpg
+88 | PunchOutSB | Boxing Ring | https://www.smashbros.com/assets_v2/img/stage/stage_img87.jpg
+89 | Xeno_Gaur | Gaur Plain | https://www.smashbros.com/assets_v2/img/stage/stage_img88.jpg
+90 | DuckHunt | Duck Hunt | https://www.smashbros.com/assets_v2/img/stage/stage_img89.jpg
+91 | WreckingCrew | Wrecking Crew | https://www.smashbros.com/assets_v2/img/stage/stage_img90.jpg
+92 | Pilotwings | Pilotwings | https://www.smashbros.com/assets_v2/img/stage/stage_img91.jpg
+93 | WufuIsland | Wuhu Island | https://www.smashbros.com/assets_v2/img/stage/stage_img92.jpg
+94 | Sonic_Windyhill | Windy Hill Zone | https://www.smashbros.com/assets_v2/img/stage/stage_img93.jpg
+95 | Rock_Wily | Wily Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img94.jpg
+96 | Pac_Land | PAC-LAND | https://www.smashbros.com/assets_v2/img/stage/stage_img95.jpg
+97 | Mario_Maker | Super Mario Maker | https://www.smashbros.com/assets_v2/img/stage/stage_img96.jpg
+98 | SF_Suzaku | Suzaku Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img97.jpg
+99 | FF_Midgar | Midgar | https://www.smashbros.com/assets_v2/img/stage/stage_img98.jpg
+100 | Bayo_Clock | Umbra Clock Tower | https://www.smashbros.com/assets_v2/img/stage/stage_img99.jpg
+101 | Mario_Odyssey | New Donk City Hall | https://www.smashbros.com/assets_v2/img/stage/stage_img100.jpg
+102 | Zelda_Tower | Great Plateau Tower | https://www.smashbros.com/assets_v2/img/stage/stage_img101.jpg
+103 | Spla_Parking | Moray Towers | https://www.smashbros.com/assets_v2/img/stage/stage_img102.jpg
+104 | Dracula_Castle | Dracula's Castle | https://www.smashbros.com/assets_v2/img/stage/stage_img103.jpg
+105 | Jack_Mementoes | Mementos | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img1.jpg
+106 | Brave_Altar | Yggdrasil's Altar | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img2.jpg
+107 | Buddy_Spiral | Spiral Mountain | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img3.jpg
+108 | Dolly_Stadium | King of Fighters Stadium | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img4.jpg
+109 | FE_Shrine | Garreg Mach Monastery | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img5.jpg
+110 | Tantan_Spring | Spring Stadium | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img6.jpg
+111 | Pickel_World | Minecraft World | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img7.jpg
+112 | FF_Cave | Northern Cave | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img8.jpg
+113 | Xeno_Alst | Cloud Sea of Alrest | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img9.jpg
+114 | Demon_Dojo | Mishima Dojo | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img10.jpg
+115 | Trail_Castle | Hollow Bastion | https://www.smashbros.com/assets_v2/img/stage/stage_addition_img11.jpg

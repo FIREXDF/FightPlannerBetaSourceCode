@@ -1,0 +1,49 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+[data-theme='light'] ::selection {
+  background-color: rgba(90, 122, 223, 0.2);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .modal input::selection,
+[data-theme='light'] .modal textarea::selection,
+[data-theme='light'] .modal-input::selection,
+[data-theme='light'] .mod-info-editor-modal input::selection,
+[data-theme='light'] .mod-info-editor-modal textarea::selection,
+[data-theme='light'] .advanced-textarea::selection {
+  background-color: rgba(90, 122, 223, 0.15);
+  color: var(--text-primary);
+}
+
+body * {
+  box-sizing: border-box;
+}
+
+body .modal,
+body [class*='shadow'] {
+  overflow: visible !important;
+}
+
+.main-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-left: 70px;
+}

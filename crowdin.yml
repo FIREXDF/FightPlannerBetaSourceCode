@@ -1,0 +1,72 @@
+# Crowdin Configuration File
+# https://support.crowdin.com/configuration-file/
+
+# Your Crowdin project ID
+project_id: 'your-project-id'
+
+# Base path for your project
+base_path: '.'
+
+# Preserve hierarchy (keep folder structure)
+preserve_hierarchy: true
+
+# Files configuration
+files:
+  # Translation files
+  - source: /src/locales/en.json
+    translation: /src/locales/%two_letters_code%.json
+    update_option: update_as_unapproved
+    # Skip languages (don't create these files)
+    # If you want to skip certain languages, uncomment and modify:
+    # skip_languages:
+    #   - en
+
+# INSTRUCTIONS FOR USING WITH CROWDIN:
+#
+# 1. Create a Crowdin account at https://crowdin.com/
+# 2. Create a new project
+# 3. Replace "your-project-id" above with your actual project ID
+# 4. Install Crowdin CLI: npm install -g @crowdin/cli
+# 5. Get your API token from: https://crowdin.com/settings#api-key
+# 6. Set up authentication:
+#    - Option A: Create crowdin.yml with your token
+#    - Option B: Use environment variable: export CROWDIN_PERSONAL_TOKEN=your-token
+#
+# COMMON COMMANDS:
+#
+# Upload source files to Crowdin:
+#   crowdin upload sources
+#
+# Download translations from Crowdin:
+#   crowdin download
+#
+# Upload existing translations:
+#   crowdin upload translations
+#
+# Check status:
+#   crowdin status
+#
+# Add a new language:
+#   1. Add the language in your Crowdin project settings
+#   2. Create the JSON file: src/locales/[language-code].json
+#   3. Add the language code to availableLocales in i18n-client.js
+#
+# ADDING NEW TRANSLATIONS:
+#
+# 1. Add new keys to src/locales/en.json (your source language)
+# 2. Run: crowdin upload sources
+# 3. Translate on Crowdin web interface or download, translate locally, and upload
+# 4. Run: crowdin download
+#
+# SUPPORTED LANGUAGE CODES:
+# - en (English)
+# - fr (French)
+# - es (Spanish)
+# - de (German)
+# - it (Italian)
+# - pt (Portuguese)
+# - ja (Japanese)
+# - ko (Korean)
+# - zh-CN (Chinese Simplified)
+# - zh-TW (Chinese Traditional)
+# And many more: https://support.crowdin.com/api/language-codes/

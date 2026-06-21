@@ -1,0 +1,117 @@
+.sidebar {
+  width: 70px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  padding: 2vh 0;
+  gap: 2vh;
+  align-items: center;
+  border-right: 1px solid var(--border-color);
+  justify-content: center;
+  border-radius: 0 15px 15px 0;
+  position: fixed;
+  left: 0;
+  transition: transform 0.5s ease-out;
+  top: 36px;
+  bottom: 0;
+  height: auto;
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.sidebar-btn {
+  width: 50px;
+  height: auto;
+  aspect-ratio: 1;
+  max-height: 8vh;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  flex-shrink: 1;
+  position: relative;
+}
+
+.sidebar-btn[data-tab='tools'] {
+  --sidebar-tab-icon: url('../images/icons/tools.svg');
+}
+
+.sidebar-btn[data-tab='plugins'] {
+  --sidebar-tab-icon: url('../images/icons/plugins.svg');
+}
+
+.sidebar-btn[data-tab='characters'] {
+  --sidebar-tab-icon: url('../images/icons/char.svg');
+}
+
+.sidebar-btn[data-tab='stages'] {
+  --sidebar-tab-icon: url('../images/icons/stages.png');
+}
+
+.sidebar-btn[data-tab='downloads'] {
+  --sidebar-tab-icon: url('../images/icons/downloads.svg');
+}
+
+.sidebar-btn[data-tab='settings'] {
+  --sidebar-tab-icon: url('../images/icons/settings.svg');
+}
+
+.sidebar-btn[data-tab='fightplanner'] {
+  --sidebar-tab-icon: url('../images/icons/fightplanner.svg');
+}
+
+.sidebar-btn svg,
+.sidebar-btn img {
+  width: 100%;
+  height: 100%;
+  filter: var(--icon-filter);
+  transition: opacity 0.18s ease;
+}
+
+.sidebar-btn:hover {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.sidebar-btn.active {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.sidebar-btn.active img {
+  opacity: 0;
+}
+
+.sidebar-btn.active::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  background-image: var(
+    --sidebar-active-logo,
+    linear-gradient(#ffffff, #ffffff)
+  );
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  mask-image: var(--sidebar-tab-icon);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: var(--sidebar-tab-icon);
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.sidebar-pride-tabs-disabled .sidebar-btn.active img {
+  opacity: 1;
+}
+
+.sidebar-pride-tabs-disabled .sidebar-btn.active::after {
+  display: none;
+}

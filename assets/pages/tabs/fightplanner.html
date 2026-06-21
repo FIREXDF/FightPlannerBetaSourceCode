@@ -1,0 +1,252 @@
+<!-- FightPlanner Tab Content - Credits -->
+<div class="credits-container">
+  <div class="credits-header">
+    <img
+      src="../images/pride-logo/pride.png"
+      alt="FightPlanner Logo"
+      class="credits-logo"
+    />
+    <h1 class="credits-title">
+      FightPlanner
+      <span
+        class="credits-version"
+        id="app-version-display"
+        data-i18n="fightplanner.loading"
+        >Loading...</span
+      >
+    </h1>
+    <p class="credits-subtitle" data-i18n="fightplanner.subtitle">
+      A modern mod manager for Super Smash Bros. Ultimate
+    </p>
+    <div class="credits-beta-badge" data-i18n="fightplanner.publicBetaTest">
+      Public Beta Test
+    </div>
+  </div>
+
+  <div class="credits-content">
+    <!-- Core Team Section -->
+    <div class="credits-section">
+      <div class="credits-section-header">
+        <i class="bi bi-star-fill"></i>
+        <h2 data-i18n="fightplanner.coreTeam">Core Team</h2>
+      </div>
+      <div class="credits-list">
+        <div class="credits-person">
+          <img
+            src="../images/credits/firexdf.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <div class="credits-person-name-row">
+              <span class="credits-person-name">FIREXDF</span>
+              <button
+                type="button"
+                class="credits-support-btn"
+                onclick="
+                  window.electronAPI.openUrl('https://ko-fi.com/firexdf')
+                "
+                data-i18n-title
+                data-i18n="fightplanner.supportFirexdf"
+                title="Support FIREXDF"
+              >
+                <i class="bi bi-heart-fill"></i>
+                <span data-i18n="fightplanner.support">Support</span>
+              </button>
+            </div>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.leadDeveloper"
+              >Lead Developer</span
+            >
+          </div>
+        </div>
+        <div class="credits-person">
+          <img
+            src="../images/credits/floweygaming.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">FloweyGaming</span>
+            <span class="credits-person-role" data-i18n="fightplanner.designer"
+              >Designer</span
+            >
+          </div>
+        </div>
+        <div class="credits-person">
+          <img
+            src="../images/credits/kerosci.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">Kerosci</span>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.communityManager"
+              >Community Manager</span
+            >
+          </div>
+        </div>
+        <div class="credits-person">
+          <img
+            src="../images/credits/cwitt.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">Cwitt</span>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.soundDesigner"
+              >Sound Designer, Contributor</span
+            >
+          </div>
+        </div>
+        <div class="credits-person">
+          <img
+            src="../images/credits/jugarrit.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">Jugarrit</span>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.contributor"
+              >Contributor</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Testers Section -->
+    <div class="credits-section">
+      <div class="credits-section-header">
+        <i class="bi bi-bug-fill"></i>
+        <h2 data-i18n="fightplanner.testers">Testers</h2>
+      </div>
+      <ul class="credits-simple-list">
+        <li>Ketoro</li>
+        <li>lavaking993</li>
+        <li>Luukynha</li>
+        <li>ElDusst</li>
+        <li>Lunamystica</li>
+        <li>chichibooxd</li>
+        <li>TNephilim</li>
+        <li>Juanjo3222</li>
+        <li>Vastor6624</li>
+        <li>chrisalash</li>
+        <li>MoonbulaDragoon</li>
+        <li>Opitro</li>
+        <li>Skillyahtay</li>
+        <li>Godsontm</li>
+        <li>Ghostyturner</li>
+        <li>ChristOurLife</li>
+      </ul>
+      <button
+        type="button"
+        class="credits-toggle-old-testers"
+        id="toggle-old-testers"
+        aria-controls="old-testers-section"
+        aria-expanded="false"
+      >
+        <span data-i18n="fightplanner.showOldTesters">See old testers</span>
+      </button>
+    </div>
+
+    <!-- Old Testers Section -->
+    <div
+      class="credits-section credits-section-old-testers is-collapsed"
+      id="old-testers-section"
+      aria-hidden="true"
+    >
+      <div class="credits-section-header">
+        <i class="bi bi-clock-history"></i>
+        <h2 data-i18n="fightplanner.oldTesters">Old Testers</h2>
+      </div>
+      <ul class="credits-simple-list">
+        <li>Faris</li>
+        <li>Moxort</li>
+        <li>Squiori</li>
+        <li>Willy.B</li>
+        <li>Dre</li>
+        <li>jpgmafia</li>
+        <li>Toni</li>
+        <li>Shuj</li>
+        <li>Leo</li>
+        <li>Darkstarry</li>
+        <li>Humplydinkle</li>
+      </ul>
+    </div>
+
+    <!-- Special Thanks Section -->
+    <div class="credits-section">
+      <div class="credits-section-header">
+        <i class="bi bi-heart-fill"></i>
+        <h2 data-i18n="fightplanner.specialThanks">Special Thanks</h2>
+      </div>
+      <div class="credits-list">
+        <div class="credits-person">
+          <img
+            src="../images/credits/lenoch.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">lenoch</span>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.oldContributor"
+              >Old Contributor of FightPlanner 3</span
+            >
+          </div>
+        </div>
+        <div class="credits-person">
+          <img
+            src="../images/credits/timerin.png"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">Timerin</span>
+            <span class="credits-person-role"
+              >Helped for tutorial instructions for ARCropolis</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="credits-footer">
+    <p>
+      <span data-i18n="fightplanner.madeWith">Made with</span>
+      <i class="bi bi-heart-fill"></i>
+      <span data-i18n="fightplanner.byTeam">by the FightPlanner Team</span>
+    </p>
+    <p class="credits-footer-small" data-i18n="fightplanner.copyright">
+      © 2026 FightPlanner. All rights reserved.
+    </p>
+    <div class="version-info">
+      <div class="version-detail">
+        <span class="version-label" data-i18n="fightplanner.appVersion"
+          >App Version:</span
+        >
+        <span class="version-value" id="app-version-full">-</span>
+      </div>
+      <div class="version-detail">
+        <span class="version-label" data-i18n="fightplanner.electron"
+          >Electron:</span
+        >
+        <span class="version-value" id="electron-version">-</span>
+      </div>
+      <div class="version-detail">
+        <span class="version-label" data-i18n="fightplanner.node">Node:</span>
+        <span class="version-value" id="node-version">-</span>
+      </div>
+    </div>
+  </div>
+</div>

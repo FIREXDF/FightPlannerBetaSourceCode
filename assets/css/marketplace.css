@@ -1,0 +1,317 @@
+.marketplace-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.marketplace-loading i {
+  font-size: 32px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.marketplace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.marketplace-plugin-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-transparent-03);
+  border: 1px solid var(--bg-transparent-10);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.marketplace-plugin-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--accent-color) 0%,
+    var(--accent-hover) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.marketplace-plugin-card:hover {
+  background: var(--bg-hover);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.marketplace-plugin-card:hover::before {
+  opacity: 1;
+}
+
+.marketplace-plugin-card.installed {
+  border-color: rgba(var(--success-color-rgb), 0.4);
+  background: rgba(var(--success-color-rgb), 0.05);
+}
+
+.marketplace-plugin-card.installed::before {
+  background: linear-gradient(
+    90deg,
+    var(--success-color) 0%,
+    var(--success-color) 100%
+  );
+  opacity: 1;
+}
+
+.marketplace-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.marketplace-card-title-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.marketplace-card-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  word-break: break-word;
+}
+
+.marketplace-card-repo {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+  display: block;
+  word-break: break-all;
+}
+
+.marketplace-card-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--warning-color);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.marketplace-card-stars i {
+  font-size: 16px;
+}
+
+.marketplace-card-body {
+  flex: 1;
+  margin-bottom: 20px;
+  min-height: 60px;
+}
+
+.marketplace-card-description {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.marketplace-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bg-transparent-10);
+}
+
+.marketplace-card-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.marketplace-card-link:hover {
+  color: var(--accent-hover);
+  background: var(--bg-accent-subtle);
+}
+
+.marketplace-card-install-btn {
+  padding: 10px 20px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-color) 0%,
+    var(--accent-hover) 100%
+  );
+  border: none;
+  border-radius: 8px;
+  color: var(--text-inverse);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.marketplace-card-install-btn:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    var(--accent-hover) 0%,
+    var(--accent-color) 100%
+  );
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+  color: var(--text-inverse);
+}
+
+.marketplace-card-install-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.marketplace-plugin-card.installed .marketplace-card-install-btn {
+  background: linear-gradient(
+    135deg,
+    var(--success-color) 0%,
+    var(--success-color) 100%
+  );
+  color: var(--text-inverse);
+  cursor: default;
+}
+
+.marketplace-plugin-card.installed .marketplace-card-install-btn:hover {
+  transform: none;
+  box-shadow: none;
+  color: var(--text-inverse);
+}
+
+#csk-collection-install-modal.modal {
+  height: min(720px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+}
+
+#csk-collection-install-modal .modal-body {
+  display: flex;
+  height: calc(100% - 162px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+#csk-collection-install-modal .modal-footer {
+  box-sizing: border-box;
+  min-height: 81px;
+  align-items: center;
+}
+
+#confirm-csk-install,
+#cancel-csk-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 108px;
+  justify-content: center;
+}
+
+.csk-install-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  gap: 14px;
+}
+
+.csk-install-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.csk-install-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-primary);
+}
+
+.csk-install-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.csk-install-actions .modal-btn {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.csk-options-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  align-content: start;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px;
+}
+
+.csk-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 9px 10px;
+  background: var(--bg-transparent-03);
+  border: 1px solid var(--bg-transparent-10);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.csk-option-item input {
+  flex: 0 0 auto;
+  accent-color: var(--accent-color);
+}
+
+.csk-option-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,131 @@
+<!-- Characters Tab Content -->
+<div class="characters-full-container">
+  <div class="characters-top-bar">
+    <div class="characters-title-section">
+      <h2 class="characters-title">
+        <i class="bi bi-people-fill"></i>
+        <span data-i18n="characters.title">Characters</span>
+      </h2>
+      <span class="characters-count" id="characters-count"
+        >0 <span data-i18n="characters.charactersCount">characters</span></span
+      >
+    </div>
+    <div class="characters-actions">
+      <input
+        type="text"
+        class="characters-search"
+        id="characters-search"
+        data-i18n="characters.search"
+        data-i18n-placeholder
+        placeholder="Search characters..."
+      />
+      <button
+        class="input-btn"
+        id="refresh-characters-btn"
+        data-i18n="characters.refresh"
+      >
+        <i class="bi bi-arrow-clockwise"></i>
+        Refresh
+      </button>
+      <button class="input-btn" id="character-movesets-btn" type="button">
+        <i class="bi bi-controller"></i>
+        Movesets
+      </button>
+      <button class="input-btn" id="edit-character-css-btn" type="button">
+        <i class="bi bi-grid-3x3-gap-fill"></i>
+        Edit CSS
+      </button>
+    </div>
+  </div>
+
+  <div class="characters-stage" id="characters-stage">
+    <div class="characters-content" id="characters-browser-view">
+      <div id="characters-grid" class="characters-grid">
+        <div class="characters-loading">
+          <div
+            id="characters-loading-lottie"
+            style="width: 100px; height: 100px"
+          ></div>
+          <p data-i18n="characters.loading">Loading characters...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="character-movesets-view" id="character-movesets-view" hidden>
+      <div class="character-movesets-toolbar">
+        <button
+          class="input-btn"
+          id="character-movesets-back-btn"
+          type="button"
+        >
+          <i class="bi bi-arrow-left"></i>
+          Back
+        </button>
+        <div class="character-movesets-summary">
+          <strong>Moveset Mods</strong>
+          <span id="character-movesets-count">0 moveset mods</span>
+        </div>
+      </div>
+
+      <div class="character-movesets-list" id="character-movesets-list"></div>
+    </div>
+
+    <div class="character-css-editor" id="character-css-editor" hidden>
+      <div class="character-css-toolbar">
+        <button class="input-btn" id="character-css-back-btn" type="button">
+          <i class="bi bi-arrow-left"></i>
+          Back
+        </button>
+        <div class="character-css-summary">
+          <strong id="character-css-visible-count">0</strong>
+          <span>visible characters</span>
+          <span id="character-css-hidden-count">0 hidden</span>
+        </div>
+        <button class="input-btn" id="character-css-hidden-btn" type="button">
+          <i class="bi bi-eye"></i>
+          Hidden
+        </button>
+        <button
+          class="input-btn"
+          id="character-css-randomize-btn"
+          type="button"
+        >
+          <i class="bi bi-shuffle"></i>
+          Randomize
+        </button>
+        <button class="input-btn" id="character-css-preview-btn" type="button">
+          <i class="bi bi-eye-fill"></i>
+          Preview
+        </button>
+        <button
+          class="input-btn character-css-save-btn"
+          id="character-css-save-btn"
+          type="button"
+        >
+          <i class="bi bi-floppy-fill"></i>
+          Apply Layout
+        </button>
+      </div>
+
+      <div class="character-css-workspace">
+        <div class="character-css-grid-panel">
+          <div class="character-css-grid-panel-header">
+            <div>
+              <strong>Not Hidden</strong>
+              <span>Drag to reorder. Right click or eye icon to hide.</span>
+            </div>
+          </div>
+          <div class="character-css-grid" id="character-css-grid"></div>
+        </div>
+
+        <aside class="character-css-inspector" id="character-css-inspector">
+          <div class="character-css-inspector-empty">
+            <i class="bi bi-cursor"></i>
+            <strong>Select a character</strong>
+            <span>Edit PRC data, names and slot labels from here.</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>

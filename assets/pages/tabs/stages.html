@@ -1,0 +1,77 @@
+<!-- Stages Tab Content -->
+<div class="stages-container" id="stages-root">
+  <div class="stages-header">
+    <div class="stages-header-left">
+      <h2 class="stages-title">
+        <i class="bi bi-grid-3x3-gap-fill"></i>
+        <span data-i18n="stages.title">Stages</span>
+      </h2>
+      <span class="stages-count">
+        <span id="stages-summary-value">0</span>
+        <span data-i18n="stages.statsMovable">Movable stages</span>
+      </span>
+    </div>
+
+    <div class="stages-header-actions">
+      <button
+        class="input-btn stages-hidden-btn"
+        id="stages-hidden-btn"
+        type="button"
+        hidden
+      >
+        <i class="bi bi-eye"></i>
+        <span data-i18n="stages.showHidden">Show hidden stages</span>
+        <span class="stages-hidden-count" id="stages-hidden-count">0</span>
+      </button>
+
+      <button class="input-btn stages-preset-btn" id="stages-preset-btn">
+        <i class="bi bi-collection-fill"></i>
+        <span id="stages-preset-btn-label">Default Layout</span>
+      </button>
+
+      <button class="input-btn stages-save-btn" id="stages-save-btn">
+        <i class="bi bi-floppy-fill"></i>
+        <span data-i18n="stages.saveLayout">Apply Layout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="stages-overview">
+    <div class="stages-overview-copy">
+      <div class="stages-summary-eyebrow" data-i18n="stages.statsTitle">
+        Current layout
+      </div>
+      <p class="stages-subtitle" data-i18n="stages.subtitle">
+        Reorder the stage grid, then save to regenerate the Stage Layout.
+      </p>
+    </div>
+
+    <div class="stages-overview-meta">
+      <div class="stages-summary-label" data-i18n="stages.statsMovable">
+        Movable stages
+      </div>
+      <div class="stages-summary-meta" id="stages-summary-meta"></div>
+    </div>
+  </div>
+
+  <div class="stages-grid-panel">
+    <div class="stages-grid" id="stages-grid"></div>
+  </div>
+
+  <p
+    class="stages-footer-note"
+    id="stages-footer-note"
+    data-i18n="stages.instructions"
+  >
+    Drag any stage after the Random cells, then save to regenerate the Stage
+    layout.
+  </p>
+
+  <div id="stage-context-menu" class="context-menu stages-context-menu" style="display: none">
+    <div class="stages-context-menu-stage" id="stage-context-stage"></div>
+    <div class="context-menu-item" data-action="toggle-stage-visibility">
+      <i class="bi bi-eye-slash" id="stage-context-icon"></i>
+      <span id="stage-context-text">Hide</span>
+    </div>
+  </div>
+</div>

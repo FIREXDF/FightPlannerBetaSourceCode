@@ -1,0 +1,57 @@
+<!-- Downloads Tab Content -->
+<div class="downloads-container">
+  <div class="downloads-header">
+    <div class="downloads-header-left">
+      <i
+        class="bi bi-download"
+        style="font-size: 24px; color: #7a9bff; margin-right: 10px"
+      ></i>
+      <h2 data-i18n="downloads.title">Downloads</h2>
+      <span class="downloads-count" id="downloads-count">0</span>
+    </div>
+    <div class="downloads-header-right">
+      <button class="input-btn" id="clear-completed-btn">
+        <i class="bi bi-trash"></i>
+        <span data-i18n="downloads.clearCompleted">Clear Completed</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="downloads-content">
+    <!-- Active Downloads -->
+    <div class="downloads-section" id="active-downloads-section">
+      <h3>
+        <i class="bi bi-arrow-down-circle"></i>
+        <span data-i18n="downloads.activeDownloads">Active Downloads</span>
+      </h3>
+      <div class="downloads-list" id="active-downloads-list">
+        <!-- Active downloads will be added here -->
+      </div>
+    </div>
+
+    <!-- Completed Downloads -->
+    <div class="downloads-section" id="completed-downloads-section">
+      <h3>
+        <i class="bi bi-check-circle"></i>
+        <span data-i18n="downloads.completedDownloads"
+          >Completed Downloads</span
+        >
+      </h3>
+      <div class="downloads-list" id="completed-downloads-list">
+        <!-- Completed downloads will be added here -->
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="downloads-empty" id="downloads-empty">
+      <i
+        class="bi bi-download"
+        style="font-size: 64px; color: #444; margin-bottom: 20px"
+      ></i>
+      <h3 data-i18n="downloads.noDownloads">No downloads yet</h3>
+      <p data-i18n="downloads.noDownloadsHint">
+        Mods installed via GameBanana links will appear here
+      </p>
+    </div>
+  </div>
+</div>

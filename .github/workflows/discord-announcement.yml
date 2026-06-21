@@ -1,0 +1,26 @@
+name: Discord Release Announcement
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  announce:
+    name: Send Discord Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Announcement
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_USERNAME: "FightPlanner Updates"
+          DISCORD_AVATAR: "https://raw.githubusercontent.com/FightPlanner/FightPlanner-4/main/assets/images/logo.png"
+          DISCORD_EMBEDS: |
+            [{
+              "title": "${{ github.event.release.name || github.event.release.tag_name }}",
+              "url": "${{ github.event.release.html_url }}",
+              "description": ${{ toJSON(github.event.release.body) }},
+              "color": 16723325
+            }]
+        with:
+          args: "<@&1356347899637928018> **New FightPlanner Beta Release!**\nDownload it here: ${{ github.event.release.html_url }}"

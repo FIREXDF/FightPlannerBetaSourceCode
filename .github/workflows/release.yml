@@ -1,0 +1,89 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version Type'
+        required: true
+        default: 'custom'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - custom
+      custom_version:
+        description: 'Custom Version (only if Type is custom)'
+        required: false
+        default: ''
+permissions:
+  contents: write
+jobs:
+  build-and-release:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-26]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CI: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify Xcode toolchain
+        if: matrix.os == 'macos-26'
+        run: |
+          xcodebuild -version
+          xcrun actool --version
+      - name: Calculate and set version
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            node scripts/bump-version.js alpha
+          else
+            node scripts/bump-version.js ${{ github.event.inputs.version_type }} ${{ github.event.inputs.custom_version }}
+          fi
+
+      - name: Build and publish (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          CSC_LINK: fightplanner.pfx
+          CSC_KEY_PASSWORD: "F0w2Ke7?$rW#"
+        run: npm run dist -- --publish ${{ github.event_name == 'pull_request' && 'never' || 'always' }}
+      - name: Build and publish (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: npm run dist -- --publish ${{ github.event_name == 'pull_request' && 'never' || 'always' }}
+      - name: Upload dist artifacts (fallback)
+        if: github.event_name == 'pull_request' && always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.blockmap
+            dist/*.yml
+            dist/*.yaml
+          if-no-files-found: ignore
+          retention-days: 3

@@ -1,0 +1,147 @@
+.language-selector {
+  background: var(--bg-transparent-10);
+  border: 1px solid var(--border-transparent-20);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.language-selector:hover {
+  background: var(--bg-transparent-15);
+  border-color: var(--border-transparent-30);
+}
+
+.language-selector:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(114, 137, 218, 0.2);
+}
+
+.language-selector option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 8px;
+}
+
+.language-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.language-dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-transparent-10);
+  border: 1px solid var(--border-transparent-20);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.language-dropdown-toggle:hover {
+  background: var(--bg-transparent-15);
+  border-color: var(--border-transparent-30);
+}
+
+.current-lang-flag {
+  font-size: 18px;
+}
+
+.current-lang-name {
+  flex: 1;
+  text-align: left;
+}
+
+.dropdown-arrow {
+  opacity: 0.7;
+  transition: transform 0.3s ease;
+}
+
+.language-dropdown-toggle:hover .dropdown-arrow {
+  opacity: 1;
+}
+
+.language-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-transparent-20);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 1000;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s ease;
+  text-align: left;
+}
+
+.language-option:hover {
+  background: var(--bg-transparent-10);
+}
+
+.language-option.active {
+  background: var(--bg-accent-subtle);
+  color: var(--accent-color);
+}
+
+.lang-flag {
+  font-size: 18px;
+}
+
+.lang-name {
+  flex: 1;
+}
+
+.checkmark {
+  color: var(--accent-color);
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.language-selector-compact {
+  min-width: 120px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.language-selector-compact .current-lang-flag {
+  font-size: 16px;
+}

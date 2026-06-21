@@ -1,0 +1,1774 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FightPlanner 4.0</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="../css/main.css" />
+    <link rel="stylesheet" href="../css/animations/shake.css" />
+    <style>
+      /* Critical CSS to hide content immediately if animating */
+      body.app-entrance-prepared .content-area-wrapper,
+      body.app-entrance-prepared .sidebar,
+      body.app-entrance-prepared .sidebar-btn,
+      body.app-entrance-prepared .bottom-bar,
+      body.app-entrance-animation .content-area-wrapper,
+      body.app-entrance-animation .sidebar,
+      body.app-entrance-animation .sidebar-btn,
+      body.app-entrance-animation .bottom-bar {
+        opacity: 0;
+      }
+
+      body.startup-boot-pending .titlebar,
+      body.startup-boot-pending .main-container,
+      body.startup-boot-pending .bottom-bar {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+    <script>
+      var exports = {};
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+  </head>
+
+  <body>
+    <script>
+      // Immediately check startup params to prevent flash of content
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('startup') === 'true') {
+        document.body.classList.add('startup-boot-pending');
+      }
+    </script>
+    <!-- Custom Title Bar -->
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <img
+          src="../images/pride-logo/pride.png"
+          alt="FightPlanner"
+          class="logo"
+        />
+        <span class="title" data-i18n="app.title">FightPlanner</span>
+        <span class="beta-badge" data-i18n="app.publicBetaTest"
+          >Public Beta Test</span
+        >
+      </div>
+      <div class="titlebar-buttons">
+        <button
+          class="titlebar-btn minimize"
+          data-i18n="titlebar.minimize"
+          data-i18n-title
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+            <rect x="0" y="5" width="12" height="2" />
+          </svg>
+        </button>
+        <button
+          class="titlebar-btn maximize"
+          data-i18n="titlebar.maximize"
+          data-i18n-title
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <rect x="1" y="1" width="10" height="10" />
+          </svg>
+        </button>
+        <button
+          class="titlebar-btn close"
+          data-i18n="titlebar.close"
+          data-i18n-title
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M0.5 0.5L11.5 11.5M11.5 0.5L0.5 11.5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="main-container">
+      <!-- Left Sidebar -->
+      <div class="sidebar">
+        <button
+          class="sidebar-btn active"
+          data-tab="tools"
+          data-i18n="sidebar.tools"
+          data-i18n-title
+        >
+          <img src="../images/icons/tools.svg" alt="Mods" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="plugins"
+          data-i18n="sidebar.plugins"
+          data-i18n-title
+        >
+          <img src="../images/icons/plugins.svg" alt="Plugins" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="characters"
+          data-i18n="sidebar.characters"
+          data-i18n-title
+        >
+          <img src="../images/icons/char.svg" alt="Characters" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="stages"
+          data-i18n="sidebar.stages"
+          data-i18n-title
+        >
+          <img src="../images/icons/stages.png" alt="Stages" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="downloads"
+          data-i18n="sidebar.downloads"
+          data-i18n-title
+        >
+          <img src="../images/icons/downloads.svg" alt="Downloads" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="settings"
+          data-i18n="sidebar.settings"
+          data-i18n-title
+        >
+          <img src="../images/icons/settings.svg" alt="Settings" />
+        </button>
+        <button
+          class="sidebar-btn"
+          data-tab="fightplanner"
+          data-i18n="sidebar.fightplanner"
+          data-i18n-title
+        >
+          <img src="../images/icons/fightplanner.svg" alt="Credits" />
+        </button>
+      </div>
+
+      <!-- Main Content Area with Right Panel -->
+      <div class="content-area-wrapper">
+        <div class="content-area">
+          <!-- Tab Content: Mods -->
+          <div class="tab-content active" id="tab-tools">
+            <!-- This tab will load from tabs/tools.html -->
+          </div>
+
+          <!-- Tab Content: Plugins -->
+          <div class="tab-content" id="tab-plugins">
+            <div class="content-box">
+              <!-- Content for Plugins tab -->
+            </div>
+          </div>
+
+          <!-- Tab Content: Characters -->
+          <div class="tab-content" id="tab-characters">
+            <div class="content-box">
+              <!-- Content for Characters tab -->
+            </div>
+          </div>
+
+          <!-- Tab Content: Stages -->
+          <div class="tab-content" id="tab-stages">
+            <div class="content-box">
+              <!-- Content for Stages tab -->
+            </div>
+          </div>
+
+          <!-- Tab Content: Downloads -->
+          <div class="tab-content" id="tab-downloads">
+            <div class="content-box">
+              <!-- Content for Downloads tab -->
+            </div>
+          </div>
+
+          <!-- Tab Content: Settings -->
+          <div class="tab-content" id="tab-settings">
+            <div class="content-box">
+              <!-- Content for Settings tab -->
+            </div>
+          </div>
+
+          <!-- Tab Content: Credits -->
+          <div class="tab-content" id="tab-fightplanner">
+            <!-- Content for Credits tab -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="bottom-bar" id="main-status-bar">
+      <div class="status-bar-content">
+        <div class="bottom-text-left">Ready</div>
+        <div class="bottom-text-right"></div>
+      </div>
+      <div class="extended-content" style="display: none"></div>
+    </div>
+
+    <div
+      id="hardware-connection-overlay"
+      class="hardware-connection-overlay"
+      aria-hidden="true"
+    >
+      <div class="hardware-connection-dialog" role="status" aria-live="polite">
+        <div class="hardware-connection-icon">
+          <i class="bi bi-usb-symbol"></i>
+        </div>
+        <h2 data-i18n="hardwareConnection.waitingTitle">
+          En attente de rebranchement
+        </h2>
+        <p data-i18n="hardwareConnection.waitingMessage">
+          FightPlanner est en mode Real Hardware. Rebranche ta Switch ou remonte
+          la carte SD pour continuer.
+        </p>
+        <div class="hardware-connection-path">
+          <span data-i18n="hardwareConnection.watchedPath"
+            >Chemin surveille:</span
+          >
+          <span data-hardware-drive-path></span>
+        </div>
+        <div class="hardware-connection-footer">
+          <button
+            type="button"
+            class="hardware-connection-use-anyway"
+            id="hardware-connection-use-anyway"
+            data-i18n="hardwareConnection.useAnyway"
+          >
+            Utiliser quand meme
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="mod-context-menu" class="context-menu" style="display: none">
+      <div class="context-menu-item" data-action="rename">
+        <i class="bi bi-pencil-square"></i>
+        <span data-i18n="contextMenu.rename">Rename</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="change-slot">
+        <i class="bi bi-grid-3x3-gap"></i>
+        <span data-i18n="contextMenu.changeSlot">Change Slot</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="toggle">
+        <i class="bi bi-toggle-on" id="toggle-icon"></i>
+        <span id="toggle-text" data-i18n="contextMenu.disable">Disable</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div class="context-menu-item" data-action="open-folder">
+        <i class="bi bi-folder2-open"></i>
+        <span data-i18n="contextMenu.openFolder">Open Folder</span>
+      </div>
+      <div class="context-menu-separator"></div>
+      <div
+        class="context-menu-item context-menu-item-danger"
+        data-action="uninstall"
+      >
+        <i class="bi bi-trash3"></i>
+        <span data-i18n="contextMenu.uninstall">Uninstall</span>
+      </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none"></div>
+
+    <!-- Rename Modal -->
+    <div id="rename-modal" class="modal" style="display: none">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-pencil-square"></i>
+          <span data-i18n="modals.rename.title">Rename Mod</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeRenameModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label
+          for="rename-input"
+          class="modal-label"
+          data-i18n="modals.rename.label"
+          >New mod name:</label
+        >
+        <input
+          type="text"
+          id="rename-input"
+          class="modal-input"
+          data-i18n="modals.rename.placeholder"
+          data-i18n-placeholder
+        />
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeRenameModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.confirmRename()"
+          data-i18n="common.rename"
+        >
+          Rename
+        </button>
+      </div>
+    </div>
+
+    <!-- Uninstall Confirmation Modal -->
+    <div id="uninstall-modal" class="modal" style="display: none">
+      <div class="modal-header modal-header-danger">
+        <h3>
+          <i class="bi bi-exclamation-triangle"></i>
+          <span id="uninstall-modal-title" data-i18n="modals.uninstall.title">
+            Uninstall Mod
+          </span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeUninstallModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-warning" id="uninstall-warning-text">
+          Are you sure you want to uninstall
+          <strong id="uninstall-mod-name"></strong>?
+        </p>
+        <div id="uninstall-mod-list" class="uninstall-mod-list"></div>
+        <p
+          class="modal-hint"
+          id="uninstall-modal-hint"
+          data-i18n="modals.uninstall.hint"
+        >
+          This will permanently delete the mod folder and cannot be undone.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeUninstallModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-danger"
+          onclick="window.modalManager.confirmUninstall()"
+        >
+          <span id="uninstall-confirm-label" data-i18n="common.uninstall">
+            Uninstall
+          </span>
+          <i
+            class="bi bi-arrow-return-left"
+            style="margin-left: 6px; opacity: 0.7"
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Delete Plugin Confirmation Modal -->
+    <div id="delete-plugin-modal" class="modal" style="display: none">
+      <div class="modal-header modal-header-danger">
+        <h3>
+          <i class="bi bi-trash3"></i>
+          <span data-i18n="modals.deletePlugin.title">Delete Plugin</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeDeletePluginModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-warning">
+          <span data-i18n="modals.deletePlugin.warning"
+            >Are you sure you want to delete</span
+          >
+          <strong id="delete-plugin-name"></strong>?
+        </p>
+        <p class="modal-hint" data-i18n="modals.deletePlugin.hint">
+          This action cannot be undone. The plugin file will be permanently
+          removed.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeDeletePluginModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-danger"
+          onclick="window.modalManager.confirmDeletePlugin()"
+        >
+          <span data-i18n="common.delete">Delete</span>
+          <i
+            class="bi bi-arrow-return-left"
+            style="margin-left: 6px; opacity: 0.7"
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Error/Success Modal -->
+    <div id="alert-modal" class="modal" style="display: none">
+      <div class="modal-header" id="alert-modal-header">
+        <h3 id="alert-modal-title">
+          <i class="bi bi-info-circle"></i>
+          <span data-i18n="modals.alert.title">Message</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeAlertModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="alert-modal-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.closeAlertModal()"
+          data-i18n="common.ok"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+
+    <!-- Change Slot Modal -->
+    <div id="change-slot-modal" class="modal modal-large" style="display: none">
+      <div class="modal-header">
+        <!-- Manually translated-->
+        <h3>Change Character Slot</h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeChangeSlotModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p
+          class="modal-hint"
+          id="slot-modal-hint"
+          data-i18n="modals.changeSlot.hint"
+        >
+          Detected slots in this mod:
+        </p>
+        <div id="slot-list-container" class="slot-list">
+          <!-- Slot items will be added dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeChangeSlotModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.confirmChangeSlots()"
+          data-i18n="modals.changeSlot.applyChanges"
+        >
+          Apply Changes
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Conflict Modal -->
+    <div id="conflict-modal" class="modal modal-conflict" style="display: none">
+      <div class="modal-header conflict-modal-header">
+        <div class="conflict-header-left">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <h3 data-i18n="modals.conflict.title">Mod Conflicts Detected</h3>
+          <!-- Manually translated-->
+          <span id="conflict-header-badge" class="conflict-header-badge"
+            >0 files in conflicts</span
+          >
+        </div>
+        <button
+          class="modal-close"
+          onclick="window.conflictModalManager.closeConflictModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint" id="conflict-summary"></p>
+        <div id="conflict-list-container" class="conflict-list-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button
+          id="conflict-delete-selected-footer-btn"
+          class="modal-btn conflict-delete-selected-footer-btn"
+          onclick="window.conflictModalManager.deleteSelectedConflictFiles()"
+          disabled
+        >
+          <i class="bi bi-trash3"></i>
+          <span data-i18n="modals.conflict.deleteSelectedFiles"
+            >Delete selected</span
+          >
+        </button>
+        <button
+          class="modal-btn conflict-change-slot-footer-btn"
+          onclick="window.conflictModalManager.openGlobalSlotChange()"
+        >
+          <i class="bi bi-arrow-repeat"></i>
+          <span data-i18n="modals.conflict.changeSlot">Change Slot</span>
+        </button>
+        <button
+          class="modal-btn conflict-auto-slot-footer-btn"
+          onclick="window.conflictModalManager.openAutoSlotChangeModal()"
+        >
+          <i class="bi bi-magic"></i>
+          <span data-i18n="modals.conflict.autoChangeSlot"
+            >Change Slots Automatically</span
+          >
+        </button>
+        <button
+          class="modal-btn conflict-disable-mod-footer-btn"
+          onclick="window.conflictModalManager.openDisableModModal()"
+        >
+          <i class="bi bi-toggle-off"></i>
+          <span data-i18n="modals.conflict.disableMod">Disable Mod</span>
+        </button>
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.conflictModalManager.closeConflictModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+          <span data-i18n="modals.close">Close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Conflict Disable Mod Modal -->
+    <div
+      id="conflict-disable-mod-modal"
+      class="modal modal-conflict"
+      style="display: none"
+    >
+      <div class="modal-header conflict-modal-header">
+        <div class="conflict-header-left">
+          <i class="bi bi-toggle-off"></i>
+          <h3 data-i18n="modals.conflictDisable.title">
+            Disable Conflicting Mod
+          </h3>
+        </div>
+        <button
+          class="modal-close"
+          onclick="window.conflictModalManager.closeDisableModModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint" data-i18n="modals.conflictDisable.hint">
+          Select a mod to disable:
+        </p>
+        <div
+          id="conflict-disable-mod-select-container"
+          class="conflict-mod-select"
+        ></div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.conflictModalManager.closeDisableModModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+          <span data-i18n="common.cancel">Cancel</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Conflict Slot Change Modal -->
+    <div
+      id="conflict-slot-modal"
+      class="modal modal-large"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-grid-3x3-gap"></i>
+          <span data-i18n="modals.conflictSlot.title"
+            >Change Slot for Conflicting Mod</span
+          >
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.conflictModalManager.closeSlotChangeModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint" data-i18n="modals.conflictSlot.hint">
+          Select a mod to change its slot:
+        </p>
+        <div
+          id="conflict-mod-select-container"
+          class="conflict-mod-select"
+        ></div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.conflictModalManager.closeSlotChangeModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Auto Slot Change Modal -->
+    <div
+      id="conflict-auto-slot-modal"
+      class="modal modal-large"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-magic"></i>
+          <span data-i18n="modals.autoSlotChange.title"
+            >Change Slots Automatically</span
+          >
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.conflictModalManager.closeAutoSlotChangeModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint" data-i18n="modals.autoSlotChange.hint">
+          Select mods that should NOT be changed (recommended: check stage
+          mods):
+        </p>
+        <div
+          id="conflict-auto-slot-mod-list"
+          class="conflict-auto-slot-mod-list"
+        ></div>
+      </div>
+      <div class="modal-footer">
+        <div class="conflict-auto-slot-footer-options">
+          <span
+            class="conflict-auto-slot-range-title"
+            data-i18n="modals.autoSlotChange.allowExtendedSlots"
+            >Allow c16+ slots</span
+          >
+          <label
+            class="settings-switch conflict-auto-slot-range-switch"
+            data-i18n="modals.autoSlotChange.allowExtendedSlots"
+            data-i18n-title
+            title="Allow c16+ slots"
+          >
+            <input type="checkbox" id="conflict-auto-slot-extended-range" />
+            <span class="settings-switch-slider"></span>
+          </label>
+        </div>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.conflictModalManager.applyAutoSlotChanges()"
+          data-i18n="modals.autoSlotChange.apply"
+        >
+          Apply Changes
+        </button>
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.conflictModalManager.closeAutoSlotChangeModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Edit Info Modal -->
+    <div
+      id="edit-info-modal"
+      class="modal mod-info-editor-modal"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-pencil-square"></i>
+          <span data-i18n="modals.editInfo.title">Edit Info.toml</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeEditInfoModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="mod-info-form">
+          <div class="form-group edit-info-preview-editor">
+            <label data-i18n="modals.editInfo.preview">Preview image</label>
+            <div class="edit-info-preview-row">
+              <div class="edit-info-preview-frame">
+                <img id="edit-info-preview-image" alt="Preview" />
+                <div
+                  id="edit-info-preview-placeholder"
+                  class="edit-info-preview-placeholder"
+                >
+                  <i class="bi bi-image"></i>
+                </div>
+              </div>
+              <div class="edit-info-preview-actions">
+                <button
+                  type="button"
+                  class="modal-btn modal-btn-secondary"
+                  onclick="window.modalManager.openEditInfoPreviewPicker()"
+                >
+                  <i class="bi bi-upload"></i>
+                  <span data-i18n="modals.editInfo.importPreview"
+                    >Import preview</span
+                  >
+                </button>
+                <p class="modal-hint" data-i18n="modals.editInfo.previewHint">
+                  PNG, JPG, GIF and other image files are converted to
+                  preview.webp automatically.
+                </p>
+                <span
+                  id="edit-info-preview-status"
+                  class="edit-info-preview-status"
+                ></span>
+              </div>
+              <input
+                id="edit-info-preview-input"
+                type="file"
+                accept="image/*"
+                hidden
+                onchange="
+                  window.modalManager.handleEditInfoPreviewSelected(this)
+                "
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.displayName">Display Name</label>
+            <input
+              type="text"
+              name="display_name"
+              id="edit-info-display-name"
+              data-i18n="modals.editInfo.displayNamePlaceholder"
+              data-i18n-placeholder
+              placeholder="Mod name"
+            />
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.authors">Authors</label>
+            <input
+              type="text"
+              name="authors"
+              id="edit-info-authors"
+              data-i18n="modals.editInfo.authorsPlaceholder"
+              data-i18n-placeholder
+              placeholder="Author name"
+            />
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.version">Version</label>
+            <input
+              type="text"
+              name="version"
+              id="edit-info-version"
+              data-i18n="modals.editInfo.versionPlaceholder"
+              data-i18n-placeholder
+              placeholder="1.0.0"
+            />
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.category">Category</label>
+            <select name="category" id="edit-info-category">
+              <option value="" data-i18n="modals.editInfo.selectCategory">
+                Select category
+              </option>
+              <option value="Fighter" data-i18n="tools.categories.fighter">
+                Fighter & Skins
+              </option>
+              <option value="Movesets" data-i18n="tools.categories.movesets">
+                Movesets
+              </option>
+              <option value="stages" data-i18n="tools.categories.stages">
+                Stages
+              </option>
+              <option value="effects" data-i18n="tools.categories.effects">
+                Effects
+              </option>
+              <option
+                value="final smash"
+                data-i18n="tools.categories.finalSmash"
+              >
+                Final Smash
+              </option>
+              <option value="UI" data-i18n="tools.categories.ui">UI</option>
+              <option value="Param" data-i18n="tools.categories.param">
+                Param
+              </option>
+              <option value="audio" data-i18n="tools.categories.audio">
+                Audio
+              </option>
+              <option value="Other/misc" data-i18n="tools.categories.other">
+                Other/Misc
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.url">URL</label>
+            <input
+              type="text"
+              name="url"
+              id="edit-info-url"
+              data-i18n="modals.editInfo.urlPlaceholder"
+              data-i18n-placeholder
+              placeholder="https://..."
+            />
+          </div>
+          <div class="form-group">
+            <label data-i18n="modals.editInfo.description">Description</label>
+            <textarea
+              name="description"
+              id="edit-info-description"
+              rows="6"
+              data-i18n="modals.editInfo.descriptionPlaceholder"
+              data-i18n-placeholder
+              placeholder="Mod description"
+            ></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-secondary"
+          onclick="window.modInfoEditor.openAdvancedMode()"
+        >
+          <i class="bi bi-code-slash"></i>
+          <span data-i18n="modals.editInfo.advanced">Advanced</span>
+        </button>
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeEditInfoModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.confirmEditInfo()"
+          data-i18n="common.save"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- Advanced Info Modal -->
+    <div
+      id="advanced-info-modal"
+      class="modal mod-info-editor-modal"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-code-slash"></i>
+          <span data-i18n="modals.advancedInfo.title"
+            >Advanced Edit - info.toml</span
+          >
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.closeAdvancedInfoModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label data-i18n="modals.advancedInfo.rawContent"
+            >Raw TOML Content</label
+          >
+          <textarea
+            id="advanced-info-textarea"
+            class="advanced-textarea"
+            data-i18n="modals.advancedInfo.placeholder"
+            data-i18n-placeholder
+            placeholder="Edit the raw TOML file content here..."
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.closeAdvancedInfoModal()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.confirmAdvancedInfo()"
+          data-i18n="common.save"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- 1-Click Install Confirmation Modal -->
+    <div id="install-confirm-modal" class="modal" style="display: none">
+      <div class="modal-header">
+        <h3>
+          <i class="fas fa-download"></i>
+          <span data-i18n="modals.installConfirm.title"
+            >Confirm Mod Installation</span
+          >
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.modalManager.cancelInstallConfirm()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="install-confirm-content">
+          <div id="install-preview-container" class="install-preview-container">
+            <div class="install-preview-loading">
+              <i class="fas fa-spinner fa-spin"></i>
+            </div>
+            <img
+              id="install-preview-image"
+              class="install-preview-image"
+              style="display: none"
+            />
+          </div>
+          <p
+            class="install-question"
+            data-i18n="modals.installConfirm.question"
+          >
+            Do you want to download and install this mod?
+          </p>
+          <div class="install-url-container">
+            <label data-i18n="modals.installConfirm.downloadUrl"
+              >Download URL:</label
+            >
+            <div id="install-url-display" class="install-url-display"></div>
+          </div>
+          <p class="install-hint" data-i18n="modals.installConfirm.hint">
+            The mod will be downloaded and automatically installed to your mods
+            folder.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          id="install-cancel-all-btn"
+          onclick="window.modalManager.cancelAllInstalls()"
+          style="display: none"
+          data-i18n="modals.installConfirm.cancelAll"
+        >
+          Cancel All
+        </button>
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.modalManager.cancelInstallConfirm()"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.modalManager.confirmInstall()"
+        >
+          <i class="fas fa-download"></i>
+          <span data-i18n="modals.installConfirm.downloadInstall"
+            >Download &amp; Install</span
+          >
+        </button>
+      </div>
+    </div>
+
+    <!-- Smart Rename Select Modal -->
+    <div
+      id="smart-rename-modal"
+      class="modal modal-large"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-magic"></i>
+          <span>Smart Rename</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.smartRenameManager.closeSelectModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Select the mods you want to rename:</p>
+        <div class="smart-rename-search-wrapper">
+          <i class="bi bi-search smart-rename-search-icon"></i>
+          <input
+            type="text"
+            id="smart-rename-search"
+            class="smart-rename-search-input"
+            placeholder="Search mods..."
+          />
+        </div>
+        <div class="smart-rename-filter-buttons">
+          <button
+            class="smart-rename-filter-btn"
+            onclick="window.smartRenameManager.selectAll()"
+          >
+            <i class="bi bi-check-all"></i> Select All
+          </button>
+          <button
+            class="smart-rename-filter-btn"
+            onclick="window.smartRenameManager.selectEnabledOnly()"
+          >
+            <i class="bi bi-check-circle"></i> Enabled Only
+          </button>
+          <button
+            class="smart-rename-filter-btn"
+            onclick="window.smartRenameManager.selectDisabledOnly()"
+          >
+            <i class="bi bi-dash-circle"></i> Disabled Only
+          </button>
+          <button
+            class="smart-rename-filter-btn"
+            onclick="window.smartRenameManager.deselectAll()"
+          >
+            <i class="bi bi-x-lg"></i> Deselect All
+          </button>
+        </div>
+        <div id="smart-rename-select-list" class="smart-rename-select-list">
+          <!-- Mod items populated dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.smartRenameManager.closeSelectModal()"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.smartRenameManager.openPreviewModal()"
+        >
+          <i class="bi bi-eye"></i>
+          <span>Preview Renames</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Smart Rename Preview Modal -->
+    <div
+      id="smart-rename-preview-modal"
+      class="modal modal-large smart-rename-preview-modal-size"
+      style="display: none"
+    >
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-eye"></i>
+          <span>Preview Renames</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.smartRenameManager.closePreviewModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="smart-rename-preview-table-wrapper">
+          <table class="smart-rename-preview-table">
+            <thead>
+              <tr>
+                <th class="smart-rename-th-cb">
+                  <input
+                    type="checkbox"
+                    id="smart-rename-preview-select-all"
+                    checked
+                  />
+                </th>
+                <th>Base Mod Name</th>
+                <th>Original Name</th>
+                <th>New Name</th>
+              </tr>
+            </thead>
+            <tbody id="smart-rename-preview-tbody">
+              <!-- Rows populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          onclick="window.smartRenameManager.closePreviewModal()"
+        >
+          Cancel
+        </button>
+        <button
+          class="modal-btn modal-btn-primary"
+          onclick="window.smartRenameManager.applyRenames()"
+        >
+          <i class="bi bi-check-lg"></i>
+          <span>Apply Rename</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="update-modal" class="modal" style="display: none">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-arrow-repeat"></i>
+          <span data-i18n="modals.update.title">Update Available</span>
+        </h3>
+        <button
+          class="modal-close"
+          onclick="window.updateManager.closeUpdateModal()"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div
+          id="update-available-content"
+          class="update-content"
+          style="display: none"
+        >
+          <div class="update-info">
+            <p class="update-version">
+              <span data-i18n="modals.update.newVersion"
+                >New version available:</span
+              >
+              <strong id="update-version-number"></strong>
+            </p>
+            <div class="update-release-notes">
+              <h4 data-i18n="modals.update.releaseNotes">Release Notes:</h4>
+              <div id="update-release-notes-content"></div>
+            </div>
+          </div>
+        </div>
+        <div
+          id="update-downloading-content"
+          class="update-content"
+          style="display: none"
+        >
+          <p data-i18n="modals.update.downloading">Downloading update...</p>
+          <div class="update-progress-container">
+            <div class="update-progress-bar">
+              <div id="update-progress-fill" class="update-progress-fill"></div>
+            </div>
+            <div class="update-progress-info">
+              <span id="update-progress-percent">0%</span>
+              <span id="update-progress-speed"></span>
+            </div>
+          </div>
+        </div>
+        <div
+          id="update-downloaded-content"
+          class="update-content"
+          style="display: none"
+        >
+          <p class="update-success">
+            <i class="bi bi-check-circle-fill"></i>
+            <span data-i18n="modals.update.downloaded"
+              >Update downloaded successfully!</span
+            >
+          </p>
+          <p class="update-hint" data-i18n="modals.update.restartHint">
+            Click "Install and Restart" to apply the update.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div
+          id="update-available-actions"
+          class="update-actions"
+          style="display: none"
+        >
+          <button
+            class="modal-btn modal-btn-cancel"
+            onclick="window.updateManager.closeUpdateModal()"
+            data-i18n="modals.update.later"
+          >
+            Later
+          </button>
+          <button
+            class="modal-btn modal-btn-primary"
+            onclick="window.updateManager.downloadUpdate()"
+          >
+            <i class="bi bi-download"></i>
+            <span data-i18n="modals.update.download">Download</span>
+          </button>
+        </div>
+        <div
+          id="update-downloading-actions"
+          class="update-actions"
+          style="display: none"
+        >
+          <button
+            class="modal-btn modal-btn-cancel"
+            onclick="window.updateManager.closeUpdateModal()"
+            data-i18n="common.cancel"
+          >
+            Cancel
+          </button>
+        </div>
+        <div
+          id="update-downloaded-actions"
+          class="update-actions"
+          style="display: none"
+        >
+          <button
+            class="modal-btn modal-btn-cancel"
+            onclick="window.updateManager.closeUpdateModal()"
+            data-i18n="modals.update.later"
+          >
+            Later
+          </button>
+          <button
+            class="modal-btn modal-btn-primary"
+            onclick="window.updateManager.installUpdate()"
+          >
+            <i class="bi bi-arrow-clockwise"></i>
+            <span data-i18n="modals.update.installRestart"
+              >Install and Restart</span
+            >
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Zoom Modal -->
+    <div
+      id="image-zoom-overlay"
+      class="image-zoom-overlay"
+      style="display: none"
+    >
+      <div class="image-zoom-container">
+        <img
+          id="image-zoom-img"
+          class="image-zoom-img"
+          src=""
+          alt="Zoomed preview"
+        />
+        <button class="image-zoom-close" id="image-zoom-close">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+
+    <!-- FPP Create Modal -->
+    <div id="fpp-create-modal" class="modal modal-large" style="display: none">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-file-zip-fill"></i>
+          <span data-i18n="fpp.createTitle">Create FPP Pack</span>
+        </h3>
+        <button class="modal-close" id="fpp-create-close">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Step 1: Metadata -->
+        <div id="fpp-create-step-1">
+          <h4
+            style="
+              color: var(--text-primary);
+              margin-bottom: 16px;
+              border-bottom: 1px solid var(--border-color);
+              padding-bottom: 8px;
+            "
+            data-i18n="fpp.step1Info"
+          >
+            Step 1: Pack Information
+          </h4>
+
+          <div style="display: flex; gap: 24px; align-items: flex-start">
+            <!-- Left Column: 16:9 Thumbnail -->
+            <div
+              style="
+                width: 320px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                flex-shrink: 0;
+              "
+            >
+              <label
+                style="
+                  color: var(--text-secondary);
+                  font-size: 14px;
+                  font-weight: 500;
+                "
+                data-i18n="fpp.packThumbnail"
+                >Thumbnail Image</label
+              >
+              <div
+                id="fpp-thumbnail-preview-container"
+                style="
+                  width: 100%;
+                  aspect-ratio: 16/9;
+                  background: var(--bg-tertiary);
+                  border: 2px dashed var(--border-color);
+                  border-radius: 12px;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  overflow: hidden;
+                  position: relative;
+                "
+              >
+                <i
+                  class="bi bi-image"
+                  id="fpp-thumbnail-placeholder-icon"
+                  style="
+                    font-size: 48px;
+                    color: var(--text-muted);
+                    margin-bottom: 8px;
+                  "
+                ></i>
+                <span
+                  id="fpp-thumbnail-placeholder-text"
+                  style="color: var(--text-muted); font-size: 13px"
+                  data-i18n="fpp.thumbnailHint"
+                  >1280x720 Recommended</span
+                >
+                <img
+                  id="fpp-thumbnail-preview"
+                  style="
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: none;
+                  "
+                />
+              </div>
+
+              <div style="display: flex; gap: 8px; width: 100%">
+                <input
+                  type="file"
+                  id="fpp-thumbnail-input"
+                  accept="image/png, image/jpeg, image/webp"
+                  style="display: none"
+                />
+                <button
+                  class="modal-btn modal-btn-secondary"
+                  id="fpp-choose-thumbnail-btn"
+                  style="
+                    flex: 1;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px;
+                  "
+                >
+                  <i class="bi bi-upload"></i>
+                  <span data-i18n="fpp.chooseThumbnail">Browse...</span>
+                </button>
+                <button
+                  class="modal-btn modal-btn-danger"
+                  id="fpp-remove-thumbnail-btn"
+                  style="display: none; padding: 10px 14px"
+                  title="Remove Thumbnail"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Column: Metadata Inputs -->
+            <div
+              style="
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                min-width: 0;
+              "
+            >
+              <div class="form-group">
+                <label
+                  style="
+                    color: var(--text-secondary);
+                    margin-bottom: 8px;
+                    display: block;
+                    font-weight: 500;
+                  "
+                  data-i18n="fpp.packName"
+                  >Pack Name</label
+                >
+                <input
+                  type="text"
+                  id="fpp-name-input"
+                  class="modal-input"
+                  data-i18n="fpp.packNamePlaceholder"
+                  data-i18n-placeholder
+                  placeholder="My Mod Pack"
+                  style="
+                    width: 100%;
+                    padding: 12px;
+                    border-radius: 8px;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border-color);
+                    color: var(--text-primary);
+                    font-size: 15px;
+                  "
+                />
+              </div>
+
+              <div class="form-group">
+                <label
+                  style="
+                    color: var(--text-secondary);
+                    margin-bottom: 8px;
+                    display: block;
+                    font-weight: 500;
+                  "
+                  data-i18n="fpp.packVersion"
+                  >Version</label
+                >
+                <input
+                  type="text"
+                  id="fpp-version-input"
+                  class="modal-input"
+                  data-i18n="fpp.packVersionPlaceholder"
+                  data-i18n-placeholder
+                  placeholder="1.0.0"
+                  style="
+                    width: 100%;
+                    padding: 12px;
+                    border-radius: 8px;
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border-color);
+                    color: var(--text-primary);
+                    font-size: 15px;
+                  "
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Content Selection -->
+        <div id="fpp-create-step-2" style="display: none">
+          <h4
+            style="
+              color: var(--text-primary);
+              margin-bottom: 12px;
+              border-bottom: 1px solid var(--border-color);
+              padding-bottom: 8px;
+            "
+          >
+            Step 2: Package Contents
+          </h4>
+          <div style="margin-bottom: 12px">
+            <div class="smart-rename-search-wrapper" style="margin-bottom: 8px">
+              <i class="bi bi-search smart-rename-search-icon"></i>
+              <input
+                type="text"
+                id="fpp-search-input"
+                class="smart-rename-search-input"
+                data-i18n="fpp.searchMods"
+                data-i18n-placeholder
+                placeholder="Search mods and plugins..."
+              />
+            </div>
+            <div class="smart-rename-filter-buttons" style="margin-bottom: 8px">
+              <button class="smart-rename-filter-btn" id="fpp-select-all">
+                <i class="bi bi-check-all"></i>
+                <span data-i18n="fpp.selectAll">Select All</span>
+              </button>
+              <button class="smart-rename-filter-btn" id="fpp-deselect-all">
+                <i class="bi bi-x-lg"></i>
+                <span data-i18n="fpp.deselectAll">Deselect All</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="max-height: 280px; overflow-y: auto">
+            <!-- Mods Section -->
+            <div style="margin-bottom: 16px">
+              <h5 style="color: var(--text-secondary); margin-bottom: 8px">
+                <i class="bi bi-folder-fill"></i> Mods
+                <span
+                  id="fpp-selected-mods-count"
+                  style="color: var(--primary-color); font-weight: 600"
+                  >(0)</span
+                >
+              </h5>
+              <div id="fpp-mods-table" class="smart-rename-select-list">
+                <!-- Mods populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Plugins Section -->
+            <div>
+              <h5 style="color: var(--text-secondary); margin-bottom: 8px">
+                <i class="bi bi-plugin"></i> Plugins
+                <span
+                  id="fpp-selected-plugins-count"
+                  style="color: var(--primary-color); font-weight: 600"
+                  >(0)</span
+                >
+              </h5>
+              <div id="fpp-plugins-table" class="smart-rename-select-list">
+                <!-- Plugins populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div
+        id="fpp-create-loading"
+        style="
+          display: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.7);
+          z-index: 100;
+          border-radius: 0 0 16px 16px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          backdrop-filter: blur(4px);
+        "
+      >
+        <div
+          id="fpp-create-lottie"
+          style="width: 120px; height: 120px; margin-bottom: 8px"
+        ></div>
+        <div
+          id="fpp-create-status"
+          style="
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 16px;
+            text-align: center;
+            padding: 0 20px;
+          "
+        >
+          Creating FPP Pack...
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <!-- Step 1 Footer -->
+        <div
+          id="fpp-create-footer-step-1"
+          style="
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            justify-content: flex-end;
+          "
+        >
+          <button
+            class="modal-btn modal-btn-cancel"
+            id="fpp-cancel-btn-1"
+            data-i18n="common.cancel"
+          >
+            Cancel
+          </button>
+          <button class="modal-btn modal-btn-primary" id="fpp-next-btn">
+            <span data-i18n="common.next">Next</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+
+        <!-- Step 2 Footer -->
+        <div
+          id="fpp-create-footer-step-2"
+          style="
+            display: none;
+            gap: 8px;
+            width: 100%;
+            justify-content: flex-end;
+          "
+        >
+          <button class="modal-btn modal-btn-secondary" id="fpp-back-btn">
+            <i class="bi bi-arrow-left"></i>
+            <span data-i18n="common.back">Back</span>
+          </button>
+          <div style="flex: 1"></div>
+          <button
+            class="modal-btn modal-btn-cancel"
+            id="fpp-cancel-btn-2"
+            data-i18n="common.cancel"
+          >
+            Cancel
+          </button>
+          <button class="modal-btn modal-btn-primary" id="fpp-create-btn">
+            <i class="bi bi-file-zip-fill"></i>
+            <span data-i18n="fpp.create">Create .fpp</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FPP Install Modal -->
+    <div id="fpp-install-modal" class="modal modal-large" style="display: none">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-file-zip-fill"></i>
+          <span data-i18n="fpp.installTitle">Install FPP Pack</span>
+        </h3>
+        <button class="modal-close" id="fpp-install-close">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="fpp-install-body">
+        <!-- Content populated dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button
+          class="modal-btn modal-btn-cancel"
+          id="fpp-install-cancel"
+          data-i18n="common.cancel"
+        >
+          Cancel
+        </button>
+        <button class="modal-btn modal-btn-primary" id="fpp-install-confirm">
+          <i class="bi bi-download"></i>
+          <span data-i18n="fpp.install">Install</span>
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+    <script src="../../out/renderer/js/i18n/i18n-client.js"></script>
+    <script src="../../out/renderer/js/i18n/language-selector.js"></script>
+    <script src="../../out/renderer/js/tutorial/tutorial-manager.js"></script>
+    <script src="../../out/renderer/js/ui/app-sound-manager.js"></script>
+    <script src="../../out/renderer/js/ui/toast-manager.js"></script>
+    <script src="../../out/renderer/js/ui/modal-manager.js"></script>
+    <script src="../../out/renderer/js/ui/modals/alert-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/uninstall-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/rename-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/delete-plugin-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/edit-info-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/install-confirm-modal.js"></script>
+    <script src="../../out/renderer/js/ui/modals/plugin-modals.js"></script>
+    <script src="../../out/renderer/js/ui/modals/change-slot-modal.js"></script>
+    <script src="../../out/renderer/js/ui/update-manager.js"></script>
+    <script src="../../out/renderer/js/logs/logs-manager.js"></script>
+    <script src="../../out/renderer/js/customization/customization-manager.js"></script>
+    <script src="../../out/renderer/js/fightplanner/fightplanner-manager.js"></script>
+    <!-- Characters Manager -->
+    <script src="../../out/renderer/js/characters/characters-data.js"></script>
+    <script src="../../out/renderer/js/characters/characters-manager.js"></script>
+
+    <!-- Downloads Manager -->
+    <script src="../../out/renderer/js/downloads/mtp-client.js"></script>
+    <script src="../../out/renderer/js/downloads/download-manager.js"></script>
+
+    <!-- Protocol Listener -->
+    <script src="../../out/renderer/js/protocol/protocol-listener.js"></script>
+    <!-- End Characters Manager -->
+    <script src="../../out/renderer/js/stages/stages-manager.js"></script>
+    <script src="../../out/renderer/js/tabs/tabs-loader.js"></script>
+    <script src="../../out/renderer/js/settings/settings-manager.js"></script>
+    <script src="../../out/renderer/js/mods/mod-info.js"></script>
+    <script src="../../out/renderer/js/mods/mod-info-editor.js"></script>
+    <!-- Mod Manager components (order is important) -->
+    <script src="../../out/renderer/js/mods/mod-list-renderer.js"></script>
+    <script src="../../out/renderer/js/mods/mod-context-menu.js"></script>
+    <script src="../../out/renderer/js/mods/mod-operations.js"></script>
+    <script src="../../out/renderer/js/mods/mod-keybinds.js"></script>
+    <script src="../../out/renderer/js/mods/mod-drag-drop.js"></script>
+    <script src="../../out/renderer/js/mods/mod-manager.js"></script>
+    <script src="../../out/renderer/js/mods/smart-rename-manager.js"></script>
+    <script src="../../out/renderer/js/mods/fpp-manager.js"></script>
+    <!-- End Mod Manager -->
+    <!-- Plugin Manager -->
+    <script src="../../out/renderer/js/mods/plugin-marketplace.js"></script>
+    <script src="../../out/renderer/js/mods/plugin-manager.js"></script>
+    <script src="../../out/renderer/js/mods/mod-profile-manager.js"></script>
+    <!-- End Plugin Manager -->
+    <script src="../../out/renderer/js/settings/batch-testing/batch-testing-session-store.js"></script>
+    <script src="../../out/renderer/js/settings/batch-testing/batch-testing-state-helpers.js"></script>
+    <script src="../../out/renderer/js/settings/batch-testing/batch-testing-ui-helpers.js"></script>
+    <script src="../../out/renderer/js/settings/batch-testing-manager.js"></script>
+    <script src="../../out/renderer/js/ui/resize-handler.js"></script>
+    <script src="../../out/renderer/js/ui/status-bar-manager.js"></script>
+    <script src="../../out/renderer/js/ui/animation-manager.js"></script>
+    <script src="../../out/renderer/js/core/startup-splash-manager.js"></script>
+    <script src="../../out/renderer/js/core/remote-announcement-manager.js"></script>
+    <script src="../../out/renderer/js/core/hardware-connection-manager.js"></script>
+    <script src="../../out/renderer/js/ui/conflict-modal-manager.js"></script>
+    <script src="../../out/renderer/js/core/renderer.js"></script>
+    <script src="../../out/renderer/js/core/discord-rpc-client.js"></script>
+    <script src="../../out/renderer/js/core/protocol-listener.js"></script>
+    <script>
+      // Initialize i18n when DOM is ready
+      document.addEventListener('DOMContentLoaded', async () => {
+        const savedLocale = i18n.getSavedLocale();
+        await i18n.init(savedLocale);
+        console.log('i18n initialized with locale:', i18n.getCurrentLocale());
+      });
+    </script>
+  </body>
+</html>

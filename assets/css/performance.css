@@ -1,0 +1,40 @@
+* {
+  scroll-behavior: auto;
+}
+
+.sidebar-btn,
+.action-btn,
+.input-btn,
+.input-field,
+.settings-tab-content,
+.modal,
+.context-menu,
+.toast,
+.mod-item,
+.modal-btn,
+.settings-btn {
+  transition-duration: 0.2s !important;
+}
+
+.settings-tab-content.active,
+.settings-tab-content.fade-out {
+  animation-duration: 0.2s !important;
+}
+
+body.reduced-animations *,
+body.no-animations * {
+  animation-duration: 0.1s !important;
+  transition-duration: 0.1s !important;
+}
+
+/* Keep spinners spinning at normal speed */
+body.reduced-animations .slot-usage-spinner,
+body.reduced-animations .install-preview-loading,
+body.reduced-animations [class*='loading'] i,
+body.reduced-animations [class*='spinner'],
+body.no-animations .slot-usage-spinner,
+body.no-animations .install-preview-loading,
+body.no-animations [class*='loading'] i,
+body.no-animations [class*='spinner'] {
+  animation-duration: 1s !important;
+}

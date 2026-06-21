@@ -1,0 +1,51 @@
+.tab-content {
+  will-change: opacity, transform, filter;
+}
+
+.sidebar-btn {
+  transition: all 0.2s ease;
+}
+
+.action-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: var(--shadow-lg);
+}
+
+.action-btn:active {
+  transform: translateY(0) scale(1);
+  transition: all 0.1s ease;
+}
+
+.input-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.input-btn:active {
+  transform: translateY(0);
+  transition: all 0.1s ease;
+}
+
+.input-field {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(255, 51, 102, 0.1);
+  transform: scale(1.01);
+}
+
+.status-bar {
+  transition: background-color 0.2s ease;
+}

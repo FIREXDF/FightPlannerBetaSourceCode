@@ -1,0 +1,173 @@
+.modal-overlay {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  transition:
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay[style*='display: block'] {
+  opacity: 1;
+  backdrop-filter: blur(8px);
+  animation: modalOverlayFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalOverlayFadeIn {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+.modal-overlay.closing {
+  animation: modalOverlayFadeOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes modalOverlayFadeOut {
+  0% {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+
+  100% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+}
+
+.modal {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9) translateY(20px);
+  filter: blur(4px);
+  transition:
+    opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal[style*='display: block'] {
+  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalSlideIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9) translateY(30px);
+    filter: blur(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.modal.closing {
+  animation: modalSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes modalSlideOut {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95) translateY(-20px);
+    filter: blur(4px);
+  }
+}
+
+.modal[style*='display: block'] .modal-body {
+  overflow-y: auto;
+}
+
+.context-menu {
+  animation: contextMenuFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes contextMenuFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(-12px);
+    filter: blur(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+    pointer-events: all;
+  }
+}
+
+.context-menu:not([style*='display: none']) {
+  animation: contextMenuFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.context-menu.closing {
+  animation: contextMenuFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes contextMenuFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.85) translateY(-12px);
+    filter: blur(8px);
+    pointer-events: none;
+  }
+}
+
+.modal.dynamic-island-closing {
+  animation: none !important;
+  pointer-events: none;
+}
+
+@keyframes statusBarBounce {
+  0% {
+    transform: scaleX(1) scaleY(1);
+  }
+
+  15% {
+    transform: scaleX(1.03) scaleY(1.15);
+  }
+
+  30% {
+    transform: scaleX(1.01) scaleY(0.92);
+  }
+
+  45% {
+    transform: scaleX(1.015) scaleY(1.06);
+  }
+
+  60% {
+    transform: scaleX(1.005) scaleY(0.97);
+  }
+
+  75% {
+    transform: scaleX(1.005) scaleY(1.02);
+  }
+
+  100% {
+    transform: scaleX(1) scaleY(1);
+  }
+}
+
+.status-bar-bounce {
+  animation: statusBarBounce 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: center bottom;
+}

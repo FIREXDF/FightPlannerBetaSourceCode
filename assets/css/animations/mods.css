@@ -1,0 +1,51 @@
+.mod-item {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  filter: blur(4px);
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+}
+
+.mod-item.mod-item-visible {
+  animation: modItemSlideIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--mod-index) * 0.05s);
+}
+
+.mod-item.mod-item-instant {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+@keyframes modItemSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.mod-item {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.3s ease;
+}
+
+.mod-item:hover {
+  transform: translateY(-2px) scale(1.01);
+  z-index: 1;
+}
+
+.mod-item:active {
+  transform: scale(0.98);
+}

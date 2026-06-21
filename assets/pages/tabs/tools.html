@@ -1,0 +1,133 @@
+<!-- Tools Tab Content -->
+<div class="content-box">
+  <!-- Top Input Fields -->
+  <div class="top-inputs">
+    <input type="text" class="input-field" id="search-mods-input" data-i18n="tools.search" data-i18n-placeholder />
+    <button class="input-btn short" id="refresh-mods-btn">
+      <i class="bi bi-arrow-clockwise"></i>
+      <span data-i18n="tools.refreshMods">Refresh Mods</span>
+    </button>
+    <button class="input-btn short" id="smart-rename-btn">
+      <i class="bi bi-magic"></i>
+      <span>Smart Rename</span>
+    </button>
+    <button class="input-btn short mod-profile-btn" id="mod-profile-btn">
+      <i class="bi bi-collection-fill"></i>
+      <span id="mod-profile-btn-label">Profiles</span>
+    </button>
+    <div class="custom-select short" id="mod-sort-order">
+      <div class="custom-select-trigger">
+        <span class="selected-value" data-i18n="tools.sort.name">Name</span>
+        <i class="bi bi-chevron-down"></i>
+      </div>
+      <div class="custom-select-dropdown">
+        <div class="custom-select-option active" data-value="name-asc">
+          <i class="bi bi-sort-alpha-down"></i>
+          <span data-i18n="tools.sort.name">Name</span>
+        </div>
+        <div class="custom-select-option" data-value="added-desc">
+          <i class="bi bi-clock-history"></i>
+          <span data-i18n="tools.sort.lastAdded">Last Added</span>
+        </div>
+        <div class="custom-select-option" data-value="modified-desc">
+          <i class="bi bi-pencil-square"></i>
+          <span data-i18n="tools.sort.lastModified">Last Modified</span>
+        </div>
+      </div>
+    </div>
+    <div class="custom-select short" id="category-filter">
+      <div class="custom-select-trigger">
+        <span class="selected-value" data-i18n="tools.allCategories">All Categories</span>
+        <i class="bi bi-chevron-down"></i>
+      </div>
+      <div class="custom-select-dropdown">
+        <div class="custom-select-option active" data-value="">
+          <i class="bi bi-grid-3x3-gap"></i>
+          <span data-i18n="tools.allCategories">All Categories</span>
+        </div>
+        <div class="custom-select-option" data-value="Fighter">
+          <i class="bi bi-person-fill"></i>
+          <span data-i18n="tools.categories.fighter">Fighter & Skins</span>
+        </div>
+        <div class="custom-select-option" data-value="Movesets">
+          <i class="bi bi-lightning-fill"></i>
+          <span data-i18n="tools.categories.movesets">Movesets</span>
+        </div>
+        <div class="custom-select-option" data-value="stages">
+          <i class="bi bi-map-fill"></i>
+          <span data-i18n="tools.categories.stages">Stages</span>
+        </div>
+        <div class="custom-select-option" data-value="effects">
+          <i class="bi bi-stars"></i>
+          <span data-i18n="tools.categories.effects">Effects</span>
+        </div>
+        <div class="custom-select-option" data-value="final smash">
+          <i class="bi bi-star-fill"></i>
+          <span data-i18n="tools.categories.finalSmash">Final Smash</span>
+        </div>
+        <div class="custom-select-option" data-value="UI">
+          <i class="bi bi-window"></i>
+          <span data-i18n="tools.categories.ui">UI</span>
+        </div>
+        <div class="custom-select-option" data-value="Param">
+          <i class="bi bi-sliders"></i>
+          <span data-i18n="tools.categories.param">Param</span>
+        </div>
+        <div class="custom-select-option" data-value="audio">
+          <i class="bi bi-music-note-beamed"></i>
+          <span data-i18n="tools.categories.audio">Audio</span>
+        </div>
+        <div class="custom-select-option" data-value="Other/misc">
+          <i class="bi bi-three-dots"></i>
+          <span data-i18n="tools.categories.other">Other/Misc</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Large Content Area -->
+  <div class="large-content" id="mod-list">
+    <!-- Mods will be loaded dynamically -->
+  </div>
+</div>
+
+<!-- Resize Handle -->
+<div class="resize-handle" id="resize-handle"></div>
+
+<!-- Right Panel (Tools Only) -->
+<div class="right-panel" id="right-panel">
+  <div class="preview-area">
+    <!-- Preview content -->
+  </div>
+
+  <div class="mod-info-area">
+    <div class="mod-info-header">
+      <h3 class="mod-info-title" data-i18n="tools.details">Details</h3>
+      <button class="edit-info-btn" id="edit-info-btn" data-i18n="tools.editInfo" data-i18n-title>
+        <i class="bi bi-pencil-fill"></i>
+      </button>
+    </div>
+    <div class="mod-info-content" id="mod-info-content">
+      <p class="mod-info-placeholder" data-i18n="tools.selectMod">
+        Select a mod to view details
+      </p>
+    </div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="action-btn" data-action="add-mod" data-i18n="tools.actionAdd" data-i18n-title title="Add">
+      <i class="bi bi-plus-circle-fill"></i>
+    </button>
+    <button class="action-btn" id="create-fpp-btn" data-i18n="fpp.createTooltip" data-i18n-title
+      title="Create FPP Pack">
+      <i class="bi bi-file-zip-fill"></i>
+    </button>
+    <button class="action-btn" id="open-folder-btn" data-i18n="tools.actionOpenFolder" data-i18n-title
+      title="Open Folder">
+      <i class="bi bi-folder-fill"></i>
+    </button>
+    <button class="action-btn" data-action="launch-emulator" data-i18n="tools.actionPlay" data-i18n-title title="Play">
+      <i class="bi bi-play-fill"></i>
+    </button>
+  </div>
+</div>
