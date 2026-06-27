@@ -53,16 +53,21 @@ const CharacterCssHandlers = {
 
   ['select-character-css-source-file']: async (
     common: BaseHandlerArg,
-    sourceKind: 'prc' | 'msbt',
+    sourceKind: 'prc' | 'layout' | 'msbt',
   ): HandlerResponse<{ filePath: string }> => {
     try {
       const win = BrowserWindow.fromWebContents(common.event.sender);
       const isPrc = sourceKind === 'prc';
+      const isLayout = sourceKind === 'layout';
       const result = await dialog.showOpenDialog(win!, {
-        title: isPrc ? 'Select ui_chara_db.prc' : 'Select msg_name.msbt',
+        title: isPrc
+          ? 'Select ui_chara_db.prc'
+          : isLayout
+            ? 'Select ui_layout_db.prc'
+            : 'Select msg_name.msbt',
         properties: ['openFile'],
         filters: [
-          isPrc
+          isPrc || isLayout
             ? { name: 'Character PRC', extensions: ['prc'] }
             : { name: 'MSBT message file', extensions: ['msbt'] },
         ],

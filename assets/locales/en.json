@@ -710,13 +710,16 @@
     "downloadOnGameBanana": "Go download some on {{site}}!",
     "cssSourceRequiredTitle": "Character CSS source required",
     "cssSourceRequiredMessage": "Choose your own Character CSS source files before editing.",
-    "cssSourceRequiredFiles": "Required: ui_chara_db.prc and msg_name.msbt",
-    "cssSourceInspectorHint": "Select PRC and MSBT to edit CSS.",
+    "cssSourceRequiredFiles": "Required: ui_chara_db.prc, ui_layout_db.prc and msg_name.msbt",
+    "cssSourceInspectorHint": "Select PRC, layout PRC and MSBT to edit CSS.",
     "cssSourceMissing": "Not selected",
     "selectCssPrc": "Select ui_chara_db.prc",
+    "selectCssLayoutPrc": "Select ui_layout_db.prc",
     "selectCssMsbt": "Select msg_name.msbt",
     "importCssSource": "Import source files",
-    "importingCssSource": "Importing..."
+    "importingCssSource": "Importing...",
+    "changeCssSource": "Change source",
+    "changeCssSourceConfirm": "Replace the current Character CSS source files? Unsaved layout changes will be lost."
   },
   "stages": {
     "title": "Stages",

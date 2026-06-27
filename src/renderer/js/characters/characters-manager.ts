@@ -77,6 +77,7 @@ class CharactersManager {
   cssPrefetchedLayout: any | null;
   cssPrefetchPromise: Promise<void> | null;
   cssSourcePrcPath: string | null;
+  cssSourceLayoutPath: string | null;
   cssSourceMsbtPath: string | null;
   cssSourceImporting: boolean;
 
@@ -100,6 +101,7 @@ class CharactersManager {
     this.cssPrefetchedLayout = null;
     this.cssPrefetchPromise = null;
     this.cssSourcePrcPath = null;
+    this.cssSourceLayoutPath = null;
     this.cssSourceMsbtPath = null;
     this.cssSourceImporting = false;
 
@@ -259,6 +261,17 @@ class CharactersManager {
       hiddenButton.parentNode?.replaceChild(replacement, hiddenButton);
       replacement.addEventListener('click', () => {
         this.openHiddenCssCharactersModal();
+      });
+    }
+
+    const changeSourceButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-change-source-btn',
+    );
+    if (changeSourceButton) {
+      const replacement = changeSourceButton.cloneNode(true) as HTMLButtonElement;
+      changeSourceButton.parentNode?.replaceChild(replacement, changeSourceButton);
+      replacement.addEventListener('click', () => {
+        this.openCharacterCssSourceImport();
       });
     }
 
@@ -1482,14 +1495,24 @@ Add to CSS
     const inspector = document.querySelector<HTMLElement>('#character-css-inspector');
     const saveButton = document.querySelector<HTMLButtonElement>('#character-css-save-btn');
     const hiddenButton = document.querySelector<HTMLButtonElement>('#character-css-hidden-btn');
+    const changeSourceButton = document.querySelector<HTMLButtonElement>('#character-css-change-source-btn');
+    const randomizeButton = document.querySelector<HTMLButtonElement>('#character-css-randomize-btn');
+    const previewButton = document.querySelector<HTMLButtonElement>('#character-css-preview-btn');
     const prcName = this.cssSourcePrcPath
       ? this.cssSourcePrcPath.split(/[\\/]/).pop()
+      : this.t('characters.cssSourceMissing', 'Not selected');
+    const layoutName = this.cssSourceLayoutPath
+      ? this.cssSourceLayoutPath.split(/[\\/]/).pop()
       : this.t('characters.cssSourceMissing', 'Not selected');
     const msbtName = this.cssSourceMsbtPath
       ? this.cssSourceMsbtPath.split(/[\\/]/).pop()
       : this.t('characters.cssSourceMissing', 'Not selected');
     const canImport =
-      Boolean(this.cssSourcePrcPath && this.cssSourceMsbtPath) &&
+      Boolean(
+        this.cssSourcePrcPath &&
+          this.cssSourceLayoutPath &&
+          this.cssSourceMsbtPath,
+      ) &&
       !this.cssSourceImporting;
 
     if (grid) {
@@ -1503,6 +1526,14 @@ Add to CSS
     <button type="button" class="input-btn" data-css-source="prc">
       <i class="bi bi-file-earmark-code"></i>
       <span>${this.escapeHtml(this.t('characters.selectCssPrc', 'Select ui_chara_db.prc'))}</span>
+    </button>
+  </div>
+  <div class="character-css-source-row">
+    <span>LAYOUT</span>
+    <code>${this.escapeHtml(layoutName || '')}</code>
+    <button type="button" class="input-btn" data-css-source="layout">
+      <i class="bi bi-file-earmark-code"></i>
+      <span>${this.escapeHtml(this.t('characters.selectCssLayoutPrc', 'Select ui_layout_db.prc'))}</span>
     </button>
   </div>
   <div class="character-css-source-row">
@@ -1523,8 +1554,13 @@ Add to CSS
         .querySelectorAll<HTMLButtonElement>('[data-css-source]')
         .forEach((button) => {
           button.addEventListener('click', () => {
+            const sourceKind = button.dataset.cssSource;
             void this.selectCharacterCssSourceFile(
-              button.dataset.cssSource === 'msbt' ? 'msbt' : 'prc',
+              sourceKind === 'msbt'
+                ? 'msbt'
+                : sourceKind === 'layout'
+                  ? 'layout'
+                  : 'prc',
             );
           });
         });
@@ -1545,9 +1581,44 @@ Add to CSS
     }
     if (saveButton) saveButton.disabled = true;
     if (hiddenButton) hiddenButton.disabled = true;
+    if (changeSourceButton) changeSourceButton.disabled = this.cssSourceImporting;
+    if (randomizeButton) randomizeButton.disabled = true;
+    if (previewButton) previewButton.disabled = true;
   }
 
-  async selectCharacterCssSourceFile(sourceKind: 'prc' | 'msbt') {
+  openCharacterCssSourceImport() {
+    if (this.cssSaving || this.cssSourceImporting) {
+      return;
+    }
+
+    if (this.cssDirty) {
+      const confirmed = window.confirm(
+        this.t(
+          'characters.changeCssSourceConfirm',
+          'Replace the current Character CSS source files? Unsaved layout changes will be lost.',
+        ),
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    this.cssPrefetchedLayout = null;
+    this.cssVisibleCharacters = [];
+    this.cssHiddenCharacters = [];
+    this.cssRenamedCharacters.clear();
+    this.cssCharacterUpdates.clear();
+    this.cssSelectedCharacterId = null;
+    this.cssSelectedSlotIndex = 0;
+    this.cssLoaded = false;
+    this.cssDirty = false;
+    this.cssSourcePrcPath = null;
+    this.cssSourceLayoutPath = null;
+    this.cssSourceMsbtPath = null;
+    this.renderCharacterCssSourceImport();
+  }
+
+  async selectCharacterCssSourceFile(sourceKind: 'prc' | 'layout' | 'msbt') {
     try {
       const result = await window.electronAPI.selectCharacterCssSourceFile(sourceKind);
       if (!result.success) {
@@ -1556,6 +1627,8 @@ Add to CSS
 
       if (sourceKind === 'prc') {
         this.cssSourcePrcPath = result.filePath;
+      } else if (sourceKind === 'layout') {
+        this.cssSourceLayoutPath = result.filePath;
       } else {
         this.cssSourceMsbtPath = result.filePath;
       }
@@ -1566,7 +1639,12 @@ Add to CSS
   }
 
   async importCharacterCssSourceFiles() {
-    if (!this.cssSourcePrcPath || !this.cssSourceMsbtPath || this.cssSourceImporting) {
+    if (
+      !this.cssSourcePrcPath ||
+      !this.cssSourceLayoutPath ||
+      !this.cssSourceMsbtPath ||
+      this.cssSourceImporting
+    ) {
       return;
     }
 
@@ -1576,6 +1654,7 @@ Add to CSS
     try {
       const result = await window.electronAPI.importCharacterCssSourceFiles({
         prcPath: this.cssSourcePrcPath,
+        layoutPrcPath: this.cssSourceLayoutPath,
         msgNamePath: this.cssSourceMsbtPath,
       });
       if (!result.success) {
@@ -1599,7 +1678,9 @@ Add to CSS
       this.cssLoaded = true;
       this.cssDirty = false;
       this.cssSourcePrcPath = null;
+      this.cssSourceLayoutPath = null;
       this.cssSourceMsbtPath = null;
+      this.cssSourceImporting = false;
       this.renderCssEditor();
       window.toastManager?.success('toasts.characterCssSourceImported', 3000);
     } catch (error) {
@@ -1608,6 +1689,9 @@ Add to CSS
       });
     } finally {
       this.cssSourceImporting = false;
+      if (!this.cssLoaded) {
+        this.renderCharacterCssSourceImport();
+      }
     }
   }
 
@@ -1660,6 +1744,15 @@ Add to CSS
     const hiddenButton = document.querySelector<HTMLButtonElement>(
       '#character-css-hidden-btn',
     );
+    const changeSourceButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-change-source-btn',
+    );
+    const randomizeButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-randomize-btn',
+    );
+    const previewButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-preview-btn',
+    );
     const saveButton = document.querySelector<HTMLButtonElement>(
       '#character-css-save-btn',
     );
@@ -1673,6 +1766,16 @@ Add to CSS
     if (hiddenButton) {
       hiddenButton.disabled =
         this.cssHiddenCharacters.length === 0 || this.cssSaving;
+    }
+    if (changeSourceButton) {
+      changeSourceButton.disabled = this.cssSaving || this.cssSourceImporting;
+    }
+    if (randomizeButton) {
+      randomizeButton.disabled = this.cssSaving;
+    }
+    if (previewButton) {
+      previewButton.disabled =
+        this.cssSaving || this.cssVisibleCharacters.length === 0;
     }
     if (saveButton) {
       saveButton.disabled = this.cssSaving;

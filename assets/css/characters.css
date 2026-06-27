@@ -514,7 +514,7 @@ body.no-animations .characters-view-exit-right {
 .character-css-source-row {
   width: min(100%, 680px);
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;

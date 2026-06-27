@@ -710,13 +710,16 @@
     "downloadOnGameBanana": "Téléchargez-en sur {{site}} !",
     "cssSourceRequiredTitle": "Fichiers CSS requis",
     "cssSourceRequiredMessage": "Choisis tes propres fichiers source Character CSS avant de modifier.",
-    "cssSourceRequiredFiles": "Requis : ui_chara_db.prc et msg_name.msbt",
-    "cssSourceInspectorHint": "Selectionne PRC et MSBT pour modifier le CSS.",
+    "cssSourceRequiredFiles": "Requis : ui_chara_db.prc, ui_layout_db.prc et msg_name.msbt",
+    "cssSourceInspectorHint": "Selectionne PRC, layout PRC et MSBT pour modifier le CSS.",
     "cssSourceMissing": "Non selectionne",
     "selectCssPrc": "Selectionner ui_chara_db.prc",
+    "selectCssLayoutPrc": "Selectionner ui_layout_db.prc",
     "selectCssMsbt": "Selectionner msg_name.msbt",
     "importCssSource": "Importer les fichiers source",
-    "importingCssSource": "Import en cours..."
+    "importingCssSource": "Import en cours...",
+    "changeCssSource": "Changer la source",
+    "changeCssSourceConfirm": "Remplacer les fichiers source Character CSS actuels ? Les changements non sauvegardes seront perdus."
   },
   "stages": {
     "title": "Arenes",

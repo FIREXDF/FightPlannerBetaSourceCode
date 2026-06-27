@@ -7,15 +7,83 @@ import { XMLParser } from 'fast-xml-parser';
 import store from '../store';
 
 const PERSISTED_CHARA_JSON_FILE = 'ui_chara_css_layout.json';
+const PERSISTED_LAYOUT_JSON_FILE = 'ui_layout_css_layout.json';
 const PERSISTED_MSG_NAME_JSON_FILE = 'msg_name_css_layout.json';
 const PERSISTED_MSG_NAME_FILE = 'msg_name_css_layout.msbt';
 const PERSISTED_SOURCE_MANIFEST_FILE = 'character-css-source.json';
 const TEMP_CHARA_JSON_FILE = 'ui_chara_db.json';
+const TEMP_LAYOUT_JSON_FILE = 'ui_layout_db.json';
 const TEMP_CHARA_XML_FILE = 'ui_chara_db.xml';
+const TEMP_LAYOUT_XML_FILE = 'ui_layout_db.xml';
 const TEMP_MSG_NAME_JSON_FILE = 'msg_name.json';
 const GENERATED_CHARA_PRC_FILE = 'ui_chara_db.prc';
+const GENERATED_LAYOUT_PRC_FILE = 'ui_layout_db.prc';
 const GENERATED_MSG_NAME_FILE = 'msg_name.msbt';
 const TEMP_FILE_SUFFIX = '_modified';
+let paramLabelMapCache: Map<string, string> | null = null;
+
+const PARAM_XML_TAG_BY_COLLECTION: Record<string, string> = {
+  hash40: 'Hash40',
+  string: 'String',
+  short: 'I16',
+  int: 'I32',
+  sbyte: 'I8',
+  bool: 'Bool',
+  byte: 'U8',
+  float: 'F32',
+};
+
+const CSS_MANAGER_FIELD_INDEX: Record<string, Record<string, number>> = {
+  hash40: {
+    ui_chara_id: 0,
+    fighter_kind: 1,
+    fighter_kind_corps: 2,
+    ui_series_id: 3,
+    fighter_type: 4,
+    alt_chara_id: 5,
+  },
+  sbyte: {
+    skill_list_order: 1,
+    disp_order: 2,
+  },
+  bool: {
+    can_select: 3,
+    is_mii: 6,
+    is_boss: 7,
+    is_hidden_boss: 8,
+    is_dlc: 9,
+    is_patch: 10,
+  },
+  byte: {
+    color_num: 0,
+    c00_index: 1,
+    c01_index: 2,
+    c02_index: 3,
+    c03_index: 4,
+    c04_index: 5,
+    c05_index: 6,
+    c06_index: 7,
+    c07_index: 8,
+    n00_index: 9,
+    n01_index: 10,
+    n02_index: 11,
+    n03_index: 12,
+    n04_index: 13,
+    n05_index: 14,
+    n06_index: 15,
+    n07_index: 16,
+  },
+};
+
+const CSS_MANAGER_LAYOUT_FIELD_INDEX: Record<string, Record<string, number>> = {
+  hash40: {
+    ui_layout_id: 0,
+    ui_chara_id: 1,
+  },
+  byte: {
+    chara_color: 0,
+  },
+};
 
 export interface CharacterCssEntry {
   id: string;
@@ -68,6 +136,7 @@ export interface CharacterCssLayoutPayload {
 
 export interface CharacterCssSourceImportPayload {
   prcPath: string;
+  layoutPrcPath: string;
   msgNamePath: string;
 }
 
@@ -105,6 +174,15 @@ interface ToolExecutionResult {
   stderr: string;
 }
 
+function logCharacterCss(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.log('[CharacterCSS]', message, details);
+    return;
+  }
+
+  console.log('[CharacterCSS]', message);
+}
+
 function ensureDirectory(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -119,6 +197,10 @@ function getPersistedDataDir() {
 
 function getPersistedCharaJsonPath() {
   return path.join(getPersistedDataDir(), PERSISTED_CHARA_JSON_FILE);
+}
+
+function getPersistedLayoutJsonPath() {
+  return path.join(getPersistedDataDir(), PERSISTED_LAYOUT_JSON_FILE);
 }
 
 function getPersistedMsgNameJsonPath() {
@@ -137,6 +219,7 @@ function hasImportedCharacterCssSource() {
   return (
     fs.existsSync(getPersistedSourceManifestPath()) &&
     fs.existsSync(getPersistedCharaJsonPath()) &&
+    fs.existsSync(getPersistedLayoutJsonPath()) &&
     fs.existsSync(getPersistedMsgNameJsonPath()) &&
     fs.existsSync(getPersistedMsgNamePath())
   );
@@ -148,7 +231,7 @@ function requireImportedCharacterCssSource() {
   }
 
   throw new Error(
-    'Character CSS editor requires your ui_chara_db.prc and msg_name.msbt first. Import them from Edit CSS.',
+    'Character CSS editor requires your ui_chara_db.prc, ui_layout_db.prc and msg_name.msbt first. Import them from Edit CSS.',
   );
 }
 
@@ -178,6 +261,58 @@ function resolveToolsPath(...segments: string[]) {
   }
 
   return path.join(app.getAppPath(), 'tools', ...segments);
+}
+
+function resolveParamLabelsPath(): string | null {
+  const candidates = [
+    resolveToolsPath('ParamXML', 'ParamLabels.csv'),
+    resolveToolsPath('prc2json', 'ParamLabels.csv'),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function normalizeHashLiteral(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue.toLowerCase().startsWith('0x')) {
+    return trimmedValue;
+  }
+
+  const label = getParamLabelMap().get(trimmedValue.toLowerCase());
+  return label || trimmedValue;
+}
+
+function normalizeHashForCompare(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function getParamLabelMap() {
+  if (paramLabelMapCache) {
+    return paramLabelMapCache;
+  }
+
+  paramLabelMapCache = new Map<string, string>();
+  const labelsPath = resolveParamLabelsPath();
+  if (!labelsPath || !fs.existsSync(labelsPath)) {
+    return paramLabelMapCache;
+  }
+
+  const labelsText = fs.readFileSync(labelsPath, 'utf8');
+  for (const line of labelsText.split(/\r?\n/)) {
+    const [hash, ...labelParts] = line.split(',');
+    const label = labelParts.join(',').trim();
+    if (hash?.trim().toLowerCase().startsWith('0x') && label) {
+      paramLabelMapCache.set(hash.trim().toLowerCase(), label);
+    }
+  }
+
+  return paramLabelMapCache;
 }
 
 function readJsonFile<T>(filePath: string): T {
@@ -230,10 +365,11 @@ function escapeXml(value: string | number | boolean) {
 }
 
 function scalarParamToXml(type: string, entry: any, fallbackIndex: number) {
+  const xmlTag = PARAM_XML_TAG_BY_COLLECTION[type] || type;
   const hash = toHash40(String(entry?.['@hash'] ?? fallbackIndex));
   const textValue = String(entry?.['#text'] ?? '');
   const value = type === 'hash40' ? toHash40(textValue) : textValue;
-  return `<${type} hash="${hash}">${escapeXml(value)}</${type}>`;
+  return `<${xmlTag} hash="${hash}">${escapeXml(value)}</${xmlTag}>`;
 }
 
 function paramStructToXml(entry: any, index: number) {
@@ -301,16 +437,71 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return typeof value === 'undefined' ? [] : [value];
 }
 
+function normalizeParamXmlStruct(entry: any) {
+  if (!entry || typeof entry !== 'object') {
+    return entry;
+  }
+
+  const mappings: Array<[string, string, boolean]> = [
+    ['Hash40', 'hash40', true],
+    ['String', 'string', false],
+    ['I16', 'short', false],
+    ['I32', 'int', true],
+    ['I8', 'sbyte', true],
+    ['Bool', 'bool', true],
+    ['U8', 'byte', true],
+    ['F32', 'float', true],
+  ];
+
+  mappings.forEach(([sourceKey, targetKey, targetIsArray]) => {
+    if (typeof entry[sourceKey] === 'undefined') {
+      return;
+    }
+
+    entry[targetKey] = targetIsArray
+      ? asArray(entry[sourceKey])
+      : asArray(entry[sourceKey])[0];
+    delete entry[sourceKey];
+  });
+
+  return entry;
+}
+
 function normalizeCharaParamJson(charaJson: any) {
   const structs = asArray(charaJson?.struct?.list?.struct);
   if (!charaJson?.struct?.list || structs.length === 0) {
     throw new Error('Invalid ui_chara_db.prc: missing character structs');
   }
 
+  if (typeof charaJson.struct.list['@hash'] === 'string') {
+    charaJson.struct.list['@hash'] = normalizeHashLiteral(
+      charaJson.struct.list['@hash'],
+    );
+  }
+
   structs.forEach((entry: any, index) => {
+    normalizeParamXmlStruct(entry);
     entry['@index'] = String(entry['@index'] ?? index);
-    ['hash40', 'int', 'sbyte', 'bool', 'byte'].forEach((key) => {
+    ['hash40', 'int', 'sbyte', 'bool', 'byte', 'float'].forEach((key) => {
       entry[key] = asArray(entry[key]);
+      entry[key].forEach((param: any) => {
+        if (typeof param?.['@hash'] === 'string') {
+          param['@hash'] = normalizeHashLiteral(param['@hash']);
+        }
+        if (
+          key === 'hash40' &&
+          typeof param?.['#text'] === 'string' &&
+          param['#text'].trim().toLowerCase().startsWith('0x')
+        ) {
+          param['#text'] = normalizeHashLiteral(param['#text']);
+        }
+      });
+    });
+
+    ['string', 'short'].forEach((key) => {
+      if (typeof entry?.[key]?.['@hash'] === 'string') {
+        entry[key]['@hash'] = normalizeHashLiteral(entry[key]['@hash']);
+      }
     });
   });
 
@@ -339,7 +530,41 @@ function findHashIndex(entries: any, hash: string) {
     return -1;
   }
 
-  return entries.findIndex((entry) => entry?.['@hash'] === hash);
+  const expectedHashes = new Set([
+    normalizeHashForCompare(hash),
+    normalizeHashForCompare(toHash40(hash)),
+  ]);
+
+  return entries.findIndex((entry) => {
+    if (typeof entry?.['@hash'] !== 'string') {
+      return false;
+    }
+
+    const entryHash = normalizeHashForCompare(entry['@hash']);
+    const entryLabel = normalizeHashForCompare(normalizeHashLiteral(entryHash));
+    return expectedHashes.has(entryHash) || expectedHashes.has(entryLabel);
+  });
+}
+
+function looksLikeUiLayoutEntry(entry: any) {
+  const firstHash = String(entry?.hash40?.[0]?.['@hash'] || '');
+  const normalizedFirstHash = normalizeHashLiteral(firstHash);
+  return (
+    normalizedFirstHash === 'ui_layout_id' ||
+    findHashIndex(entry?.hash40, 'ui_layout_id') >= 0 ||
+    findHashIndex(entry?.byte, 'chara_color') >= 0
+  );
+}
+
+function getCssManagerFieldIndex(entry: any, collection: string, hash: string) {
+  if (looksLikeUiLayoutEntry(entry)) {
+    const layoutIndex = CSS_MANAGER_LAYOUT_FIELD_INDEX[collection]?.[hash];
+    if (typeof layoutIndex === 'number') {
+      return layoutIndex;
+    }
+  }
+
+  return CSS_MANAGER_FIELD_INDEX[collection]?.[hash] ?? -1;
 }
 
 function getHashText(
@@ -349,9 +574,20 @@ function getHashText(
   fallback = '',
 ) {
   const index = findHashIndex(entry?.[collection], hash);
-  return index >= 0
-    ? String(entry[collection][index]?.['#text'] ?? fallback)
-    : fallback;
+  if (index >= 0) {
+    return String(entry[collection][index]?.['#text'] ?? fallback);
+  }
+
+  const cssManagerIndex = getCssManagerFieldIndex(entry, collection, hash);
+  if (
+    cssManagerIndex >= 0 &&
+    Array.isArray(entry?.[collection]) &&
+    entry[collection][cssManagerIndex]
+  ) {
+    return String(entry[collection][cssManagerIndex]?.['#text'] ?? fallback);
+  }
+
+  return fallback;
 }
 
 function setHashText(
@@ -360,10 +596,19 @@ function setHashText(
   hash: string,
   value: string | number | boolean,
 ) {
-  const index = findHashIndex(entry?.[collection], hash);
+  let index = findHashIndex(entry?.[collection], hash);
+  if (index < 0) {
+    index = getCssManagerFieldIndex(entry, collection, hash);
+  }
   if (index < 0) {
     throw new Error(
       `Missing ${collection} field "${hash}" for ${entry?.string?.['#text'] || 'character'}`,
+    );
+  }
+
+  if (!Array.isArray(entry?.[collection]) || !entry[collection][index]) {
+    throw new Error(
+      `Missing ${collection}[${index}] field "${hash}" for ${entry?.string?.['#text'] || 'character'}`,
     );
   }
 
@@ -376,8 +621,11 @@ function setHashTextIfPresent(
   hash: string,
   value: string | number | boolean,
 ) {
-  const index = findHashIndex(entry?.[collection], hash);
-  if (index >= 0) {
+  let index = findHashIndex(entry?.[collection], hash);
+  if (index < 0) {
+    index = getCssManagerFieldIndex(entry, collection, hash);
+  }
+  if (index >= 0 && Array.isArray(entry?.[collection]) && entry[collection][index]) {
     entry[collection][index]['#text'] = String(value);
   }
 }
@@ -392,10 +640,15 @@ function ensureHashText(
     entry[collection] = [];
   }
 
-  const index = findHashIndex(entry[collection], hash);
+  let index = findHashIndex(entry[collection], hash);
+  if (index < 0) {
+    index = getCssManagerFieldIndex(entry, collection, hash);
+  }
   if (index >= 0) {
-    entry[collection][index]['#text'] = String(value);
-    return;
+    if (entry[collection][index]) {
+      entry[collection][index]['#text'] = String(value);
+      return;
+    }
   }
 
   entry[collection].push({
@@ -530,6 +783,46 @@ function buildCharacterEntry(entry: any, msgNameJson: any): CharacterCssEntry {
   };
 }
 
+function collectCharacterCssDebugSnapshot(charaJson: any, msgNameJson?: any) {
+  const structs = getStructList(charaJson);
+  const entries = structs.map((entry) => {
+    const nameId = String(entry?.string?.['#text'] || '');
+    const uiCharaId = getHashText(entry, 'hash40', 'ui_chara_id', '');
+    const dispOrder = getHashText(entry, 'sbyte', 'disp_order', 'MISSING');
+    const canSelect = getHashText(entry, 'bool', 'can_select', 'MISSING');
+    return {
+      nameId,
+      uiCharaId,
+      dispOrder,
+      canSelect,
+      rawSbyteHashes: asArray(entry?.sbyte).map((item: any) => item?.['@hash']),
+      rawBoolHashes: asArray(entry?.bool).map((item: any) => item?.['@hash']),
+    };
+  });
+  const hiddenCount = entries.filter(
+    (entry) => Number(entry.dispOrder) < 0,
+  ).length;
+  const missingDispOrderCount = entries.filter(
+    (entry) => entry.dispOrder === 'MISSING',
+  ).length;
+  const missingUiCharaIdCount = entries.filter(
+    (entry) => !entry.uiCharaId,
+  ).length;
+
+  return {
+    structCount: structs.length,
+    msgNameStringCount: Array.isArray(msgNameJson?.strings)
+      ? msgNameJson.strings.length
+      : undefined,
+    visibleCount: entries.filter((entry) => Number(entry.dispOrder) >= 0)
+      .length,
+    hiddenCount,
+    missingDispOrderCount,
+    missingUiCharaIdCount,
+    sample: entries.slice(0, 5),
+  };
+}
+
 function readCurrentCharaJson() {
   requireImportedCharacterCssSource();
 
@@ -537,7 +830,7 @@ function readCurrentCharaJson() {
   if (fs.existsSync(persistedPath)) {
     return {
       source: 'saved' as const,
-      json: readJsonFile<any>(persistedPath),
+      json: normalizeCharaParamJson(readJsonFile<any>(persistedPath)),
     };
   }
 
@@ -547,6 +840,17 @@ function readCurrentCharaJson() {
       throw new Error('Character CSS source missing');
     })(),
   };
+}
+
+function readCurrentLayoutJson() {
+  requireImportedCharacterCssSource();
+
+  const persistedPath = getPersistedLayoutJsonPath();
+  if (fs.existsSync(persistedPath)) {
+    return normalizeCharaParamJson(readJsonFile<any>(persistedPath));
+  }
+
+  throw new Error('Character CSS layout source missing');
 }
 
 function readCurrentMsgNameJson() {
@@ -560,9 +864,20 @@ function readCurrentMsgNameJson() {
   throw new Error('Character CSS source missing');
 }
 
-function writePersistedCharacterCssData(charaJson: any, msgNameJson: any) {
+function writePersistedCharacterCssData(
+  charaJson: any,
+  msgNameJson: any,
+  layoutJson?: any,
+) {
   fs.writeFileSync(getPersistedCharaJsonPath(), JSON.stringify(charaJson), 'utf8');
   fs.writeFileSync(getPersistedMsgNameJsonPath(), JSON.stringify(msgNameJson), 'utf8');
+  if (layoutJson) {
+    fs.writeFileSync(
+      getPersistedLayoutJsonPath(),
+      JSON.stringify(layoutJson),
+      'utf8',
+    );
+  }
 }
 
 function validateLayoutPayload(
@@ -958,8 +1273,14 @@ function runParamXmlDisassemble(inputPrcPath: string, outputXmlPath: string) {
     fs.unlinkSync(outputXmlPath);
   }
 
+  const labelsPath = resolveParamLabelsPath();
+  const args = ['-d', inputPrcPath, '-o', outputXmlPath];
+  if (labelsPath) {
+    args.push('-l', labelsPath);
+  }
+
   return new Promise<ToolExecutionResult & { outputPath: string }>((resolve, reject) => {
-    const child = spawn(executablePath, ['-d', inputPrcPath, '-o', outputXmlPath], {
+    const child = spawn(executablePath, args, {
       cwd: workingDirectory,
       windowsHide: true,
     });
@@ -1139,14 +1460,36 @@ async function runMsbtToJson(inputMsbtPath: string, outputJsonPath: string) {
   }
 }
 
+async function runPrcToJson(inputPrcPath: string, outputJsonPath: string) {
+  if (fs.existsSync(outputJsonPath)) {
+    fs.unlinkSync(outputJsonPath);
+  }
+
+  const prcToolPath = resolveToolsPath('prc2json', 'prc2json.dll');
+  const args = ['-d', inputPrcPath, '-o', outputJsonPath];
+  const labelsPath = resolveParamLabelsPath();
+  if (labelsPath) {
+    args.push('-l', labelsPath);
+  }
+
+  return runDotnetTool(prcToolPath, args);
+}
+
 export async function importCharacterCssSourceFiles(
   payload: CharacterCssSourceImportPayload,
 ) {
   const prcPath = payload.prcPath?.trim();
+  const layoutPrcPath = payload.layoutPrcPath?.trim();
   const msgNamePath = payload.msgNamePath?.trim();
 
   if (!prcPath || path.basename(prcPath) !== GENERATED_CHARA_PRC_FILE) {
     throw new Error(`Select ${GENERATED_CHARA_PRC_FILE}`);
+  }
+  if (
+    !layoutPrcPath ||
+    path.basename(layoutPrcPath) !== GENERATED_LAYOUT_PRC_FILE
+  ) {
+    throw new Error(`Select ${GENERATED_LAYOUT_PRC_FILE}`);
   }
   if (!msgNamePath || path.basename(msgNamePath) !== GENERATED_MSG_NAME_FILE) {
     throw new Error(`Select ${GENERATED_MSG_NAME_FILE}`);
@@ -1154,27 +1497,78 @@ export async function importCharacterCssSourceFiles(
   if (!fs.existsSync(prcPath)) {
     throw new Error(`Character PRC not found: ${prcPath}`);
   }
+  if (!fs.existsSync(layoutPrcPath)) {
+    throw new Error(`Layout PRC not found: ${layoutPrcPath}`);
+  }
   if (!fs.existsSync(msgNamePath)) {
     throw new Error(`MSBT not found: ${msgNamePath}`);
   }
 
   const tempCssDir = getTempCssDir();
+  const tempCharaJsonPath = path.join(tempCssDir, TEMP_CHARA_JSON_FILE);
+  const tempLayoutJsonPath = path.join(tempCssDir, TEMP_LAYOUT_JSON_FILE);
   const tempCharaXmlPath = path.join(tempCssDir, 'ui_chara_db_source.xml');
+  const tempLayoutXmlPath = path.join(tempCssDir, 'ui_layout_db_source.xml');
   const tempMsgNameJsonPath = path.join(tempCssDir, TEMP_MSG_NAME_JSON_FILE);
 
-  await runParamXmlDisassemble(prcPath, tempCharaXmlPath);
+  let charaJson: any;
+  let layoutJson: any;
+  try {
+    logCharacterCss('Import source started', {
+      prcPath,
+      layoutPrcPath,
+      msgNamePath,
+      paramLabelsPath: resolveParamLabelsPath(),
+    });
+    await runPrcToJson(prcPath, tempCharaJsonPath);
+    await runPrcToJson(layoutPrcPath, tempLayoutJsonPath);
+    charaJson = normalizeCharaParamJson(readJsonFile<any>(tempCharaJsonPath));
+    layoutJson = normalizeCharaParamJson(readJsonFile<any>(tempLayoutJsonPath));
+    logCharacterCss('PRC converted with prc2json', {
+      outputPath: tempCharaJsonPath,
+      layoutOutputPath: tempLayoutJsonPath,
+      ...collectCharacterCssDebugSnapshot(charaJson),
+      layoutStructCount: getStructList(layoutJson).length,
+    });
+  } catch (error) {
+    logCharacterCss('prc2json failed, falling back to ParamXML', {
+      error: error instanceof Error ? error.message : String(error),
+      xmlPath: tempCharaXmlPath,
+      layoutXmlPath: tempLayoutXmlPath,
+    });
+    await runParamXmlDisassemble(prcPath, tempCharaXmlPath);
+    await runParamXmlDisassemble(layoutPrcPath, tempLayoutXmlPath);
+    charaJson = charaXmlToJson(fs.readFileSync(tempCharaXmlPath, 'utf8'));
+    layoutJson = charaXmlToJson(fs.readFileSync(tempLayoutXmlPath, 'utf8'));
+    logCharacterCss('PRC converted with ParamXML fallback', {
+      outputPath: tempCharaXmlPath,
+      layoutOutputPath: tempLayoutXmlPath,
+      ...collectCharacterCssDebugSnapshot(charaJson),
+      layoutStructCount: getStructList(layoutJson).length,
+    });
+  }
   await runMsbtToJson(msgNamePath, tempMsgNameJsonPath);
 
-  const charaJson = charaXmlToJson(fs.readFileSync(tempCharaXmlPath, 'utf8'));
   const msgNameJson = readJsonFile<any>(tempMsgNameJsonPath);
   getStructList(charaJson);
   if (!Array.isArray(msgNameJson?.strings)) {
     throw new Error('Invalid msg_name.msbt: could not read strings');
   }
 
+  logCharacterCss('MSBT converted and source validated', {
+    outputPath: tempMsgNameJsonPath,
+    ...collectCharacterCssDebugSnapshot(charaJson, msgNameJson),
+    layoutStructCount: getStructList(layoutJson).length,
+  });
+
   fs.writeFileSync(
     getPersistedCharaJsonPath(),
     JSON.stringify(charaJson),
+    'utf8',
+  );
+  fs.writeFileSync(
+    getPersistedLayoutJsonPath(),
+    JSON.stringify(layoutJson),
     'utf8',
   );
   fs.writeFileSync(
@@ -1190,6 +1584,7 @@ export async function importCharacterCssSourceFiles(
         importedAt: new Date().toISOString(),
         sourceFiles: {
           uiCharaDbPrc: prcPath,
+          uiLayoutDbPrc: layoutPrcPath,
           msgNameMsbt: msgNamePath,
         },
       },
@@ -1203,6 +1598,7 @@ export async function importCharacterCssSourceFiles(
     success: true as const,
     sourcePaths: {
       prcPath,
+      layoutPrcPath,
       msgNamePath,
     },
     ...getCharacterCssLayoutData(),
@@ -1243,6 +1639,22 @@ export function getCharacterCssLayoutData(): CharacterCssLayoutData {
     .filter((entry) => entry.hidden)
     .sort((left, right) => left.displayName.localeCompare(right.displayName));
 
+  logCharacterCss('Layout data built', {
+    source: currentChara.source,
+    total: entries.length,
+    visible: visibleCharacters.length,
+    hidden: hiddenCharacters.length,
+    missingOrder: entries.filter((entry) => Number.isNaN(entry.order)).length,
+    sample: entries.slice(0, 5).map((entry) => ({
+      id: entry.id,
+      nameId: entry.nameId,
+      displayName: entry.displayName,
+      order: entry.order,
+      hidden: entry.hidden,
+      canSelect: entry.canSelect,
+    })),
+  });
+
   return {
     source: currentChara.source,
     visibleCharacters,
@@ -1258,8 +1670,10 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
 
   const currentChara = readCurrentCharaJson();
   const charaJson = clone(currentChara.json);
+  const layoutJson = clone(readCurrentLayoutJson());
   const msgNameJson = clone(readCurrentMsgNameJson());
   const structs = getStructList(charaJson);
+  const layoutStructs = getStructList(layoutJson);
   const sourceIndex = structs.findIndex(
     (entry) =>
       getHashText(entry, 'hash40', 'ui_chara_id', '') ===
@@ -1309,13 +1723,49 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
     charaJson.struct.list['@size'] = String(structs.length);
   }
 
+  const duplicatedLayoutEntries = layoutStructs
+    .filter(
+      (entry) =>
+        getHashText(entry, 'hash40', 'ui_chara_id', '') ===
+        payload.sourceCharacterId,
+    )
+    .map((entry) => {
+      const nextEntry = clone(entry);
+      setHashText(nextEntry, 'hash40', 'ui_chara_id', newUiCharaId);
+      const layoutId = getHashText(nextEntry, 'hash40', 'ui_layout_id', '');
+      if (layoutId) {
+        setHashText(
+          nextEntry,
+          'hash40',
+          'ui_layout_id',
+          layoutId.replace(payload.sourceCharacterId, newUiCharaId),
+        );
+      }
+      return nextEntry;
+    });
+
+  if (duplicatedLayoutEntries.length > 0) {
+    layoutJson.struct.list.struct = [
+      ...layoutStructs,
+      ...duplicatedLayoutEntries,
+    ].map((entry, index) => ({
+      ...entry,
+      '@index': String(index),
+    }));
+    if (layoutJson.struct.list['@size']) {
+      layoutJson.struct.list['@size'] = String(
+        layoutJson.struct.list.struct.length,
+      );
+    }
+  }
+
   duplicateNameLabels(
     msgNameJson,
     sourceNameId,
     newNameId,
     payload.newDisplayName,
   );
-  writePersistedCharacterCssData(charaJson, msgNameJson);
+  writePersistedCharacterCssData(charaJson, msgNameJson, layoutJson);
 
   return getCharacterCssLayoutData();
 }
@@ -1327,6 +1777,7 @@ export function removeCharacterCssEntry(payload: RemoveCharacterCssPayload) {
   }
 
   const charaJson = clone(readCurrentCharaJson().json);
+  const layoutJson = clone(readCurrentLayoutJson());
   const msgNameJson = clone(readCurrentMsgNameJson());
   const structs = getStructList(charaJson);
   const nextStructs = structs.filter(
@@ -1346,7 +1797,7 @@ export function removeCharacterCssEntry(payload: RemoveCharacterCssPayload) {
     charaJson.struct.list['@size'] = String(nextStructs.length);
   }
 
-  writePersistedCharacterCssData(charaJson, msgNameJson);
+  writePersistedCharacterCssData(charaJson, msgNameJson, layoutJson);
   return getCharacterCssLayoutData();
 }
 
@@ -1357,6 +1808,7 @@ export async function saveCharacterCssLayout(
     clone(readCurrentCharaJson().json),
     payload,
   );
+  const layoutJson = clone(readCurrentLayoutJson());
   const msgNameJson = updateMsgNameJson(
     clone(readCurrentMsgNameJson()),
     payload.renamedCharacters,
@@ -1364,8 +1816,10 @@ export async function saveCharacterCssLayout(
   applyCharacterUpdates(charaJson, msgNameJson, payload.characterUpdates);
 
   const persistedCharaJsonPath = getPersistedCharaJsonPath();
+  const persistedLayoutJsonPath = getPersistedLayoutJsonPath();
   const persistedMsgNameJsonPath = getPersistedMsgNameJsonPath();
   fs.writeFileSync(persistedCharaJsonPath, JSON.stringify(charaJson), 'utf8');
+  fs.writeFileSync(persistedLayoutJsonPath, JSON.stringify(layoutJson), 'utf8');
   fs.writeFileSync(
     persistedMsgNameJsonPath,
     JSON.stringify(msgNameJson),
@@ -1374,16 +1828,22 @@ export async function saveCharacterCssLayout(
 
   const tempCssDir = getTempCssDir();
   const tempCharaJsonPath = path.join(tempCssDir, TEMP_CHARA_JSON_FILE);
+  const tempLayoutJsonPath = path.join(tempCssDir, TEMP_LAYOUT_JSON_FILE);
   const tempCharaXmlPath = path.join(tempCssDir, TEMP_CHARA_XML_FILE);
+  const tempLayoutXmlPath = path.join(tempCssDir, TEMP_LAYOUT_XML_FILE);
   const tempMsgNameJsonPath = path.join(tempCssDir, TEMP_MSG_NAME_JSON_FILE);
   const generatedMsgNamePath = path.join(tempCssDir, GENERATED_MSG_NAME_FILE);
 
   fs.writeFileSync(tempCharaJsonPath, JSON.stringify(charaJson), 'utf8');
+  fs.writeFileSync(tempLayoutJsonPath, JSON.stringify(layoutJson), 'utf8');
   fs.writeFileSync(tempCharaXmlPath, charaJsonToParamXml(charaJson), 'utf8');
+  fs.writeFileSync(tempLayoutXmlPath, charaJsonToParamXml(layoutJson), 'utf8');
   fs.writeFileSync(tempMsgNameJsonPath, JSON.stringify(msgNameJson), 'utf8');
 
   const prcResult = await runParamXml(tempCharaXmlPath);
   const generatedCharaPrcPath = prcResult.outputPath;
+  const layoutPrcResult = await runParamXml(tempLayoutXmlPath);
+  const generatedLayoutPrcPath = layoutPrcResult.outputPath;
 
   const hasMsbtChanges =
     Object.keys(payload.renamedCharacters || {}).length > 0 ||
@@ -1451,20 +1911,29 @@ export async function saveCharacterCssLayout(
   ensureCharacterModMetadata(modRoot);
 
   const targetCharaPrcPath = path.join(databaseDir, GENERATED_CHARA_PRC_FILE);
+  const targetLayoutPrcPath = path.join(databaseDir, GENERATED_LAYOUT_PRC_FILE);
   const targetMsgNamePath = path.join(messageDir, GENERATED_MSG_NAME_FILE);
   fs.copyFileSync(generatedCharaPrcPath, targetCharaPrcPath);
+  fs.copyFileSync(generatedLayoutPrcPath, targetLayoutPrcPath);
   fs.copyFileSync(generatedMsgNamePath, targetMsgNamePath);
 
   return {
     success: true as const,
     source: 'saved' as const,
     persistedCharaJsonPath,
+    persistedLayoutJsonPath,
     persistedMsgNameJsonPath,
     generatedCharaPrcPath,
+    generatedLayoutPrcPath,
     generatedMsgNamePath,
     modCharaPrcPath: targetCharaPrcPath,
+    modLayoutPrcPath: targetLayoutPrcPath,
     modMsgNamePath: targetMsgNamePath,
-    stdout: [prcResult.stdout, msbtResult.stdout].filter(Boolean).join('\n'),
-    stderr: [prcResult.stderr, msbtResult.stderr].filter(Boolean).join('\n'),
+    stdout: [prcResult.stdout, layoutPrcResult.stdout, msbtResult.stdout]
+      .filter(Boolean)
+      .join('\n'),
+    stderr: [prcResult.stderr, layoutPrcResult.stderr, msbtResult.stderr]
+      .filter(Boolean)
+      .join('\n'),
   };
 }
