@@ -6,8 +6,8 @@ Only the latest stable release of **FightPlanner** is actively supported with se
 
 | Version | Supported |
 | ------- | --------- |
-| 4.X.X  | ✅ Yes |
-| Under of 4.X.X | ❌ No |
+| 4.X.X and 3.X.X  | ✅ Yes |
+| Under of 4.X.X and 3.X.X | ❌ No |
 
 We strongly recommend always using the most recent version to benefit from the latest security fixes.
 
@@ -24,7 +24,7 @@ You can report it securely using **one of the following methods**:
 - This allows private discussion and responsible disclosure
 
 ### Email
-- **Email:** firexdf@shtrdchs.fr or firexdf.contact.pro@gmail.com
+- **Email:** firexdf@shtrdchs.fr or firexdfdev@proton.me
 
 When reporting a vulnerability, please include:
 - A clear description of the issue
