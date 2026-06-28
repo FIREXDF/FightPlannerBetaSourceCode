@@ -184,16 +184,23 @@ class AutoUpdater {
     }
 
     try {
+      const previousUpdateInfo = this.updateInfo;
+      this.updateInfo = null;
       const result = await autoUpdater.checkForUpdates();
-      if (result && result.updateInfo) {
-        this.updateInfo = result.updateInfo;
-      } else if (
-        !this.updateInfo ||
-        !this.updateInfo.version.includes('simulator')
-      ) {
-        this.updateInfo = null;
+
+      if (previousUpdateInfo?.version?.includes('simulator')) {
+        this.updateInfo = previousUpdateInfo;
       }
-      return { success: true, updateInfo: result?.updateInfo };
+
+      if (!this.updateInfo) {
+        return {
+          success: true,
+          updateInfo: null,
+          latestVersion: result?.updateInfo?.version,
+        };
+      }
+
+      return { success: true, updateInfo: this.updateInfo };
     } catch (error) {
       return { success: false, error: error.message };
     }

@@ -11,7 +11,7 @@ interface RemoteAnnouncement {
 }
 
 const ANNOUNCEMENT_URL =
-  'https://raw.githubusercontent.com/FightPlanner/.github/refs/heads/main/v4.json';
+  'https://raw.githubusercontent.com/FightPlanner/.github/refs/heads/main/v4-publicbeta.json';
 const SEEN_STORAGE_PREFIX = 'fightplanner:remote-announcement:seen:';
 
 class RemoteAnnouncementManager {
