@@ -15,6 +15,7 @@ export const CONFLICT_WHITELIST_PATTERNS = [
   'READ ME.txt',
   'Preview.webp',
   '.DS_Store',
+  '.xmsbt',
   'Readme.txt',
 ];
 

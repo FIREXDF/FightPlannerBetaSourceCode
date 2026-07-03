@@ -7,6 +7,7 @@ class SettingsManager {
   readyPromise: Promise<void>;
   lastModsPathWarningPath: string | null;
   pathFixModalOpen: boolean;
+  feedbackLogAttachments: any[];
 
   constructor() {
     this.settings = {
@@ -54,6 +55,7 @@ class SettingsManager {
     this.drivesLoaded = false;
     this.lastModsPathWarningPath = null;
     this.pathFixModalOpen = false;
+    this.feedbackLogAttachments = [];
     this.readyPromise = this.initSettings();
     this.initializeUI();
   }
@@ -325,12 +327,63 @@ class SettingsManager {
       document.querySelector<HTMLTextAreaElement>('#feedback-message');
     const contactInput =
       document.querySelector<HTMLInputElement>('#feedback-contact');
+    const logFileInput =
+      document.querySelector<HTMLInputElement>('#feedback-log-file');
+    const logFileName =
+      document.querySelector<HTMLElement>('#feedback-log-file-name');
+    const chooseLogFileButton =
+      document.querySelector<HTMLButtonElement>('#feedback-choose-log-file');
+    const useCurrentLogsButton =
+      document.querySelector<HTMLButtonElement>('#feedback-use-current-logs');
+    const clearLogFileButton =
+      document.querySelector<HTMLButtonElement>('#feedback-clear-log-file');
     const submitButton =
       document.querySelector<HTMLButtonElement>('#feedback-submit-btn');
 
     if (!form || form.dataset.listenerAttached) {
       return;
     }
+
+    const updateLogFileLabel = () => {
+      const files = Array.from(logFileInput?.files || []);
+      const attachments = this.feedbackLogAttachments;
+      if (logFileName) {
+        const selectedFiles = attachments.length
+          ? attachments
+          : files.map((file) => ({
+              fileName: file.name,
+              size: file.size,
+            }));
+        logFileName.textContent = selectedFiles.length
+          ? this.formatFeedbackLogSelection(selectedFiles)
+          : this.translate('settings.feedbackLogsHint');
+      }
+      if (clearLogFileButton) {
+        clearLogFileButton.hidden = files.length === 0 && attachments.length === 0;
+      }
+    };
+
+    logFileInput?.addEventListener('change', () => {
+      this.feedbackLogAttachments = [];
+      updateLogFileLabel();
+    });
+    chooseLogFileButton?.addEventListener('click', () => {
+      void this.openFeedbackLogsModal(logFileInput, updateLogFileLabel);
+    });
+    useCurrentLogsButton?.addEventListener('click', () => {
+      this.feedbackLogAttachments = [this.createCurrentLogsAttachment()];
+      if (logFileInput) {
+        logFileInput.value = '';
+      }
+      updateLogFileLabel();
+    });
+    clearLogFileButton?.addEventListener('click', () => {
+      if (logFileInput) {
+        logFileInput.value = '';
+      }
+      this.feedbackLogAttachments = [];
+      updateLogFileLabel();
+    });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -349,6 +402,9 @@ class SettingsManager {
 
       try {
         const appInfo = await window.electronAPI?.getAppVersion?.();
+        const logAttachments = this.feedbackLogAttachments.length
+          ? this.feedbackLogAttachments
+          : await this.readFeedbackLogAttachments(logFileInput?.files || null);
         const result = await window.electronAPI?.submitFeedback?.({
           type: (typeInput?.value || 'feedback') as any,
           message,
@@ -356,10 +412,13 @@ class SettingsManager {
           appVersion: appInfo?.version || null,
           locale: window.i18n?.currentLocale || document.documentElement.lang,
           platform: navigator.platform,
+          logAttachments,
         });
 
         if (result?.success) {
           form.reset();
+          this.feedbackLogAttachments = [];
+          updateLogFileLabel();
           this.showToast(this.translate('toasts.feedbackSent'), 'success');
         } else {
           this.showToast(
@@ -369,7 +428,12 @@ class SettingsManager {
         }
       } catch (error) {
         console.error('Failed to submit feedback:', error);
-        this.showToast(this.translate('toasts.feedbackFailed'), 'error');
+        this.showToast(
+          error instanceof Error
+            ? error.message
+            : this.translate('toasts.feedbackFailed'),
+          'error',
+        );
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
@@ -387,6 +451,262 @@ class SettingsManager {
     });
 
     form.dataset.listenerAttached = 'true';
+  }
+
+  async readFeedbackLogAttachments(files: FileList | File[] | null) {
+    const fileList = Array.from(files || []).slice(0, 5);
+    const attachments: any[] = [];
+
+    for (const file of fileList) {
+      attachments.push(await this.readFeedbackLogAttachment(file));
+    }
+
+    return attachments.filter(Boolean);
+  }
+
+  async readFeedbackLogAttachment(file: File | null) {
+    if (!file) {
+      return null;
+    }
+
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error(this.translate('toasts.feedbackLogTooLarge'));
+    }
+
+    const allowedExtensions = ['.log', '.txt', '.json'];
+    const lowerName = file.name.toLowerCase();
+    if (!allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
+      throw new Error(this.translate('toasts.feedbackLogInvalidType'));
+    }
+
+    const buffer = await file.arrayBuffer();
+    return {
+      fileName: file.name,
+      mimeType: file.type || 'text/plain',
+      size: file.size,
+      contentBase64: this.arrayBufferToBase64(buffer),
+    };
+  }
+
+  async openFeedbackLogsModal(
+    logFileInput: HTMLInputElement | null,
+    onSelected: () => void,
+  ) {
+    if (!window.modalManager?.showCustomModal) {
+      logFileInput?.click();
+      return;
+    }
+
+    const body = document.createElement('div');
+    body.className = 'feedback-log-picker-modal';
+    body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
+      this.translate('settings.feedbackLogsLoading'),
+    )}</div>`;
+
+    const modal = window.modalManager.showCustomModal({
+      id: 'feedback-log-picker-modal',
+      title: this.translate('settings.feedbackLogsModalTitle'),
+      body,
+      size: 'medium',
+      buttons: [
+        {
+          text: this.translate('settings.feedbackSelectLogFile'),
+          type: 'secondary',
+          closeOnClick: false,
+          onClick: () => {
+            logFileInput?.click();
+          },
+        },
+        {
+          text: this.translate('common.cancel') || 'Cancel',
+          type: 'secondary',
+        },
+      ],
+    });
+
+    logFileInput?.addEventListener(
+      'change',
+      () => {
+        window.modalManager.closeModal(modal, {
+          onModalClosed: () => modal.remove(),
+        });
+      },
+      { once: true },
+    );
+
+    try {
+      const result = await window.electronAPI?.listLogFiles?.();
+      const files = result?.success ? result.files || [] : [];
+
+      if (files.length === 0) {
+        body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
+          this.translate('settings.feedbackNoSavedLogs'),
+        )}</div>`;
+        return;
+      }
+
+      body.innerHTML = `
+        <p class="feedback-log-picker-intro">${this.escapeHtml(
+          this.translate('settings.feedbackLogsHint'),
+        )}</p>
+        <div class="feedback-log-picker-list">
+          ${files
+            .map(
+              (file) => `
+                <label class="feedback-log-picker-row" data-log-path="${this.escapeHtml(file.filePath)}" data-log-name="${this.escapeHtml(file.name)}">
+                  <input type="checkbox" data-log-checkbox />
+                  <i class="bi bi-file-earmark-text"></i>
+                  <span>
+                    <strong>${this.escapeHtml(new Date(file.modifiedAt).toLocaleString())}</strong>
+                    <small>${this.escapeHtml(file.name)} - ${this.escapeHtml(this.formatBytes(file.size))}</small>
+                  </span>
+                </label>
+              `,
+            )
+            .join('')}
+        </div>
+        <button class="settings-btn feedback-log-picker-attach" type="button" data-log-attach>
+          <i class="bi bi-paperclip"></i>
+          <span>${this.escapeHtml(this.translate('settings.feedbackAttachSelectedLogs'))}</span>
+        </button>
+      `;
+
+      body
+        .querySelectorAll<HTMLElement>('.feedback-log-picker-row')
+        .forEach((row) => {
+          const checkbox = row.querySelector<HTMLInputElement>(
+            '[data-log-checkbox]',
+          );
+          checkbox?.addEventListener('change', () => {
+            row.classList.toggle('is-selected', checkbox.checked);
+          });
+        });
+
+      body
+        .querySelector<HTMLButtonElement>('[data-log-attach]')
+        ?.addEventListener('click', async () => {
+          const selectedRows = Array.from(
+            body.querySelectorAll<HTMLElement>('.feedback-log-picker-row'),
+          )
+            .filter(
+              (row) =>
+                row.querySelector<HTMLInputElement>('[data-log-checkbox]')
+                  ?.checked,
+            )
+            .slice(0, 5);
+          if (selectedRows.length === 0) {
+            this.showToast(
+              this.translate('toasts.feedbackNoLogSelected'),
+              'info',
+            );
+            return;
+          }
+
+          const attachments: any[] = [];
+          for (const row of selectedRows) {
+            const filePath = row.dataset.logPath;
+            if (!filePath) {
+              continue;
+            }
+
+            const readResult = await window.electronAPI?.readLogFile?.(filePath);
+            if (!readResult?.success) {
+              const readError =
+                readResult && 'error' in readResult ? readResult.error : null;
+              this.showToast(
+                readError || this.translate('toasts.failedToOpenLogsFolder'),
+                'error',
+              );
+              return;
+            }
+
+            attachments.push(this.createTextLogAttachment(
+              row.dataset.logName || 'fightplanner.log',
+              readResult.content || '',
+            ));
+          }
+
+          this.feedbackLogAttachments = attachments;
+          if (logFileInput) {
+            logFileInput.value = '';
+          }
+          onSelected();
+          window.modalManager.closeModal(modal, {
+            onModalClosed: () => modal.remove(),
+          });
+        });
+    } catch (error) {
+      console.error('Failed to load feedback log files:', error);
+      body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
+        this.translate('toasts.failedToOpenLogsFolder'),
+      )}</div>`;
+    }
+  }
+
+  createCurrentLogsAttachment() {
+    const logs = window.logsManager?.logs || [];
+    const lines = logs.map((log) => {
+      const timestamp =
+        log.timestamp instanceof Date
+          ? log.timestamp.toISOString()
+          : new Date(log.timestamp).toISOString();
+      return `[${timestamp}] [${String(log.level).toUpperCase()}] [${log.source}] ${log.message}`;
+    });
+    const content =
+      lines.join('\n') ||
+      `[${new Date().toISOString()}] [INFO] [renderer] No logs captured.`;
+    const fileName = `fightplanner-logs-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')}.log`;
+    return this.createTextLogAttachment(fileName, content);
+  }
+
+  createTextLogAttachment(fileName: string, content: string) {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(content);
+    const maxSize = 2 * 1024 * 1024;
+    const trimmedBytes =
+      bytes.length > maxSize ? bytes.slice(bytes.length - maxSize) : bytes;
+
+    return {
+      fileName,
+      mimeType: 'text/plain',
+      size: trimmedBytes.byteLength,
+      contentBase64: this.arrayBufferToBase64(trimmedBytes.buffer),
+    };
+  }
+
+  formatFeedbackLogSelection(logs: Array<{ fileName: string; size: number }>) {
+    const totalSize = logs.reduce((sum, log) => sum + (log.size || 0), 0);
+    if (logs.length === 1) {
+      return `${logs[0].fileName} (${this.formatBytes(logs[0].size)})`;
+    }
+
+    return `${this.translate('settings.feedbackSelectedLogs')
+      .replace('{count}', String(logs.length))
+      .replace('{size}', this.formatBytes(totalSize))}`;
+  }
+
+  arrayBufferToBase64(buffer: ArrayBuffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let index = 0; index < bytes.length; index += chunkSize) {
+      const chunk = bytes.subarray(index, index + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  }
+
+  formatBytes(bytes: number) {
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
   organizeSettingsLayout() {

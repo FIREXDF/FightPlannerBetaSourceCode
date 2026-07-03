@@ -214,13 +214,60 @@ const SystemHandlers = {
     return PATHS.logsDir();
   },
 
-  ['read-log-file']: async (common: BaseHandlerArg, filePath: string) => {
+  ['list-log-files']: async (
+    common: BaseHandlerArg,
+  ): HandlerResponse<{
+    files: Array<{
+      name: string;
+      filePath: string;
+      size: number;
+      modifiedAt: string;
+    }>;
+  }> => {
     try {
       const logsDir = PATHS.logsDir();
-      if (!filePath.startsWith(logsDir)) {
+      if (!fs.existsSync(logsDir)) {
+        return { success: true, files: [] };
+      }
+
+      const files = fs
+        .readdirSync(logsDir)
+        .filter((fileName) => /\.(log|txt|json)$/i.test(fileName))
+        .map((fileName) => {
+          const filePath = path.join(logsDir, fileName);
+          const stats = fs.statSync(filePath);
+          return {
+            name: fileName,
+            filePath,
+            size: stats.size,
+            modifiedAt: stats.mtime.toISOString(),
+          };
+        })
+        .filter((entry) => fs.statSync(entry.filePath).isFile())
+        .sort(
+          (left, right) =>
+            new Date(right.modifiedAt).getTime() -
+            new Date(left.modifiedAt).getTime(),
+        );
+
+      return { success: true, files };
+    } catch (error) {
+      handleError(error, 'list-log-files');
+      return createErrorResponse(ErrorCodes.FILE_READ_ERROR, error.message);
+    }
+  },
+
+  ['read-log-file']: async (common: BaseHandlerArg, filePath: string) => {
+    try {
+      const logsDir = path.resolve(PATHS.logsDir());
+      const resolvedFilePath = path.resolve(filePath);
+      if (
+        path.relative(logsDir, resolvedFilePath).startsWith('..') ||
+        path.isAbsolute(path.relative(logsDir, resolvedFilePath))
+      ) {
         throw new Error('Invalid log file path');
       }
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(resolvedFilePath, 'utf8');
       return { success: true, content };
     } catch (error) {
       handleError(error, 'read-log-file');

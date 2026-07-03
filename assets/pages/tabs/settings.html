@@ -1330,6 +1330,49 @@
             placeholder="Discord, email, or GitHub username"
           />
 
+          <label
+            class="settings-label"
+            for="feedback-log-file"
+            data-i18n="settings.feedbackLogs"
+            >Logs (optional)</label
+          >
+          <div class="feedback-file-row">
+            <input
+              id="feedback-log-file"
+              class="feedback-file-input"
+              type="file"
+              multiple
+              accept=".log,.txt,.json,text/plain,application/json"
+            />
+            <button
+              class="settings-btn feedback-file-btn"
+              id="feedback-choose-log-file"
+              type="button"
+            >
+              <i class="bi bi-paperclip"></i>
+              <span data-i18n="settings.feedbackChooseLogs">Choose log file</span>
+            </button>
+            <button
+              class="settings-btn feedback-file-btn"
+              id="feedback-use-current-logs"
+              type="button"
+            >
+              <i class="bi bi-terminal"></i>
+              <span data-i18n="settings.feedbackUseCurrentLogs">Use current logs</span>
+            </button>
+            <button
+              class="settings-btn feedback-file-clear"
+              id="feedback-clear-log-file"
+              type="button"
+              hidden
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <p class="settings-hint" id="feedback-log-file-name" data-i18n="settings.feedbackLogsHint">
+            Attach a .log, .txt, or .json file up to 2 MB.
+          </p>
+
           <div class="feedback-actions">
             <p class="settings-hint" data-i18n="settings.feedbackHint">
               Sends app context with your report so issues are easier to

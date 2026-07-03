@@ -152,6 +152,7 @@ const electronAPI = {
   selectModFile: invokeFileHandler('select-mod-file'),
   handleFilesDropped: invokeModHandler('handle-files-dropped'),
   getLogsPath: invokeSystemHandler('get-logs-path'),
+  listLogFiles: invokeSystemHandler('list-log-files'),
   readLogFile: invokeSystemHandler('read-log-file'),
   selectCustomFile: invokeFileHandler('select-custom-file'),
   readCustomFile: invokeFileHandler('read-custom-file'),

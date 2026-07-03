@@ -41,4 +41,5 @@ desktop.ini
 worker.js
 CSS MANAGER
 worker-supabase.js
+feedback-worker.js
 docs/supabase-schema.sql

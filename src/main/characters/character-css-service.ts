@@ -23,14 +23,14 @@ const TEMP_FILE_SUFFIX = '_modified';
 let paramLabelMapCache: Map<string, string> | null = null;
 
 const PARAM_XML_TAG_BY_COLLECTION: Record<string, string> = {
-  hash40: 'Hash40',
-  string: 'String',
-  short: 'I16',
-  int: 'I32',
-  sbyte: 'I8',
-  bool: 'Bool',
-  byte: 'U8',
-  float: 'F32',
+  hash40: 'hash40',
+  string: 'string',
+  short: 'short',
+  int: 'int',
+  sbyte: 'sbyte',
+  bool: 'bool',
+  byte: 'byte',
+  float: 'float',
 };
 
 const CSS_MANAGER_FIELD_INDEX: Record<string, Record<string, number>> = {
@@ -261,6 +261,44 @@ function resolveToolsPath(...segments: string[]) {
   }
 
   return path.join(app.getAppPath(), 'tools', ...segments);
+}
+
+function prepareExecutableTool(executablePath: string) {
+  if (process.platform === 'win32') {
+    return executablePath;
+  }
+
+  const isAppImageMount =
+    Boolean(process.env.APPIMAGE) ||
+    executablePath.includes(`${path.sep}.mount_`);
+  let preparedPath = executablePath;
+
+  if (isAppImageMount) {
+    const sourceDirectory = path.dirname(executablePath);
+    const cacheDirectory = path.join(
+      app.getPath('temp'),
+      'fightplanner-tools',
+      app.getVersion(),
+      path.basename(sourceDirectory),
+    );
+
+    fs.cpSync(sourceDirectory, cacheDirectory, {
+      recursive: true,
+      force: true,
+    });
+
+    preparedPath = path.join(cacheDirectory, path.basename(executablePath));
+  }
+
+  try {
+    fs.chmodSync(preparedPath, 0o755);
+  } catch (error) {
+    if (!isAppImageMount) {
+      throw error;
+    }
+  }
+
+  return preparedPath;
 }
 
 function resolveParamLabelsPath(): string | null {
@@ -884,32 +922,44 @@ function validateLayoutPayload(
   charaJson: any,
   payload: CharacterCssLayoutPayload,
 ) {
-  const allIds = new Set(
-    getStructList(charaJson).map((entry) =>
-      getHashText(entry, 'hash40', 'ui_chara_id', ''),
-    ),
+  const sourceIds = getStructList(charaJson).map((entry) =>
+    getHashText(entry, 'hash40', 'ui_chara_id', ''),
   );
   const orderedIds = [
     ...(payload.visibleCharacterIds || []),
     ...(payload.hiddenCharacterIds || []),
   ];
 
-  if (orderedIds.length !== allIds.size) {
+  if (orderedIds.length !== sourceIds.length) {
     throw new Error(
-      `Expected ${allIds.size} characters, received ${orderedIds.length}`,
+      `Expected ${sourceIds.length} characters, received ${orderedIds.length}`,
     );
   }
 
-  if (new Set(orderedIds).size !== orderedIds.length) {
-    throw new Error(
-      'Duplicate character identifiers detected in the CSS payload',
-    );
-  }
+  const sourceCounts = sourceIds.reduce((counts, id) => {
+    counts.set(id, (counts.get(id) || 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+  const payloadCounts = orderedIds.reduce((counts, id) => {
+    counts.set(id, (counts.get(id) || 0) + 1);
+    return counts;
+  }, new Map<string, number>());
 
-  const invalidIds = orderedIds.filter((id) => !allIds.has(id));
+  const invalidIds = [...payloadCounts.keys()].filter(
+    (id) => !sourceCounts.has(id),
+  );
   if (invalidIds.length > 0) {
     throw new Error(
       `Unknown character identifiers received: ${invalidIds.join(', ')}`,
+    );
+  }
+
+  const mismatchedIds = [...sourceCounts.entries()]
+    .filter(([id, count]) => payloadCounts.get(id) !== count)
+    .map(([id, count]) => `${id} expected ${count}, received ${payloadCounts.get(id) || 0}`);
+  if (mismatchedIds.length > 0) {
+    throw new Error(
+      `Character identifier counts do not match source: ${mismatchedIds.join('; ')}`,
     );
   }
 }
@@ -1124,16 +1174,17 @@ function applyLayoutToCharaJson(
 ) {
   validateLayoutPayload(charaJson, payload);
 
-  const entryById = new Map(
-    getStructList(charaJson).map(
-      (entry) =>
-        [getHashText(entry, 'hash40', 'ui_chara_id', ''), entry] as const,
-    ),
-  );
+  const entriesById = getStructList(charaJson).reduce((entries, entry) => {
+    const id = getHashText(entry, 'hash40', 'ui_chara_id', '');
+    const matchingEntries = entries.get(id) || [];
+    matchingEntries.push(entry);
+    entries.set(id, matchingEntries);
+    return entries;
+  }, new Map<string, any[]>());
   const nextEntries: any[] = [];
 
   payload.visibleCharacterIds.forEach((id, index) => {
-    const entry = entryById.get(id);
+    const entry = entriesById.get(id)?.shift();
     if (!entry) {
       return;
     }
@@ -1150,7 +1201,7 @@ function applyLayoutToCharaJson(
   });
 
   payload.hiddenCharacterIds.forEach((id) => {
-    const entry = entryById.get(id);
+    const entry = entriesById.get(id)?.shift();
     if (!entry) {
       return;
     }
@@ -1202,11 +1253,7 @@ function resolveParamXmlExecutable() {
     );
   }
 
-  if (process.platform !== 'win32') {
-    fs.chmodSync(executablePath, 0o755);
-  }
-
-  return executablePath;
+  return prepareExecutableTool(executablePath);
 }
 
 function runParamXml(inputXmlPath: string) {
@@ -1252,9 +1299,11 @@ function runParamXml(inputXmlPath: string) {
         fs.existsSync(candidate),
       );
       if (!outputPath) {
+        const output = [stderr.trim(), stdout.trim()].filter(Boolean).join(' ');
+        const details = output ? ` ${output}` : '';
         reject(
           new Error(
-            `ParamXML completed but did not generate ${outputCandidates.map((candidate) => path.basename(candidate)).join(' or ')}`,
+            `ParamXML completed but did not generate ${outputCandidates.map((candidate) => path.basename(candidate)).join(' or ')}.${details}`,
           ),
         );
         return;
@@ -1355,11 +1404,7 @@ function resolveMsbtEditorExecutable() {
     );
   }
 
-  if (process.platform !== 'win32') {
-    fs.chmodSync(executablePath, 0o755);
-  }
-
-  return executablePath;
+  return prepareExecutableTool(executablePath);
 }
 
 function runNativeTool(executablePath: string, args: string[]) {
