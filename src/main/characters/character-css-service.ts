@@ -20,6 +20,7 @@ const GENERATED_CHARA_PRC_FILE = 'ui_chara_db.prc';
 const GENERATED_LAYOUT_PRC_FILE = 'ui_layout_db.prc';
 const GENERATED_MSG_NAME_FILE = 'msg_name.msbt';
 const TEMP_FILE_SUFFIX = '_modified';
+const MAX_CHARACTER_CSS_SBYTE_ORDER = 127;
 let paramLabelMapCache: Map<string, string> | null = null;
 
 const PARAM_XML_TAG_BY_COLLECTION: Record<string, string> = {
@@ -668,6 +669,10 @@ function setHashTextIfPresent(
   }
 }
 
+function getCharacterCssSbyteOrder(order: number) {
+  return Math.min(Math.max(order, 0), MAX_CHARACTER_CSS_SBYTE_ORDER);
+}
+
 function ensureHashText(
   entry: any,
   collection: string,
@@ -1189,8 +1194,9 @@ function applyLayoutToCharaJson(
       return;
     }
 
-    setHashText(entry, 'sbyte', 'disp_order', index);
-    setHashTextIfPresent(entry, 'sbyte', 'disp_order_series', index);
+    const sbyteOrder = getCharacterCssSbyteOrder(index);
+    setHashTextIfPresent(entry, 'sbyte', 'skill_list_order', sbyteOrder);
+    setHashText(entry, 'sbyte', 'disp_order', sbyteOrder);
     setHashTextIfPresent(
       entry,
       'bool',
@@ -1751,8 +1757,9 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
   duplicatedEntry['@index'] = String(structs.length);
   setHashText(duplicatedEntry, 'hash40', 'ui_chara_id', newUiCharaId);
   duplicatedEntry.string['#text'] = newNameId;
-  setHashText(duplicatedEntry, 'sbyte', 'disp_order', structs.length);
-  setHashTextIfPresent(duplicatedEntry, 'sbyte', 'disp_order_series', structs.length);
+  const duplicatedOrder = getCharacterCssSbyteOrder(structs.length);
+  setHashTextIfPresent(duplicatedEntry, 'sbyte', 'skill_list_order', duplicatedOrder);
+  setHashText(duplicatedEntry, 'sbyte', 'disp_order', duplicatedOrder);
   setHashTextIfPresent(duplicatedEntry, 'bool', 'is_dlc', 'False');
   setHashTextIfPresent(duplicatedEntry, 'bool', 'is_patch', 'False');
   ensureHashText(
