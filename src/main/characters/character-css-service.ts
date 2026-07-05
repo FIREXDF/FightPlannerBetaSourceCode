@@ -20,7 +20,8 @@ const GENERATED_CHARA_PRC_FILE = 'ui_chara_db.prc';
 const GENERATED_LAYOUT_PRC_FILE = 'ui_layout_db.prc';
 const GENERATED_MSG_NAME_FILE = 'msg_name.msbt';
 const TEMP_FILE_SUFFIX = '_modified';
-const MAX_CHARACTER_CSS_SBYTE_ORDER = 127;
+const MIN_PARAM_XML_SBYTE = -128;
+const MAX_PARAM_XML_SBYTE = 127;
 let paramLabelMapCache: Map<string, string> | null = null;
 
 const PARAM_XML_TAG_BY_COLLECTION: Record<string, string> = {
@@ -403,11 +404,30 @@ function escapeXml(value: string | number | boolean) {
     .replace(/'/g, '&apos;');
 }
 
+function clampParamXmlSbyteValue(value: string) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return value;
+  }
+
+  return String(
+    Math.min(
+      Math.max(Math.trunc(numericValue), MIN_PARAM_XML_SBYTE),
+      MAX_PARAM_XML_SBYTE,
+    ),
+  );
+}
+
 function scalarParamToXml(type: string, entry: any, fallbackIndex: number) {
   const xmlTag = PARAM_XML_TAG_BY_COLLECTION[type] || type;
   const hash = toHash40(String(entry?.['@hash'] ?? fallbackIndex));
   const textValue = String(entry?.['#text'] ?? '');
-  const value = type === 'hash40' ? toHash40(textValue) : textValue;
+  const value =
+    type === 'hash40'
+      ? toHash40(textValue)
+      : type === 'sbyte'
+        ? clampParamXmlSbyteValue(textValue)
+        : textValue;
   return `<${xmlTag} hash="${hash}">${escapeXml(value)}</${xmlTag}>`;
 }
 
@@ -490,6 +510,7 @@ function normalizeParamXmlStruct(entry: any) {
     ['Bool', 'bool', true],
     ['U8', 'byte', true],
     ['F32', 'float', true],
+    ['Float', 'float', true],
   ];
 
   mappings.forEach(([sourceKey, targetKey, targetIsArray]) => {
@@ -670,7 +691,7 @@ function setHashTextIfPresent(
 }
 
 function getCharacterCssSbyteOrder(order: number) {
-  return Math.min(Math.max(order, 0), MAX_CHARACTER_CSS_SBYTE_ORDER);
+  return Math.min(Math.max(order, 0), MAX_PARAM_XML_SBYTE);
 }
 
 function ensureHashText(

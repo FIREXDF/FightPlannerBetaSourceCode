@@ -802,6 +802,52 @@
   min-width: 0;
 }
 
+#library-path-fix-modal.modal {
+  width: min(720px, calc(100vw - 32px));
+  min-width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+
+#library-path-fix-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#library-path-fix-modal .modal-footer {
+  flex-shrink: 0;
+}
+
+#switch-emulator-setup-modal.modal {
+  width: min(720px, calc(100vw - 32px));
+  min-width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+
+#switch-emulator-setup-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#switch-emulator-setup-modal .modal-footer {
+  flex-shrink: 0;
+}
+
+#switch-emulator-setup-modal .emulator-switch-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#switch-emulator-setup-modal .emulator-switch-modal .settings-section {
+  margin-bottom: 0;
+}
+
 body.no-animations .settings-tab-content.active {
   animation: none !important;
 }

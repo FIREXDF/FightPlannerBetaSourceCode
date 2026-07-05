@@ -35,6 +35,76 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   };
 
+  const escapeHtml = (value: string) =>
+    String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  function pastedPathControls(inputId: string, buttonId: string, label: string) {
+    return `
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <input id="${inputId}" type="text" placeholder="Paste ${label} path..." style="flex: 1; min-width: 0; padding: 10px 12px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; outline: none;">
+        <button id="${buttonId}" style="padding: 10px 14px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap;">
+          Use Path
+        </button>
+      </div>
+    `;
+  }
+
+  function enableTutorialNext(nextBtn: HTMLElement | null) {
+    if (!nextBtn) return;
+    nextBtn.style.opacity = '1';
+    nextBtn.style.pointerEvents = 'auto';
+    nextBtn.style.cursor = 'pointer';
+  }
+
+  function renderAcceptedPath(statusDiv: HTMLElement, label: string, path: string) {
+    statusDiv.innerHTML = `
+      <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
+          <div>
+            <strong style="color: #fff; display: block;">${label}</strong>
+            <span style="color: rgba(255,255,255,0.6); font-size: 13px; font-family: monospace;">${escapeHtml(path)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachPastedPathHandler(
+    inputId: string,
+    buttonId: string,
+    storeKey: string,
+    statusDiv: HTMLElement,
+    nextBtn: HTMLElement | null,
+    label: string,
+  ) {
+    const save = async () => {
+      const input = document.querySelector<HTMLInputElement>(`#${inputId}`);
+      const path = input?.value.trim();
+      if (!path) return;
+      await window.tutorialAPI.store.set(storeKey, path);
+      renderAcceptedPath(statusDiv, label, path);
+      enableTutorialNext(nextBtn);
+    };
+
+    document
+      .querySelector<HTMLElement>(`#${buttonId}`)
+      ?.addEventListener('click', save);
+    document
+      .querySelector<HTMLInputElement>(`#${inputId}`)
+      ?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          void save();
+        }
+      });
+  }
+
   // Check for restored dev mode state
   try {
     const restoredState = localStorage.getItem('tutorialDevState');
@@ -1773,6 +1843,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="select-yuzu-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
                             Select Yuzu Folder
                         </button>
+                        ${pastedPathControls('paste-yuzu-path', 'use-yuzu-path-btn', 'Yuzu folder')}
                     </div>
                 `;
             document
@@ -1781,27 +1852,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 const path = await window.tutorialAPI.selectFolder();
                 if (path) {
                   await window.tutorialAPI.store.set('tutorial.yuzuPath', path);
-                  statusDiv!.innerHTML = `
-                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
-                                    <div>
-                                        <strong style="color: #fff; display: block;">Selected: ${path}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                  if (nextBtn) {
-                    nextBtn.style.opacity = '1';
-                    nextBtn.style.pointerEvents = 'auto';
-                  }
+                  renderAcceptedPath(statusDiv!, 'Yuzu folder selected', path);
+                  enableTutorialNext(nextBtn);
                 }
               });
+            attachPastedPathHandler(
+              'paste-yuzu-path',
+              'use-yuzu-path-btn',
+              'tutorial.yuzuPath',
+              statusDiv!,
+              nextBtn,
+              'Yuzu folder selected',
+            );
           }
         } catch (error) {
           console.error('Error detecting Yuzu:', error);
-          statusDiv!.innerHTML =
-            '<div style="color: #ff4d4d;">Error detecting Yuzu. Please select manually.</div>';
+          statusDiv!.innerHTML = `
+            <div style="color: #ff4d4d;">Error detecting Yuzu. Please select manually or paste the folder path.</div>
+            ${pastedPathControls('paste-yuzu-error-path', 'use-yuzu-error-path-btn', 'Yuzu folder')}
+          `;
+          attachPastedPathHandler(
+            'paste-yuzu-error-path',
+            'use-yuzu-error-path-btn',
+            'tutorial.yuzuPath',
+            statusDiv!,
+            nextBtn,
+            'Yuzu folder selected',
+          );
         }
       },
     },
@@ -2272,6 +2349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="select-ryujinx-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
                             Select Ryujinx Folder
                         </button>
+                        ${pastedPathControls('paste-ryujinx-path', 'use-ryujinx-path-btn', 'Ryujinx folder')}
                     </div>
                 `;
             document
@@ -2283,27 +2361,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     'tutorial.ryujinxPath',
                     path,
                   );
-                  statusDiv!.innerHTML = `
-                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
-                                    <div>
-                                        <strong style="color: #fff; display: block;">Selected: ${path}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                  if (nextBtn) {
-                    nextBtn.style.opacity = '1';
-                    nextBtn.style.pointerEvents = 'auto';
-                  }
+                  renderAcceptedPath(
+                    statusDiv!,
+                    'Ryujinx folder selected',
+                    path,
+                  );
+                  enableTutorialNext(nextBtn);
                 }
               });
+            attachPastedPathHandler(
+              'paste-ryujinx-path',
+              'use-ryujinx-path-btn',
+              'tutorial.ryujinxPath',
+              statusDiv!,
+              nextBtn,
+              'Ryujinx folder selected',
+            );
           }
         } catch (error) {
           console.error('Error detecting Ryujinx:', error);
-          statusDiv!.innerHTML =
-            '<div style="color: #ff4d4d;">Error detecting Ryujinx. Please select manually.</div>';
+          statusDiv!.innerHTML = `
+            <div style="color: #ff4d4d;">Error detecting Ryujinx. Please select manually or paste the folder path.</div>
+            ${pastedPathControls('paste-ryujinx-error-path', 'use-ryujinx-error-path-btn', 'Ryujinx folder')}
+          `;
+          attachPastedPathHandler(
+            'paste-ryujinx-error-path',
+            'use-ryujinx-error-path-btn',
+            'tutorial.ryujinxPath',
+            statusDiv!,
+            nextBtn,
+            'Ryujinx folder selected',
+          );
         }
       },
     },

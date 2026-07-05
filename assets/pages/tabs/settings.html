@@ -1176,7 +1176,6 @@
             data-i18n="settings.emulatorPathPlaceholder"
             data-i18n-placeholder
             placeholder="Select emulator executable..."
-            readonly
           />
           <button
             class="settings-btn"
@@ -1203,7 +1202,6 @@
             data-i18n="settings.gamePathPlaceholder"
             data-i18n-placeholder
             placeholder="Select game file..."
-            readonly
           />
           <button
             class="settings-btn"
@@ -1216,6 +1214,28 @@
         <p class="settings-hint" data-i18n="settings.gamePathHint">
           Select your game file (.xci or .nsp)
         </p>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.switchEmulatorSetup"
+          >Switch Emulator Setup</label
+        >
+        <button class="settings-btn-action" id="switch-emulator-setup-btn">
+          <i class="bi bi-arrow-left-right"></i>
+          <div class="settings-btn-action-content">
+            <span
+              class="settings-btn-action-title"
+              data-i18n="settings.switchEmulatorSetupTitle"
+              >Change emulator cleanly</span
+            >
+            <span
+              class="settings-btn-action-desc"
+              data-i18n="settings.switchEmulatorSetupDesc"
+              >Choose a new emulator, paste paths, and check ARCropolis folders</span
+            >
+          </div>
+          <i class="bi bi-arrow-right"></i>
+        </button>
       </div>
 
       <div class="settings-section">
@@ -2283,6 +2303,26 @@
               class="settings-btn-action-desc"
               data-i18n="settings.openTutorialModsDesc"
               >Switch to the mods tab and show the guide</span
+            >
+          </div>
+          <i class="bi bi-arrow-right"></i>
+        </button>
+        <button
+          class="settings-btn-action"
+          id="open-in-app-tutorial-btn"
+          style="margin-top: 8px"
+        >
+          <i class="bi bi-layout-sidebar-inset"></i>
+          <div class="settings-btn-action-content">
+            <span
+              class="settings-btn-action-title"
+              data-i18n="settings.openInAppTutorial"
+              >Open In-App Tutorial</span
+            >
+            <span
+              class="settings-btn-action-desc"
+              data-i18n="settings.openInAppTutorialDesc"
+              >Show the interface guide directly</span
             >
           </div>
           <i class="bi bi-arrow-right"></i>

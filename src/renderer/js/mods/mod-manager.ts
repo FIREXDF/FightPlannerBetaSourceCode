@@ -394,6 +394,15 @@ class ModManager {
     return !(result?.success && result.accessible === true);
   }
 
+  private async isModsFolderUnavailable(modsPath: string | null) {
+    if (!modsPath || !window.electronAPI?.checkPathAccessible) {
+      return false;
+    }
+
+    const result = await window.electronAPI.checkPathAccessible(modsPath);
+    return !(result?.success && result.accessible === true);
+  }
+
   private setHardwareLibraryBlockedState(blocked: boolean, cached = false) {
     document
       .querySelector<HTMLElement>('.content-box')
@@ -455,6 +464,92 @@ class ModManager {
 
     blocker.append(icon, text, refreshButton);
     return blocker;
+  }
+
+  private createModsPathUnavailableMessage(targetPath: string | null) {
+    const blocker = document.createElement('div');
+    blocker.className = 'hardware-library-message mods-path-unavailable-message';
+
+    const icon = document.createElement('i');
+    icon.className = 'bi bi-folder-x';
+
+    const text = document.createElement('div');
+    text.className = 'hardware-library-message-text';
+
+    const title = document.createElement('strong');
+    title.textContent = this.t(
+      'tools.modsPathUnavailableTitle',
+      'Mods folder unavailable',
+    );
+
+    const message = document.createElement('p');
+    message.textContent = this.t(
+      'tools.modsPathUnavailableMessage',
+      'FightPlanner cannot access the configured mods folder. Check the path in Settings or reconnect the drive.',
+    );
+
+    const path = document.createElement('code');
+    path.textContent = targetPath || this.t('common.error', 'Error');
+
+    text.append(title, message, path);
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '8px';
+    actions.style.flexWrap = 'wrap';
+
+    const refreshButton = document.createElement('button');
+    refreshButton.type = 'button';
+    refreshButton.className = 'input-btn short';
+    refreshButton.innerHTML = `<i class="bi bi-arrow-clockwise"></i><span>${this.t(
+      'tools.refreshMods',
+      'Refresh Mods',
+    )}</span>`;
+    refreshButton.addEventListener('click', () => {
+      this.fetchMods();
+    });
+
+    const settingsButton = document.createElement('button');
+    settingsButton.type = 'button';
+    settingsButton.className = 'input-btn short';
+    settingsButton.innerHTML = `<i class="bi bi-gear"></i><span>${this.t(
+      'plugins.goToSettings',
+      'Go to Settings',
+    )}</span>`;
+    settingsButton.addEventListener('click', () => {
+      document.querySelector<HTMLElement>('.sidebar-btn[data-tab="settings"]')?.click();
+      setTimeout(() => {
+        document
+          .querySelector<HTMLElement>('.settings-tab-btn[data-settings-tab="library"]')
+          ?.click();
+      }, 150);
+    });
+
+    actions.append(refreshButton, settingsButton);
+    blocker.append(icon, text, actions);
+    return blocker;
+  }
+
+  private renderModsPathUnavailableBlocker(targetPath: string | null) {
+    if (!this.modListContainer) {
+      this.modListContainer = document.querySelector<HTMLElement>('#mod-list');
+    }
+
+    if (!this.modListContainer) {
+      return;
+    }
+
+    this.mods = [];
+    this.selectedMod = null;
+    this.selectedMods = [];
+    this.modsPath = targetPath;
+    this.renderedModIds.clear();
+    this.setHardwareLibraryBlockedState(true);
+    this.modListContainer.innerHTML = '';
+    this.modListContainer.appendChild(
+      this.createModsPathUnavailableMessage(targetPath),
+    );
+    window.modInfoManager?.clearModInfo?.();
   }
 
   private async renderHardwareCache(targetPath: string | null) {
@@ -1486,6 +1581,11 @@ class ModManager {
 
       this.setHardwareLibraryBlockedState(false);
 
+      if (await this.isModsFolderUnavailable(modsPath)) {
+        this.renderModsPathUnavailableBlocker(modsPath);
+        return;
+      }
+
       const result = await window.electronAPI.readModsFolder(modsPath);
 
       if (!result.success) {
@@ -1495,7 +1595,7 @@ class ModManager {
         }
 
         console.error('Error reading mods:', result.error);
-        await this.loadExampleMods();
+        this.renderModsPathUnavailableBlocker(modsPath);
         return;
       }
 
@@ -1512,7 +1612,7 @@ class ModManager {
       }
 
       console.error('Failed to load mods from folder:', error);
-      await this.loadExampleMods();
+      this.renderModsPathUnavailableBlocker(modsPath);
       this.clearBatchTestingOverride();
     }
   }
@@ -1670,13 +1770,18 @@ class ModManager {
             return;
           }
 
-          this.renderHardwareReconnectBlocker(modsPath);
-          return;
-        }
+        this.renderHardwareReconnectBlocker(modsPath);
+        return;
+      }
 
-        this.setHardwareLibraryBlockedState(false);
-        console.log('Loading mods from saved path:', modsPath);
-        await this.loadModsFromFolder(modsPath);
+      if (await this.isModsFolderUnavailable(modsPath)) {
+        this.renderModsPathUnavailableBlocker(modsPath);
+        return;
+      }
+
+      this.setHardwareLibraryBlockedState(false);
+      console.log('Loading mods from saved path:', modsPath);
+      await this.loadModsFromFolder(modsPath);
         return;
       }
 
