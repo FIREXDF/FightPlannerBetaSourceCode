@@ -215,6 +215,17 @@ class CharactersManager {
       });
     }
 
+    const echoButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-echo-btn',
+    );
+    if (echoButton) {
+      const replacement = echoButton.cloneNode(true) as HTMLButtonElement;
+      echoButton.parentNode?.replaceChild(replacement, echoButton);
+      replacement.addEventListener('click', () => {
+        void this.openEchoSlotWizard();
+      });
+    }
+
     const movesetsButton = document.querySelector<HTMLButtonElement>(
       '#character-movesets-btn',
     );
@@ -2137,6 +2148,142 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
     this.renderCssEditor();
   }
 
+  async openEchoSlotWizard() {
+    if (this.cssSaving || this.cssVisibleCharacters.length === 0) {
+      return;
+    }
+
+    const characters = [...this.cssVisibleCharacters, ...this.cssHiddenCharacters]
+      .filter((character) => !character.isRandom);
+    const selected = this.findCssCharacter(this.cssSelectedCharacterId || '') || characters[0];
+    if (!selected) {
+      return;
+    }
+    const installedMods = new Map<string, string>();
+    this.characters.forEach((character) => {
+      character.mods.forEach((mod) => installedMods.set(mod.path, mod.name));
+    });
+
+    const modal = document.createElement('div');
+    modal.className = 'character-modal-overlay character-css-duplicate-modal-overlay';
+    modal.innerHTML = `
+<div class="character-modal character-css-duplicate-modal">
+<div class="character-modal-header">
+<h2>Create Echo Slot</h2>
+<button class="character-modal-close" type="button"><i class="bi bi-x-lg"></i></button>
+</div>
+<form class="character-modal-body character-css-duplicate-form">
+<label class="character-css-field"><span>Installed mod</span><select name="installedMod"><option value="">Select mod...</option>${[...installedMods.entries()].sort(([, left], [, right]) => left.localeCompare(right)).map(([modPath, modName]) => `<option value="${this.escapeHtml(modPath)}">${this.escapeHtml(modName)}</option>`).join('')}</select></label>
+<button class="input-btn" type="button" data-action="browse">Choose external mod</button>
+<input name="modPath" type="hidden" required>
+<label class="character-css-field"><span>Base fighter</span><select name="sourceCharacterId">${characters.map((character) => `<option value="${this.escapeHtml(character.id)}" ${character.id === selected.id ? 'selected' : ''}>${this.escapeHtml(character.displayName)} (${this.escapeHtml(character.nameId)})</option>`).join('')}</select></label>
+<div class="character-css-duplicate-error" data-role="detection">Select a mod.</div>
+<label class="character-css-field"><span>New Name ID</span><input name="newNameId" value="${this.escapeHtml(`${selected.nameId}_echo`)}" autocomplete="off"></label>
+<label class="character-css-field"><span>Display Name</span><input name="newDisplayName" value="${this.escapeHtml(`${selected.displayName} Echo`)}" autocomplete="off"></label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<label class="character-css-field"><span>Colors</span><input name="colorCount" type="number" min="1" max="8" value="8"></label>
+<label class="character-css-field"><span>Start</span><input name="colorStartIndex" type="number" min="0" max="255" value="8"></label>
+</div>
+<label class="character-css-field"><span>Base model</span><select name="useTwoBaseModels"><option value="false">One model: c00</option><option value="true">Two models: c00 / c01</option></select></label>
+<div class="character-css-duplicate-error" data-role="error" hidden></div>
+<div class="character-css-duplicate-actions"><button class="input-btn" type="button" data-action="cancel">Cancel</button><button class="input-btn character-css-save-btn" type="submit"><i class="bi bi-magic"></i>Create Echo</button></div>
+</form>
+</div>`;
+    document.body.appendChild(modal);
+
+    const form = modal.querySelector<HTMLFormElement>('form')!;
+    const errorEl = modal.querySelector<HTMLElement>('[data-role="error"]')!;
+    const close = () => this.closeCharacterModal(modal);
+    modal.querySelector<HTMLElement>('.character-modal-close')?.addEventListener('click', close);
+    modal.querySelector<HTMLElement>('[data-action="cancel"]')?.addEventListener('click', close);
+    this.bindBackdropClose(modal, close);
+    const detectMod = async (modPath: string) => {
+      (form.elements.namedItem('modPath') as HTMLInputElement).value = modPath;
+      const detectionEl = modal.querySelector<HTMLElement>('[data-role="detection"]')!;
+      try {
+        const scan = await window.electronAPI.scanMod(modPath);
+        const fighterNames = (scan.success ? scan.data.fighterNames : []).filter((name) => !name.startsWith('item/'));
+        const detected = characters.filter((character) => fighterNames.some((name) => name.toLowerCase() === character.nameId.toLowerCase()));
+        if (detected.length === 0) throw new Error('No SSBU fighter detected. Mod needs fighter/<character> files.');
+        const base = detected.length === 1 ? detected[0] : detected.find((character) => character.id === (form.elements.namedItem('sourceCharacterId') as HTMLSelectElement).value) || detected[0];
+        (form.elements.namedItem('sourceCharacterId') as HTMLInputElement).value = base.id;
+        (form.elements.namedItem('newNameId') as HTMLInputElement).value = `${base.nameId}_echo`;
+        (form.elements.namedItem('newDisplayName') as HTMLInputElement).value = `${base.displayName} Echo`;
+        const detectedSlots = (scan.success ? scan.data.currentSlots : [])
+          .filter((slot) => /^c\d{2,3}$/i.test(slot))
+          .map((slot) => Number(slot.slice(1)))
+          .filter((slot) => slot >= 8)
+          .sort((left, right) => left - right);
+        if (detectedSlots.length > 0) {
+          (form.elements.namedItem('colorStartIndex') as HTMLInputElement).value = String(detectedSlots[0]);
+          (form.elements.namedItem('colorCount') as HTMLInputElement).value = String(Math.min(detectedSlots.length, 8));
+        }
+        detectionEl.textContent = detected.length === 1
+          ? `Detected: ${base.displayName} (${base.nameId})`
+          : `Several fighters detected (${detected.map((character) => character.nameId).join(', ')}). Verify base fighter.`;
+        detectionEl.hidden = false;
+        detectionEl.style.color = 'var(--success-color, #2ea043)';
+      } catch (error) {
+        detectionEl.textContent = error.message || 'Mod detection failed.';
+        detectionEl.hidden = false;
+        detectionEl.style.color = '';
+      }
+    };
+    form.querySelector<HTMLSelectElement>('[name="installedMod"]')?.addEventListener('change', (event) => {
+      const modPath = (event.target as HTMLSelectElement).value;
+      if (modPath) void detectMod(modPath);
+    });
+    modal.querySelector<HTMLButtonElement>('[data-action="browse"]')?.addEventListener('click', async () => {
+      const modPath = await window.electronAPI.selectFolder();
+      if (modPath) void detectMod(modPath);
+    });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const modPath = String(data.get('modPath') || '').trim();
+      if (!modPath) {
+        errorEl.textContent = 'Select mod folder.';
+        errorEl.hidden = false;
+        return;
+      }
+      const createButton = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      const createButtonHtml = createButton.innerHTML;
+      this.cssSaving = true;
+      createButton.disabled = true;
+      createButton.innerHTML = '<i class="bi bi-arrow-repeat"></i> Creating...';
+      try {
+        const result = await window.electronAPI.createEchoSlot({
+          sourceCharacterId: String(data.get('sourceCharacterId')),
+          newNameId: String(data.get('newNameId')),
+          newDisplayName: String(data.get('newDisplayName')),
+          colorCount: Number(data.get('colorCount')),
+          colorStartIndex: Number(data.get('colorStartIndex')),
+          useTwoBaseModels: String(data.get('useTwoBaseModels')) === 'true',
+          modPath,
+        });
+        if (!result.success) throw new Error(result.error || 'Echo creation failed');
+        const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+        if (warnings.length > 0) {
+          window.toastManager?.warning?.(`Echo created. ${warnings.join(' ')}`, 8000);
+        } else {
+          window.toastManager?.success?.(`Echo ${result.newUiCharaId} created.`, 5000);
+        }
+        this.cssLoaded = false;
+        await this.loadCssLayout();
+        this.cssSelectedCharacterId = result.newUiCharaId;
+        close();
+      } catch (error) {
+        errorEl.textContent = error.message || 'Echo creation failed.';
+        errorEl.hidden = false;
+      } finally {
+        this.cssSaving = false;
+        createButton.disabled = false;
+        createButton.innerHTML = createButtonHtml;
+        this.renderCssEditor();
+      }
+    });
+  }
+
   async duplicateSelectedCssCharacter() {
     if (!this.cssSelectedCharacterId || this.cssSaving) {
       return;
@@ -2325,13 +2472,19 @@ Duplicate
       return;
     }
 
+    const isEcho = character.fighterType === 'fighter_type_opened';
+
     this.cssSaving = true;
     this.renderCssEditor();
 
     try {
-      const result = await window.electronAPI.removeCharacterCssEntry({
-        characterId: character.id,
-      });
+      const result = isEcho
+        ? await window.electronAPI.removeEchoSlot({
+            characterId: character.id,
+          })
+        : await window.electronAPI.removeCharacterCssEntry({
+            characterId: character.id,
+          });
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to remove character');
@@ -2350,11 +2503,20 @@ Duplicate
       this.cssSelectedSlotIndex = 0;
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
-      this.cssDirty = true;
-      window.toastManager?.success?.(
-        'Character removed. Apply Layout to generate the mod.',
-        4000,
-      );
+      this.cssDirty = !isEcho;
+      const removalWarnings = 'warnings' in result && Array.isArray(result.warnings)
+        ? result.warnings
+        : [];
+      if (removalWarnings.length > 0) {
+        window.toastManager?.warning?.(removalWarnings.join(' '), 7000);
+      } else {
+        window.toastManager?.success?.(
+          isEcho
+            ? 'Echo removed. Original mod slots and files restored.'
+            : 'Character removed. Apply Layout to generate the mod.',
+          4000,
+        );
+      }
     } catch (error) {
       console.error(
         '[CharactersManager] Failed to remove CSS character:',
@@ -2398,7 +2560,9 @@ ${character.imageUrl ? `<img src="${character.imageUrl}" alt="${this.escapeHtml(
 <span>${this.escapeHtml(character.id)}</span>
 </div>
 </div>
-<p>This removes the entry from the generated Character CSS data. Apply Layout after removing to rebuild the mod.</p>
+<p>${character.fighterType === 'fighter_type_opened'
+  ? 'This removes the Echo and automatically restores its detected mod files, slots, config, and UI names.'
+  : 'This removes the entry from the generated Character CSS data. Apply Layout after removing to rebuild the mod.'}</p>
 <div class="character-css-duplicate-actions">
 <button class="input-btn" type="button" data-action="cancel">Cancel</button>
 <button class="input-btn character-css-danger-btn" type="button" data-action="confirm-remove">

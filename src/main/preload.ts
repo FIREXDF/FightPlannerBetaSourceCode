@@ -217,6 +217,8 @@ const electronAPI = {
   importCharacterCssSourceFiles: invokeCharacterCssHandler('import-character-css-source-files'),
   saveCharacterCssLayout: invokeCharacterCssHandler('save-character-css-layout'),
   duplicateCharacterCssEntry: invokeCharacterCssHandler('duplicate-character-css-entry'),
+  createEchoSlot: invokeCharacterCssHandler('create-echo-slot'),
+  removeEchoSlot: invokeCharacterCssHandler('remove-echo-slot'),
   removeCharacterCssEntry: invokeCharacterCssHandler('remove-character-css-entry'),
   loadModProfiles: invokeModProfileHandler('load-mod-profiles'),
   saveModProfiles: invokeModProfileHandler('save-mod-profiles'),

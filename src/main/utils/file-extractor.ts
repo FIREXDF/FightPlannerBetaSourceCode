@@ -19,6 +19,49 @@ export interface ExtractArchiveOptions {
 }
 
 export class FileExtractor {
+  private static getCommandEnv() {
+    if (process.platform !== 'darwin') {
+      return process.env;
+    }
+
+    const existingPath = process.env.PATH || '';
+    const macPaths = [
+      '/opt/homebrew/bin',
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+    ];
+    const pathParts = existingPath.split(path.delimiter).filter(Boolean);
+
+    for (const macPath of macPaths) {
+      if (!pathParts.includes(macPath)) {
+        pathParts.push(macPath);
+      }
+    }
+
+    return {
+      ...process.env,
+      PATH: pathParts.join(path.delimiter),
+    };
+  }
+
+  private static getMac7ZipCandidates() {
+    if (process.platform !== 'darwin') {
+      return [];
+    }
+
+    return [
+      '/opt/homebrew/bin/7z',
+      '/opt/homebrew/bin/7zz',
+      '/opt/homebrew/bin/7za',
+      '/usr/local/bin/7z',
+      '/usr/local/bin/7zz',
+      '/usr/local/bin/7za',
+    ];
+  }
+
   private static findExtractedEntry(extractDir: string, entry: string) {
     const normalizedEntry = entry.replace(/\\/g, '/');
     const exactPath = path.resolve(extractDir, normalizedEntry);
@@ -126,7 +169,10 @@ export class FileExtractor {
   private static commandExists(commandName: string) {
     const command = process.platform === 'win32' ? 'where' : 'which';
     try {
-      execSync(`${command} ${commandName}`, { stdio: 'pipe' });
+      execSync(`${command} ${commandName}`, {
+        stdio: 'pipe',
+        env: this.getCommandEnv(),
+      });
       return true;
     } catch {
       return false;
@@ -143,10 +189,24 @@ export class FileExtractor {
 
     for (const binaryName of binaryNames) {
       try {
-        execSync(`${command} ${binaryName}`, { stdio: 'pipe' });
+        const resolvedPath = execSync(`${command} ${binaryName}`, {
+          stdio: 'pipe',
+          env: this.getCommandEnv(),
+          encoding: 'utf8',
+        })
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .find(Boolean);
         console.log(`Found ${binaryName} in system PATH`);
-        return binaryName;
+        return resolvedPath || binaryName;
       } catch { }
+    }
+
+    for (const candidate of this.getMac7ZipCandidates()) {
+      if (fs.existsSync(candidate)) {
+        console.log(`Found 7-Zip at ${candidate}`);
+        return candidate;
+      }
     }
 
     // Fallback to bundled version
@@ -373,12 +433,25 @@ export class FileExtractor {
 
     for (const cmd of commands) {
       try {
-        execSync(`which ${cmd}`, { stdio: 'ignore' });
-        commandToUse = cmd;
+        const resolvedPath = execSync(`which ${cmd}`, {
+          stdio: 'pipe',
+          env: this.getCommandEnv(),
+          encoding: 'utf8',
+        })
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .find(Boolean);
+        commandToUse = resolvedPath || cmd;
         break;
       } catch {
         // Try the next binary name.
       }
+    }
+
+    if (!commandToUse) {
+      commandToUse =
+        this.getMac7ZipCandidates().find((candidate) => fs.existsSync(candidate)) ||
+        null;
     }
 
     if (!commandToUse) {
@@ -416,7 +489,9 @@ export class FileExtractor {
         }
       };
 
-      const child = child_process.spawn(commandToUse!, args);
+      const child = child_process.spawn(commandToUse!, args, {
+        env: this.getCommandEnv(),
+      });
       const cancelTimer = setInterval(() => {
         if (!options.isCancelled?.() || settled) return;
 

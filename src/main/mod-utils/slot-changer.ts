@@ -100,11 +100,15 @@ export class SlotChanger {
     slotAssignments: Map<string, Map<string, string>>,
     pathData: PathData,
     slotCustomNames: Record<string, CustomData> = {},
+    generateSupportFiles = true,
   ) {
     const changedPaths: string[] = [];
 
     for (const fighterName of Object.keys(pathData)) {
-      const defaultCustomNames = await this.getDefaultCustomNames(fighterName);
+      const isItem = fighterName.startsWith('item/');
+      const defaultCustomNames = isItem
+        ? {}
+        : await this.getDefaultCustomNames(fighterName);
       const fighterAssignments = slotAssignments.get(fighterName);
 
       if (!fighterAssignments) continue;
@@ -266,6 +270,15 @@ export class SlotChanger {
             `Failed to rename nested file ${mapping.currentPath}: ${error.message}`,
           );
         }
+      }
+
+      // Item slots have no fighter config, names, or internal-file renames.
+      if (isItem) {
+        continue;
+      }
+
+      if (!generateSupportFiles) {
+        continue;
       }
 
       const hasAnySlotAboveC07 = finalSlots.find(

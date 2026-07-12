@@ -520,8 +520,9 @@ M.prototype._scanAllModsSlotUsage = async function () {
     return;
   }
 
+  // Conflict-status mods are still installed and occupy their slots.
   const activeMods = window.modManager.mods.filter(
-    (m) => m.status === 'active' && m.path,
+    (m) => m.status !== 'disabled' && m.path,
   );
 
   for (const mod of activeMods) {
@@ -534,9 +535,15 @@ M.prototype._scanAllModsSlotUsage = async function () {
       const modEntry = { name: mod.name, path: mod.path };
 
       for (const fighterName of this.rawFighterNames) {
-        if (!scanResult.data.fighterNames.includes(fighterName)) continue;
+        // Item folder names may use different casing between mods. Match their
+        // scanner keys case-insensitively so slot usage still aggregates them.
+        const scannedName = scanResult.data.fighterNames.find(
+          (name) => name.toLowerCase() === fighterName.toLowerCase(),
+        );
 
-        const fighterData = scanResult.data.pathData[fighterName] || {};
+        if (!scannedName) continue;
+
+        const fighterData = scanResult.data.pathData[scannedName] || {};
         const fighterSlots = Object.keys(fighterData);
 
         const fighterUsage = this.slotUsageByFighter.get(fighterName)!;

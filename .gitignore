@@ -39,7 +39,7 @@ desktop.ini
 # Electron
 *.asar
 worker.js
-CSS MANAGER
+CSS MANAGER/
 worker-supabase.js
 feedback-worker.js
 docs/supabase-schema.sql

@@ -103,6 +103,8 @@ export const ModScanner = {
             normalizedPath,
             isFighterSlotFolder,
             includesFighterSlotFolder,
+            isItemSlotFolder,
+            includesItemSlotFolder,
           } = await ModScanner.extractFighterAndSlotInfo(relativePath);
 
           if (fighterName) {
@@ -119,7 +121,10 @@ export const ModScanner = {
             slots.add(slotKey);
             _createPathDataEntry(fighterName, slotKey);
 
-            if (isFile) {
+            // Item slots only rename their cXX folder. Their internal file names
+            // can contain slot-like text unrelated to the folder and must remain
+            // untouched.
+            if (isFile && !includesItemSlotFolder) {
               pathData[fighterName][slotKey].filesToBeModified.push({
                 original: relativePath,
                 normalized: normalizedPath,
@@ -127,9 +132,11 @@ export const ModScanner = {
               });
             }
 
-            // Do not add any subfolders or files within a fighter slot folder to pathsToBeModified, only
-            // the fighter slot folder itself
-            if (includesFighterSlotFolder && !isFighterSlotFolder) {
+            // Only add slot folders themselves, never their contents.
+            if (
+              (includesFighterSlotFolder && !isFighterSlotFolder) ||
+              (includesItemSlotFolder && !isItemSlotFolder)
+            ) {
               return;
             }
 
@@ -172,10 +179,14 @@ export const ModScanner = {
     normalizedPath: string | null;
     isFighterSlotFolder: boolean;
     includesFighterSlotFolder: boolean;
+    isItemSlotFolder: boolean;
+    includesItemSlotFolder: boolean;
   }> {
     let detectedFighterName: string | null = null;
     let isFighterSlotFolder = false;
     let includesFighterSlotFolder = false;
+    let isItemSlotFolder = false;
+    let includesItemSlotFolder = false;
     const fileName = path.basename(filePath);
     const fileDirectory = path.dirname(filePath);
 
@@ -193,6 +204,24 @@ export const ModScanner = {
           includesFighterSlotFolder = true;
           isFighterSlotFolder = i === pathParts.length - 1;
 
+          break;
+        }
+      }
+    }
+
+    const itemIndex = pathParts.indexOf('item');
+    const includesItemFolder = itemIndex !== -1;
+
+    if (!includesFighterFolder && includesItemFolder && pathParts.length > itemIndex + 1) {
+      // Keep item entries separate from fighters while preserving their item id.
+      detectedFighterName = `item/${pathParts[itemIndex + 1]}`;
+
+      for (let i = itemIndex + 1; i < pathParts.length; i++) {
+        const part = pathParts[i];
+
+        if (/^c\d{2,3}$/i.test(part)) {
+          includesItemSlotFolder = true;
+          isItemSlotFolder = i === pathParts.length - 1;
           break;
         }
       }
@@ -227,6 +256,8 @@ export const ModScanner = {
         normalizedPath: charaNormalizedPath,
         isFighterSlotFolder: false,
         includesFighterSlotFolder: false,
+        isItemSlotFolder: false,
+        includesItemSlotFolder: false,
         fighterName: await ModScanner.getAccurateFighterName(
           detectedFighterName,
           filePath,
@@ -264,10 +295,14 @@ export const ModScanner = {
       normalizedPath,
       isFighterSlotFolder,
       includesFighterSlotFolder,
-      fighterName: await ModScanner.getAccurateFighterName(
-        detectedFighterName,
-        filePath,
-      ),
+      isItemSlotFolder,
+      includesItemSlotFolder,
+      fighterName: includesItemFolder
+        ? detectedFighterName
+        : await ModScanner.getAccurateFighterName(
+            detectedFighterName,
+            filePath,
+          ),
     };
   },
 

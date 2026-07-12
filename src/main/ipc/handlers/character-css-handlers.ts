@@ -8,10 +8,14 @@ import {
 import {
   CharacterCssLayoutPayload,
   CharacterCssSourceImportPayload,
+  CreateEchoSlotPayload,
+  createEchoSlot,
   DuplicateCharacterCssPayload,
   duplicateCharacterCssEntry,
   getCharacterCssLayoutData,
   importCharacterCssSourceFiles,
+  RemoveEchoSlotPayload,
+  removeEchoSlot,
   RemoveCharacterCssPayload,
   removeCharacterCssEntry,
   saveCharacterCssLayout,
@@ -107,6 +111,30 @@ const CharacterCssHandlers = {
       };
     } catch (error) {
       handleError(error, 'duplicate-character-css-entry');
+      return createErrorResponse(ErrorCodes.MOD_SAVE_ERROR, error.message);
+    }
+  },
+
+  ['create-echo-slot']: async (
+    common: BaseHandlerArg,
+    payload: CreateEchoSlotPayload,
+  ): HandlerResponse<Awaited<ReturnType<typeof createEchoSlot>>> => {
+    try {
+      return await createEchoSlot(payload);
+    } catch (error) {
+      handleError(error, 'create-echo-slot');
+      return createErrorResponse(ErrorCodes.MOD_SAVE_ERROR, error.message);
+    }
+  },
+
+  ['remove-echo-slot']: async (
+    common: BaseHandlerArg,
+    payload: RemoveEchoSlotPayload,
+  ): HandlerResponse<Awaited<ReturnType<typeof removeEchoSlot>>> => {
+    try {
+      return await removeEchoSlot(payload);
+    } catch (error) {
+      handleError(error, 'remove-echo-slot');
       return createErrorResponse(ErrorCodes.MOD_SAVE_ERROR, error.message);
     }
   },

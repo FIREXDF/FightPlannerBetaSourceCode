@@ -405,6 +405,104 @@ export class ConfigGenerator {
     console.log(`Configuration saved to ${configPath}`);
   }
 
+  /**
+   * Reproduces CSK's "Add multiple slots" generator. Unlike the legacy
+   * generator, this walks every slot-bearing fighter subdirectory and uses the
+   * real source slot (c00/c01), which is required by two-model fighters.
+   */
+  async generateCskConfig(
+    slotMappings: Array<{ sourceSlot: string; targetSlot: string }>,
+  ) {
+    const fighterRoot =
+      ConfigGenerator.vanillaData?.dirs?.directories?.fighter?.directories?.[
+        this.fighterName
+      ];
+    if (!fighterRoot) {
+      throw new Error(`No data found for fighter '${this.fighterName}' in vanilla.json`);
+    }
+
+    const config = {
+      'new-dir-infos': [] as string[],
+      'new-dir-infos-base': {} as Record<string, string>,
+      'share-to-vanilla': {} as Record<string, string[]>,
+      'new-dir-files': {} as Record<string, string[]>,
+    };
+    const existingFiles = new Set(
+      (await ModFileOperations.getAllModFiles(this.modDirectory)).map(fixWindowsPath),
+    );
+    const fileArray = ConfigGenerator.vanillaData?.file_array || [];
+    const replaceSlot = (filePath: string, targetSlot: string) =>
+      filePath.replace(slotDetectionRegex, `$1${targetSlot}$3`);
+
+    const addSlotDirectory = (
+      slotDirectory: any,
+      sourcePath: string,
+      targetPath: string,
+      sourceSlot: string,
+      targetSlot: string,
+    ) => {
+      if (!config['new-dir-infos'].includes(targetPath)) {
+        config['new-dir-infos'].push(targetPath);
+      }
+      const targetFiles = (config['new-dir-files'][targetPath] ||= []);
+      const usedSourceFiles = new Set<string>();
+
+      for (const fileIndex of slotDirectory.files || []) {
+        const sourceFile = fileArray[fileIndex];
+        if (!sourceFile || sourceFile.startsWith('0x')) continue;
+        const targetFile = replaceSlot(sourceFile, targetSlot);
+        if (!targetFiles.includes(targetFile)) targetFiles.push(targetFile);
+
+        const normalizedSource = replaceSlot(sourceFile, sourceSlot);
+        if (usedSourceFiles.has(normalizedSource) || existingFiles.has(targetFile)) continue;
+        usedSourceFiles.add(normalizedSource);
+        const sharedTargets = (config['share-to-vanilla'][sourceFile] ||= []);
+        if (!sharedTargets.includes(targetFile)) sharedTargets.push(targetFile);
+      }
+
+      for (const childDir of Object.keys(slotDirectory.directories || {})) {
+        config['new-dir-infos-base'][`${targetPath}/${childDir}`] =
+          `${sourcePath}/${childDir}`;
+      }
+    };
+
+    for (const { sourceSlot, targetSlot } of slotMappings) {
+      if (!/^c\d{2,3}$/.test(sourceSlot) || !/^c\d{2,3}$/.test(targetSlot)) {
+        throw new Error(`Invalid CSK slot mapping: ${sourceSlot}-${targetSlot}`);
+      }
+      const fighterDirectories = (fighterRoot as any).directories || {};
+      const directSource = fighterDirectories[sourceSlot];
+      if (directSource) {
+        addSlotDirectory(
+          directSource,
+          `fighter/${this.fighterName}/${sourceSlot}`,
+          `fighter/${this.fighterName}/${targetSlot}`,
+          sourceSlot,
+          targetSlot,
+        );
+      }
+      for (const [subdirName, subdir] of Object.entries<any>(fighterDirectories)) {
+        const nestedSource = subdir?.directories?.[sourceSlot];
+        if (!nestedSource) continue;
+        addSlotDirectory(
+          nestedSource,
+          `fighter/${this.fighterName}/${subdirName}/${sourceSlot}`,
+          `fighter/${this.fighterName}/${subdirName}/${targetSlot}`,
+          sourceSlot,
+          targetSlot,
+        );
+      }
+    }
+
+    config['new-dir-infos'].sort();
+    Object.values(config['new-dir-files']).forEach((files) => files.sort());
+    Object.values(config['share-to-vanilla']).forEach((files) => files.sort());
+    await ModFileOperations.writeModFile(
+      path.join(this.modDirectory, 'config.json'),
+      JSON.stringify(config, null, 2),
+    );
+  }
+
   private initializeFighterData() {
     const fighterDir =
       ConfigGenerator.vanillaData?.dirs?.directories?.fighter?.directories?.[
