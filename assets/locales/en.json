@@ -96,6 +96,16 @@
     "goToSettings": "Go to Settings"
   },
   "settings": {
+    "marketplace": "Marketplace",
+    "marketplaceTitle": "Marketplace Settings",
+    "discoverDependencyCheck": "Discover Dependency Check",
+    "enableDiscoverDependencyCheck": "Check dependencies before downloading",
+    "discoverDependencyCheckHint": "Warn before installing a mod with missing or disabled requirements.",
+    "discoverNsfwContent": "Discover NSFW Content",
+    "hideNsfwDiscoverMods": "Hide NSFW mods from Discover",
+    "hideNsfwDiscoverModsHint": "Hide NSFW mods from Featured, search results, and Discover pages.",
+    "showNsfwDiscoverPreviews": "Show NSFW previews without blur",
+    "showNsfwDiscoverPreviewsHint": "Show NSFW previews directly when these mods are visible.",
     "title": "App Settings",
     "general": "App",
     "interface": "Interface",

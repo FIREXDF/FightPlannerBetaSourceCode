@@ -148,6 +148,14 @@
         </button>
         <button
           class="sidebar-btn"
+          data-tab="marketplace"
+          data-i18n="sidebar.marketplace"
+          data-i18n-title
+        >
+          <img src="../images/icons/social.svg" alt="Marketplace" />
+        </button>
+        <button
+          class="sidebar-btn"
           data-tab="settings"
           data-i18n="sidebar.settings"
           data-i18n-title
@@ -198,6 +206,11 @@
             <div class="content-box">
               <!-- Content for Downloads tab -->
             </div>
+          </div>
+
+          <!-- Tab Content: Marketplace -->
+          <div class="tab-content" id="tab-marketplace">
+            <!-- This tab will load from tabs/marketplace.html -->
           </div>
 
           <!-- Tab Content: Settings -->
@@ -1729,6 +1742,9 @@
     <script src="../../out/renderer/js/protocol/protocol-listener.js"></script>
     <!-- End Characters Manager -->
     <script src="../../out/renderer/js/stages/stages-manager.js"></script>
+    <script src="../../out/renderer/js/marketplace/social-manager-base.js"></script>
+    <script src="../../out/renderer/js/marketplace/social-gamebanana-manager.js"></script>
+    <script src="../../out/renderer/js/marketplace/marketplace-discover.js"></script>
     <script src="../../out/renderer/js/tabs/tabs-loader.js"></script>
     <script src="../../out/renderer/js/settings/settings-manager.js"></script>
     <script src="../../out/renderer/js/mods/mod-info.js"></script>

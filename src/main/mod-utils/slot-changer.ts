@@ -33,10 +33,10 @@ export class SlotChanger {
   }
 
   private static buildTempPath(
-    normalizedPath: string,
+    originalPath: string,
     currentSlot: string,
   ): string {
-    const tempPathParts = normalizedPath.split(/[/\\]/);
+    const tempPathParts = originalPath.split(/[/\\]/);
     const lastPart = tempPathParts[tempPathParts.length - 1];
 
     tempPathParts[tempPathParts.length - 1] = `.temp_${currentSlot}_${lastPart}`;
@@ -60,7 +60,7 @@ export class SlotChanger {
     return {
       originalPath: this.normalizeRelativePath(pathEntry.original),
       tempPath: this.normalizeRelativePath(
-        this.buildTempPath(pathEntry.normalized, currentSlot),
+        this.buildTempPath(pathEntry.original, currentSlot),
       ),
       finalPath: this.normalizeRelativePath(
         this.buildFinalPath(pathEntry.normalized, newSlot),

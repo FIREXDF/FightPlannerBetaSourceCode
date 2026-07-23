@@ -305,14 +305,18 @@ class UpdateManager {
         throw new Error(result.error || 'Check failed');
       }
 
-      // If updateInfo is present in the result, it means an update was found
-      if (result.updateInfo) {
+      if (result.updateAvailable && result.updateInfo) {
         console.log(
           '[UpdateManager] Update found via manual check:',
           result.updateInfo,
         );
-        this.updateInfo = result.updateInfo;
-        this.showUpdateAvailable(result.updateInfo);
+        // The main process normally emitted update-available before this IPC
+        // call resolved. Only render here as a fallback to avoid duplicate
+        // modals and notifications.
+        if (this.updateInfo?.version !== result.updateInfo.version) {
+          this.updateInfo = result.updateInfo;
+          this.showUpdateAvailable(result.updateInfo);
+        }
       } else {
         console.log('[UpdateManager] No update found via manual check');
         if (window.toastManager) {

@@ -1,7 +1,6 @@
 import { autoUpdater } from 'electron-updater';
 import { app, BrowserWindow } from 'electron';
 import { UpdateInfo } from 'electron-updater';
-import semver from 'semver';
 import store from './store';
 
 export interface UpdateEvents {
@@ -88,7 +87,6 @@ class AutoUpdater {
     autoUpdater.requestHeaders = { 'Cache-Control': 'no-cache' };
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.channel = 'latest';
     if (this.disableUpdateSignatureCheck) {
       if ('verifyUpdateCodeSignature' in autoUpdater) {
         autoUpdater.verifyUpdateCodeSignature = false;
@@ -100,7 +98,12 @@ class AutoUpdater {
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     }
 
-    autoUpdater.allowPrerelease = true;
+    autoUpdater.allowPrerelease = this.updateChannel === 'public-beta';
+    // electron-updater treats "beta6" and "beta7" as different custom
+    // channels. Pinning the public-beta setting to the shared "beta" channel
+    // keeps both legacy and correctly formatted beta versions on one feed.
+    autoUpdater.channel = 'beta';
+    autoUpdater.allowDowngrade = false;
     this.setupEventHandlers();
   }
 
@@ -186,36 +189,32 @@ class AutoUpdater {
     }
 
     try {
-      const previousUpdateInfo = this.updateInfo;
-      this.updateInfo = null;
       const result = await autoUpdater.checkForUpdates();
 
-      if (previousUpdateInfo?.version?.includes('simulator')) {
-        this.updateInfo = previousUpdateInfo;
-      }
-
-      const returnedUpdateInfo = result?.updateInfo ?? null;
-      if (!this.updateInfo && this.isNewerUpdate(returnedUpdateInfo)) {
-        this.updateInfo = returnedUpdateInfo;
-        this.sendToRenderer('update-available', {
-          version: returnedUpdateInfo.version,
-          releaseNotes: returnedUpdateInfo.releaseNotes,
-          releaseDate: returnedUpdateInfo.releaseDate,
-          files: returnedUpdateInfo.files,
-        });
-      }
-
-      if (!this.updateInfo) {
+      if (!result) {
+        this.updateInfo = null;
         return {
-          success: true,
-          updateInfo: null,
-          latestVersion: result?.updateInfo?.version,
+          success: false,
+          error: 'The update service is unavailable',
         };
       }
 
-      return { success: true, updateInfo: this.updateInfo };
+      if (result.isUpdateAvailable) {
+        this.updateInfo = result.updateInfo;
+      } else if (!this.updateInfo?.version.includes('simulator')) {
+        this.updateInfo = null;
+      }
+
+      return {
+        success: true,
+        updateAvailable: result.isUpdateAvailable,
+        updateInfo: result.isUpdateAvailable ? result.updateInfo : null,
+        latestVersion: result.updateInfo.version,
+      };
     } catch (error) {
-      return { success: false, error: error.message };
+      const message =
+        error instanceof Error ? error.message : 'Unknown update error';
+      return { success: false, error: message };
     }
   }
 
@@ -299,8 +298,9 @@ class AutoUpdater {
     this.updateChannel = this.normalizeUpdateChannel(channel);
     store.set('updateChannel', this.updateChannel);
 
-    autoUpdater.allowPrerelease = true;
-    autoUpdater.channel = 'latest';
+    autoUpdater.allowPrerelease = this.updateChannel === 'public-beta';
+    autoUpdater.channel = 'beta';
+    autoUpdater.allowDowngrade = false;
   }
 
   getUpdateChannel() {
@@ -309,33 +309,6 @@ class AutoUpdater {
 
   private normalizeUpdateChannel(_channel: string) {
     return 'public-beta';
-  }
-
-  private isNewerUpdate(updateInfo: UpdateInfo | null): updateInfo is UpdateInfo {
-    if (!updateInfo?.version) {
-      return false;
-    }
-
-    if (this.forceUpdateAvailable) {
-      return true;
-    }
-
-    const currentVersion = app.getVersion();
-    if (updateInfo.version === currentVersion) {
-      return false;
-    }
-
-    const latest = semver.parse(updateInfo.version);
-    const current = semver.parse(currentVersion);
-    if (!latest || !current) {
-      return false;
-    }
-
-    if (semver.gt(latest, current)) {
-      return true;
-    }
-
-    return false;
   }
 
   getUpdateInfo() {

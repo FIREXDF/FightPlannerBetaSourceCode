@@ -57,6 +57,10 @@
   --sidebar-tab-icon: url('../images/icons/downloads.svg');
 }
 
+.sidebar-btn[data-tab='marketplace'] {
+  --sidebar-tab-icon: url('../images/icons/social.svg');
+}
+
 .sidebar-btn[data-tab='settings'] {
   --sidebar-tab-icon: url('../images/icons/settings.svg');
 }

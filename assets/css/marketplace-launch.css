@@ -1,0 +1,33 @@
+.marketplace { flex: 1; min-width: 0; padding: 28px; overflow: auto; }
+.marketplace__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.marketplace__header h1 { margin: 0; color: var(--text-primary); font-size: 24px; letter-spacing: -0.02em; }
+.marketplace__header p { margin: 7px 0 0; color: var(--text-secondary); font-size: 14px; }
+.marketplace__source, .marketplace__page-button, .marketplace__install { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.marketplace__source { padding: 10px 12px; border: 1px solid rgba(var(--accent-rgb), .35); background: var(--bg-accent-subtle); color: var(--accent-color); white-space: nowrap; }
+.marketplace__toolbar { display: flex; gap: 12px; margin-bottom: 20px; }
+.marketplace__search { min-width: 0; flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid var(--border-hover); border-radius: 8px; background: var(--bg-input); color: var(--text-muted); }
+.marketplace__search:focus-within { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .15); }
+.marketplace__search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: inherit; padding: 12px 0; }
+.marketplace__sort { min-width: 160px; padding: 0 12px; border: 1px solid var(--border-hover); border-radius: 8px; background: var(--bg-input); color: var(--text-primary); font: inherit; }
+.marketplace__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.marketplace__card { overflow: hidden; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-card); }
+.marketplace__image { display: block; width: 100%; height: 132px; object-fit: cover; background: var(--bg-tertiary); }
+.marketplace__image-placeholder { display: grid; place-items: center; height: 132px; color: var(--text-muted); font-size: 28px; background: var(--bg-tertiary); }
+.marketplace__body { padding: 14px; }
+.marketplace__category { margin: 0 0 6px; color: var(--accent-color); font-size: 12px; font-weight: 600; }
+.marketplace__name { margin: 0; color: var(--text-primary); font-size: 15px; line-height: 1.35; }
+.marketplace__author { margin: 6px 0 14px; color: var(--text-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marketplace__actions { display: flex; gap: 8px; }
+.marketplace__install { flex: 1; border: 1px solid rgba(var(--accent-rgb), .35); padding: 9px; background: var(--bg-accent-subtle); color: var(--accent-color); }
+.marketplace__install:hover, .marketplace__source:hover { background: rgba(var(--accent-rgb), .18); }
+.marketplace__view { width: 38px; border: 1px solid var(--border-hover); border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer; }
+.marketplace__files { display: grid; gap: 7px; margin-top: 10px; }
+.marketplace__file { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--border-color); border-radius: 7px; color: var(--text-secondary); font-size: 12px; }
+.marketplace__file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.marketplace__file button { flex: 0 0 auto; border: 0; border-radius: 6px; padding: 6px 8px; background: var(--accent-color); color: var(--text-inverse); cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.marketplace__empty { display: grid; place-items: center; min-height: 240px; color: var(--text-muted); text-align: center; }
+.marketplace__pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 24px; }
+.marketplace__page-button { padding: 8px 11px; border: 1px solid var(--border-hover); background: transparent; color: var(--text-secondary); }
+.marketplace__page-button:disabled { cursor: default; opacity: .45; }
+.marketplace__page-label { min-width: 24px; color: var(--text-secondary); font-size: 13px; text-align: center; }
+@media (max-width: 620px) { .marketplace { padding: 20px; } .marketplace__header, .marketplace__toolbar { flex-direction: column; } .marketplace__source, .marketplace__sort { width: 100%; min-height: 42px; } }

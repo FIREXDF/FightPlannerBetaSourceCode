@@ -7,7 +7,6 @@ class SettingsManager {
   readyPromise: Promise<void>;
   lastModsPathWarningPath: string | null;
   pathFixModalOpen: boolean;
-  feedbackLogAttachments: any[];
 
   constructor() {
     this.settings = {
@@ -49,13 +48,15 @@ class SettingsManager {
       startupSplashSoundPath: null,
       appSoundPaths: {},
       appSoundEnabled: {},
+      checkDependenciesOnDiscoverDownload: true,
+      hideNsfwDiscoverMods: false,
+      showNsfwDiscoverPreviews: false,
     };
     this.initialized = false;
     this.tabSwitchingAttached = false;
     this.drivesLoaded = false;
     this.lastModsPathWarningPath = null;
     this.pathFixModalOpen = false;
-    this.feedbackLogAttachments = [];
     this.readyPromise = this.initSettings();
     this.initializeUI();
   }
@@ -327,63 +328,12 @@ class SettingsManager {
       document.querySelector<HTMLTextAreaElement>('#feedback-message');
     const contactInput =
       document.querySelector<HTMLInputElement>('#feedback-contact');
-    const logFileInput =
-      document.querySelector<HTMLInputElement>('#feedback-log-file');
-    const logFileName =
-      document.querySelector<HTMLElement>('#feedback-log-file-name');
-    const chooseLogFileButton =
-      document.querySelector<HTMLButtonElement>('#feedback-choose-log-file');
-    const useCurrentLogsButton =
-      document.querySelector<HTMLButtonElement>('#feedback-use-current-logs');
-    const clearLogFileButton =
-      document.querySelector<HTMLButtonElement>('#feedback-clear-log-file');
     const submitButton =
       document.querySelector<HTMLButtonElement>('#feedback-submit-btn');
 
     if (!form || form.dataset.listenerAttached) {
       return;
     }
-
-    const updateLogFileLabel = () => {
-      const files = Array.from(logFileInput?.files || []);
-      const attachments = this.feedbackLogAttachments;
-      if (logFileName) {
-        const selectedFiles = attachments.length
-          ? attachments
-          : files.map((file) => ({
-              fileName: file.name,
-              size: file.size,
-            }));
-        logFileName.textContent = selectedFiles.length
-          ? this.formatFeedbackLogSelection(selectedFiles)
-          : this.translate('settings.feedbackLogsHint');
-      }
-      if (clearLogFileButton) {
-        clearLogFileButton.hidden = files.length === 0 && attachments.length === 0;
-      }
-    };
-
-    logFileInput?.addEventListener('change', () => {
-      this.feedbackLogAttachments = [];
-      updateLogFileLabel();
-    });
-    chooseLogFileButton?.addEventListener('click', () => {
-      void this.openFeedbackLogsModal(logFileInput, updateLogFileLabel);
-    });
-    useCurrentLogsButton?.addEventListener('click', () => {
-      this.feedbackLogAttachments = [this.createCurrentLogsAttachment()];
-      if (logFileInput) {
-        logFileInput.value = '';
-      }
-      updateLogFileLabel();
-    });
-    clearLogFileButton?.addEventListener('click', () => {
-      if (logFileInput) {
-        logFileInput.value = '';
-      }
-      this.feedbackLogAttachments = [];
-      updateLogFileLabel();
-    });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -402,9 +352,6 @@ class SettingsManager {
 
       try {
         const appInfo = await window.electronAPI?.getAppVersion?.();
-        const logAttachments = this.feedbackLogAttachments.length
-          ? this.feedbackLogAttachments
-          : await this.readFeedbackLogAttachments(logFileInput?.files || null);
         const result = await window.electronAPI?.submitFeedback?.({
           type: (typeInput?.value || 'feedback') as any,
           message,
@@ -412,13 +359,10 @@ class SettingsManager {
           appVersion: appInfo?.version || null,
           locale: window.i18n?.currentLocale || document.documentElement.lang,
           platform: navigator.platform,
-          logAttachments,
         });
 
         if (result?.success) {
           form.reset();
-          this.feedbackLogAttachments = [];
-          updateLogFileLabel();
           this.showToast(this.translate('toasts.feedbackSent'), 'success');
         } else {
           this.showToast(
@@ -428,12 +372,7 @@ class SettingsManager {
         }
       } catch (error) {
         console.error('Failed to submit feedback:', error);
-        this.showToast(
-          error instanceof Error
-            ? error.message
-            : this.translate('toasts.feedbackFailed'),
-          'error',
-        );
+        this.showToast(this.translate('toasts.feedbackFailed'), 'error');
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
@@ -451,262 +390,6 @@ class SettingsManager {
     });
 
     form.dataset.listenerAttached = 'true';
-  }
-
-  async readFeedbackLogAttachments(files: FileList | File[] | null) {
-    const fileList = Array.from(files || []).slice(0, 5);
-    const attachments: any[] = [];
-
-    for (const file of fileList) {
-      attachments.push(await this.readFeedbackLogAttachment(file));
-    }
-
-    return attachments.filter(Boolean);
-  }
-
-  async readFeedbackLogAttachment(file: File | null) {
-    if (!file) {
-      return null;
-    }
-
-    const maxSize = 2 * 1024 * 1024;
-    if (file.size > maxSize) {
-      throw new Error(this.translate('toasts.feedbackLogTooLarge'));
-    }
-
-    const allowedExtensions = ['.log', '.txt', '.json'];
-    const lowerName = file.name.toLowerCase();
-    if (!allowedExtensions.some((extension) => lowerName.endsWith(extension))) {
-      throw new Error(this.translate('toasts.feedbackLogInvalidType'));
-    }
-
-    const buffer = await file.arrayBuffer();
-    return {
-      fileName: file.name,
-      mimeType: file.type || 'text/plain',
-      size: file.size,
-      contentBase64: this.arrayBufferToBase64(buffer),
-    };
-  }
-
-  async openFeedbackLogsModal(
-    logFileInput: HTMLInputElement | null,
-    onSelected: () => void,
-  ) {
-    if (!window.modalManager?.showCustomModal) {
-      logFileInput?.click();
-      return;
-    }
-
-    const body = document.createElement('div');
-    body.className = 'feedback-log-picker-modal';
-    body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
-      this.translate('settings.feedbackLogsLoading'),
-    )}</div>`;
-
-    const modal = window.modalManager.showCustomModal({
-      id: 'feedback-log-picker-modal',
-      title: this.translate('settings.feedbackLogsModalTitle'),
-      body,
-      size: 'medium',
-      buttons: [
-        {
-          text: this.translate('settings.feedbackSelectLogFile'),
-          type: 'secondary',
-          closeOnClick: false,
-          onClick: () => {
-            logFileInput?.click();
-          },
-        },
-        {
-          text: this.translate('common.cancel') || 'Cancel',
-          type: 'secondary',
-        },
-      ],
-    });
-
-    logFileInput?.addEventListener(
-      'change',
-      () => {
-        window.modalManager.closeModal(modal, {
-          onModalClosed: () => modal.remove(),
-        });
-      },
-      { once: true },
-    );
-
-    try {
-      const result = await window.electronAPI?.listLogFiles?.();
-      const files = result?.success ? result.files || [] : [];
-
-      if (files.length === 0) {
-        body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
-          this.translate('settings.feedbackNoSavedLogs'),
-        )}</div>`;
-        return;
-      }
-
-      body.innerHTML = `
-        <p class="feedback-log-picker-intro">${this.escapeHtml(
-          this.translate('settings.feedbackLogsHint'),
-        )}</p>
-        <div class="feedback-log-picker-list">
-          ${files
-            .map(
-              (file) => `
-                <label class="feedback-log-picker-row" data-log-path="${this.escapeHtml(file.filePath)}" data-log-name="${this.escapeHtml(file.name)}">
-                  <input type="checkbox" data-log-checkbox />
-                  <i class="bi bi-file-earmark-text"></i>
-                  <span>
-                    <strong>${this.escapeHtml(new Date(file.modifiedAt).toLocaleString())}</strong>
-                    <small>${this.escapeHtml(file.name)} - ${this.escapeHtml(this.formatBytes(file.size))}</small>
-                  </span>
-                </label>
-              `,
-            )
-            .join('')}
-        </div>
-        <button class="settings-btn feedback-log-picker-attach" type="button" data-log-attach>
-          <i class="bi bi-paperclip"></i>
-          <span>${this.escapeHtml(this.translate('settings.feedbackAttachSelectedLogs'))}</span>
-        </button>
-      `;
-
-      body
-        .querySelectorAll<HTMLElement>('.feedback-log-picker-row')
-        .forEach((row) => {
-          const checkbox = row.querySelector<HTMLInputElement>(
-            '[data-log-checkbox]',
-          );
-          checkbox?.addEventListener('change', () => {
-            row.classList.toggle('is-selected', checkbox.checked);
-          });
-        });
-
-      body
-        .querySelector<HTMLButtonElement>('[data-log-attach]')
-        ?.addEventListener('click', async () => {
-          const selectedRows = Array.from(
-            body.querySelectorAll<HTMLElement>('.feedback-log-picker-row'),
-          )
-            .filter(
-              (row) =>
-                row.querySelector<HTMLInputElement>('[data-log-checkbox]')
-                  ?.checked,
-            )
-            .slice(0, 5);
-          if (selectedRows.length === 0) {
-            this.showToast(
-              this.translate('toasts.feedbackNoLogSelected'),
-              'info',
-            );
-            return;
-          }
-
-          const attachments: any[] = [];
-          for (const row of selectedRows) {
-            const filePath = row.dataset.logPath;
-            if (!filePath) {
-              continue;
-            }
-
-            const readResult = await window.electronAPI?.readLogFile?.(filePath);
-            if (!readResult?.success) {
-              const readError =
-                readResult && 'error' in readResult ? readResult.error : null;
-              this.showToast(
-                readError || this.translate('toasts.failedToOpenLogsFolder'),
-                'error',
-              );
-              return;
-            }
-
-            attachments.push(this.createTextLogAttachment(
-              row.dataset.logName || 'fightplanner.log',
-              readResult.content || '',
-            ));
-          }
-
-          this.feedbackLogAttachments = attachments;
-          if (logFileInput) {
-            logFileInput.value = '';
-          }
-          onSelected();
-          window.modalManager.closeModal(modal, {
-            onModalClosed: () => modal.remove(),
-          });
-        });
-    } catch (error) {
-      console.error('Failed to load feedback log files:', error);
-      body.innerHTML = `<div class="feedback-log-picker-empty">${this.escapeHtml(
-        this.translate('toasts.failedToOpenLogsFolder'),
-      )}</div>`;
-    }
-  }
-
-  createCurrentLogsAttachment() {
-    const logs = window.logsManager?.logs || [];
-    const lines = logs.map((log) => {
-      const timestamp =
-        log.timestamp instanceof Date
-          ? log.timestamp.toISOString()
-          : new Date(log.timestamp).toISOString();
-      return `[${timestamp}] [${String(log.level).toUpperCase()}] [${log.source}] ${log.message}`;
-    });
-    const content =
-      lines.join('\n') ||
-      `[${new Date().toISOString()}] [INFO] [renderer] No logs captured.`;
-    const fileName = `fightplanner-logs-${new Date()
-      .toISOString()
-      .replace(/[:.]/g, '-')}.log`;
-    return this.createTextLogAttachment(fileName, content);
-  }
-
-  createTextLogAttachment(fileName: string, content: string) {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(content);
-    const maxSize = 2 * 1024 * 1024;
-    const trimmedBytes =
-      bytes.length > maxSize ? bytes.slice(bytes.length - maxSize) : bytes;
-
-    return {
-      fileName,
-      mimeType: 'text/plain',
-      size: trimmedBytes.byteLength,
-      contentBase64: this.arrayBufferToBase64(trimmedBytes.buffer),
-    };
-  }
-
-  formatFeedbackLogSelection(logs: Array<{ fileName: string; size: number }>) {
-    const totalSize = logs.reduce((sum, log) => sum + (log.size || 0), 0);
-    if (logs.length === 1) {
-      return `${logs[0].fileName} (${this.formatBytes(logs[0].size)})`;
-    }
-
-    return `${this.translate('settings.feedbackSelectedLogs')
-      .replace('{count}', String(logs.length))
-      .replace('{size}', this.formatBytes(totalSize))}`;
-  }
-
-  arrayBufferToBase64(buffer: ArrayBuffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let index = 0; index < bytes.length; index += chunkSize) {
-      const chunk = bytes.subarray(index, index + chunkSize);
-      binary += String.fromCharCode(...chunk);
-    }
-    return btoa(binary);
-  }
-
-  formatBytes(bytes: number) {
-    if (bytes < 1024) {
-      return `${bytes} B`;
-    }
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
   organizeSettingsLayout() {
@@ -1173,39 +856,6 @@ class SettingsManager {
       console.log('Browse game button listener attached');
     }
 
-    const emulatorPathInput =
-      document.querySelector<HTMLInputElement>('#emulator-path');
-    if (
-      emulatorPathInput &&
-      !emulatorPathInput.dataset.manualListenerAttached
-    ) {
-      emulatorPathInput.addEventListener('change', () =>
-        this.updateEmulatorPathFromInput(emulatorPathInput.value),
-      );
-      emulatorPathInput.dataset.manualListenerAttached = 'true';
-    }
-
-    const gamePathInput = document.querySelector<HTMLInputElement>('#game-path');
-    if (gamePathInput && !gamePathInput.dataset.manualListenerAttached) {
-      gamePathInput.addEventListener('change', () =>
-        this.updateGamePathFromInput(gamePathInput.value),
-      );
-      gamePathInput.dataset.manualListenerAttached = 'true';
-    }
-
-    const switchEmulatorSetupBtn = document.querySelector<HTMLElement>(
-      '#switch-emulator-setup-btn',
-    );
-    if (
-      switchEmulatorSetupBtn &&
-      !switchEmulatorSetupBtn.dataset.listenerAttached
-    ) {
-      switchEmulatorSetupBtn.addEventListener('click', () =>
-        this.showEmulatorSwitchModal(),
-      );
-      switchEmulatorSetupBtn.dataset.listenerAttached = 'true';
-    }
-
     const restartTutorialBtn = document.querySelector<HTMLElement>(
       '#restart-tutorial-btn',
     );
@@ -1239,20 +889,6 @@ class SettingsManager {
       });
       restartTutorialModsBtn.dataset.listenerAttached = 'true';
       console.log('Restart tutorial + mods redirect button listener attached');
-    }
-
-    const openInAppTutorialBtn = document.querySelector<HTMLElement>(
-      '#open-in-app-tutorial-btn',
-    );
-    if (
-      openInAppTutorialBtn &&
-      !openInAppTutorialBtn.dataset.listenerAttached
-    ) {
-      openInAppTutorialBtn.addEventListener('click', () => {
-        window.tutorial?.showInApp?.();
-      });
-      openInAppTutorialBtn.dataset.listenerAttached = 'true';
-      console.log('Open in-app tutorial button listener attached');
     }
 
     const clearTempFilesBtn = document.querySelector<HTMLElement>(
@@ -2269,6 +1905,42 @@ class SettingsManager {
       resetStoreBtn.dataset.listenerAttached = 'true';
     }
 
+    const discoverSettings = [
+      {
+        selector: '#check-dependencies-on-discover-download-enabled',
+        key: 'checkDependenciesOnDiscoverDownload',
+        defaultValue: true,
+      },
+      {
+        selector: '#hide-nsfw-discover-mods-enabled',
+        key: 'hideNsfwDiscoverMods',
+        defaultValue: false,
+      },
+      {
+        selector: '#show-nsfw-discover-previews-enabled',
+        key: 'showNsfwDiscoverPreviews',
+        defaultValue: false,
+      },
+    ];
+
+    discoverSettings.forEach(({ selector, key, defaultValue }) => {
+      const toggle = document.querySelector<HTMLInputElement>(selector);
+      if (!toggle) return;
+
+      toggle.checked = this.settings[key] ?? defaultValue;
+      if (toggle.dataset.listenerAttached) return;
+
+      toggle.addEventListener('change', async () => {
+        this.settings[key] = toggle.checked;
+        await window.electronAPI.store.set(key, toggle.checked);
+
+        if (key === 'hideNsfwDiscoverMods' || key === 'showNsfwDiscoverPreviews') {
+          window.marketplaceDiscover?.refreshGameBananaFilteredContent?.();
+        }
+      });
+      toggle.dataset.listenerAttached = 'true';
+    });
+
   }
 
   updateDeveloperModeUI() {
@@ -2929,18 +2601,6 @@ class SettingsManager {
     }
   }
 
-  async updateEmulatorPathFromInput(value) {
-    const file = value.trim();
-    if (!file || file === this.settings.emulatorPath) {
-      this.updateEmulatorPathUI();
-      return;
-    }
-
-    this.settings.emulatorPath = file;
-    await this.saveSettings();
-    this.updateEmulatorPathUI();
-  }
-
   async browseGamePath() {
     if (!window.electronAPI || !window.electronAPI.selectGameFile) {
       console.error('Electron API not available');
@@ -2953,570 +2613,6 @@ class SettingsManager {
       this.saveSettings();
       this.updateGamePathUI();
     }
-  }
-
-  async updateGamePathFromInput(value) {
-    const file = value.trim();
-    if (!file || file === this.settings.gamePath) {
-      this.updateGamePathUI();
-      return;
-    }
-
-    this.settings.gamePath = file;
-    await this.saveSettings();
-    this.updateGamePathUI();
-  }
-
-  joinUserPath(basePath: string, ...parts: string[]) {
-    const separator = basePath.includes('\\') ? '\\' : '/';
-    const cleanBase = basePath.replace(/[\\/]+$/, '');
-    const cleanParts = parts.map((part) =>
-      String(part).replace(/^[\\/]+|[\\/]+$/g, ''),
-    );
-    return [cleanBase, ...cleanParts].filter(Boolean).join(separator);
-  }
-
-  dirnameUserPath(value: string) {
-    return value.replace(/[\\/]+$/, '').replace(/[\\/][^\\/]*$/, '');
-  }
-
-  basenameUserPath(value: string) {
-    const clean = value.replace(/[\\/]+$/, '');
-    const parts = clean.split(/[\\/]+/);
-    return parts[parts.length - 1] || '';
-  }
-
-  resolveEmulatorSdRoot(emulatorType: string, dataPath: string) {
-    const cleanPath = dataPath.replace(/[\\/]+$/, '');
-    const baseName = this.basenameUserPath(cleanPath).toLowerCase();
-
-    if (baseName === 'ultimate') {
-      return {
-        sdRoot: this.dirnameUserPath(cleanPath),
-        ultimatePath: cleanPath,
-      };
-    }
-
-    if (baseName === 'sdmc' || baseName === 'sdcard') {
-      return {
-        sdRoot: cleanPath,
-        ultimatePath: this.joinUserPath(cleanPath, 'ultimate'),
-      };
-    }
-
-    const sdFolder = emulatorType === 'ryujinx' ? 'sdcard' : 'sdmc';
-    return {
-      sdRoot: this.joinUserPath(cleanPath, sdFolder),
-      ultimatePath: this.joinUserPath(cleanPath, sdFolder, 'ultimate'),
-    };
-  }
-
-  getEmulatorDataPathStoreKey(emulatorType: string) {
-    return emulatorType === 'ryujinx'
-      ? 'tutorial.ryujinxPath'
-      : 'tutorial.yuzuPath';
-  }
-
-  buildEmulatorLibraryPaths(emulatorType: string, dataPath: string) {
-    const { sdRoot, ultimatePath } = this.resolveEmulatorSdRoot(
-      emulatorType,
-      dataPath,
-    );
-    const contentsPath = this.joinUserPath(
-      sdRoot,
-      'atmosphere',
-      'contents',
-      '01006A800016E000',
-    );
-
-    return {
-      contentsPath,
-      ultimateModsPath: this.joinUserPath(ultimatePath, 'mods'),
-      modsPath: this.joinUserPath(ultimatePath, 'mods'),
-      pluginsPath: this.joinUserPath(
-        contentsPath,
-        'romfs',
-        'skyline',
-        'plugins',
-      ),
-      arcropolisPath: this.joinUserPath(ultimatePath, 'arcropolis'),
-    };
-  }
-
-  async showEmulatorSwitchModal() {
-    if (!window.modalManager?.showCustomModal) {
-      this.showToast(this.translate('settings.switchEmulatorSetup'), 'info');
-      return;
-    }
-
-    const currentType = this.normalizeEmulatorType(this.settings.emulatorType);
-    const currentDataPath =
-      ((await window.electronAPI?.store?.get?.(
-        this.getEmulatorDataPathStoreKey(currentType),
-      )) as string | null) || '';
-
-    const body = document.createElement('div');
-    body.className = 'emulator-switch-modal';
-    body.innerHTML = `
-      <div class="settings-section" style="margin-top: 0;">
-        <label class="settings-label">${this.escapeHtml(this.translate('settings.emulatorType'))}</label>
-        <div class="settings-input-group" style="gap: 10px;">
-          <label class="settings-switch-row" style="flex: 1; display: flex; gap: 8px; align-items: center;">
-            <input type="radio" name="switch-emulator-type" value="yuzu" ${currentType === 'yuzu' ? 'checked' : ''}>
-            <span>${this.escapeHtml(this.translate('settings.emulatorTypeYuzu'))}</span>
-          </label>
-          <label class="settings-switch-row" style="flex: 1; display: flex; gap: 8px; align-items: center;">
-            <input type="radio" name="switch-emulator-type" value="ryujinx" ${currentType === 'ryujinx' ? 'checked' : ''}>
-            <span>${this.escapeHtml(this.translate('settings.emulatorTypeRyujinx'))}</span>
-          </label>
-        </div>
-      </div>
-      <div class="settings-section">
-        <label class="settings-label">${this.escapeHtml(this.translate('settings.emulatorPath'))}</label>
-        <div class="settings-input-group">
-          <input class="settings-input" data-switch-emulator-path type="text" value="${this.escapeHtml(this.settings.emulatorPath || '')}" placeholder="${this.escapeHtml(this.translate('settings.emulatorPathPlaceholder'))}">
-          <button class="settings-btn" type="button" data-switch-browse-emulator><i class="bi bi-file-earmark"></i><span>${this.escapeHtml(this.translate('settings.browse'))}</span></button>
-        </div>
-      </div>
-      <div class="settings-section">
-        <label class="settings-label">${this.escapeHtml(this.translate('settings.gamePath'))}</label>
-        <div class="settings-input-group">
-          <input class="settings-input" data-switch-game-path type="text" value="${this.escapeHtml(this.settings.gamePath || '')}" placeholder="${this.escapeHtml(this.translate('settings.gamePathPlaceholder'))}">
-          <button class="settings-btn" type="button" data-switch-browse-game><i class="bi bi-file-earmark-play"></i><span>${this.escapeHtml(this.translate('settings.browse'))}</span></button>
-        </div>
-      </div>
-      <div class="settings-section">
-        <label class="settings-label">${this.escapeHtml(this.translate('settings.emulatorDataPath'))}</label>
-        <div class="settings-input-group">
-          <input class="settings-input" data-switch-data-path type="text" value="${this.escapeHtml(currentDataPath)}" placeholder="${this.escapeHtml(this.translate('settings.emulatorDataPathPlaceholder'))}">
-          <button class="settings-btn" type="button" data-switch-browse-data><i class="bi bi-folder2-open"></i><span>${this.escapeHtml(this.translate('settings.browse'))}</span></button>
-        </div>
-        <p class="settings-hint" data-switch-emulator-hint>${this.escapeHtml(this.translate('settings.emulatorDataPathHint'))}</p>
-      </div>
-      <div data-switch-emulator-status style="margin-top: 10px;"></div>
-    `;
-
-    const modal = window.modalManager.showCustomModal({
-      id: 'switch-emulator-setup-modal',
-      title: this.translate('settings.switchEmulatorSetupTitle'),
-      body,
-      size: 'medium',
-      buttons: [
-        {
-          text: this.translate('settings.saveEmulatorSetup'),
-          type: 'primary',
-          closeOnClick: false,
-          onClick: async (_event, modalElement) => {
-            const saved = await this.saveSwitchedEmulatorConfig(modalElement);
-            if (!saved) {
-              return;
-            }
-            window.modalManager.closeModal(modalElement, {
-              onModalClosed: () => modalElement.remove(),
-            });
-          },
-        },
-        {
-          text: this.translate('common.cancel') || 'Cancel',
-          type: 'secondary',
-        },
-      ],
-    });
-
-    modal
-      .querySelector<HTMLElement>('[data-switch-browse-emulator]')
-      ?.addEventListener('click', async () => {
-        const file = await window.electronAPI?.selectEmulatorFile?.();
-        const input = modal.querySelector<HTMLInputElement>(
-          '[data-switch-emulator-path]',
-        );
-        if (file && input) input.value = file;
-      });
-
-    modal
-      .querySelector<HTMLElement>('[data-switch-browse-game]')
-      ?.addEventListener('click', async () => {
-        const file = await window.electronAPI?.selectGameFile?.();
-        const input = modal.querySelector<HTMLInputElement>(
-          '[data-switch-game-path]',
-        );
-        if (file && input) input.value = file;
-      });
-
-    modal
-      .querySelector<HTMLElement>('[data-switch-browse-data]')
-      ?.addEventListener('click', async () => {
-        const folder = await window.electronAPI?.selectFolder?.();
-        const input = modal.querySelector<HTMLInputElement>(
-          '[data-switch-data-path]',
-        );
-        if (folder && input) input.value = folder;
-      });
-  }
-
-  async saveSwitchedEmulatorConfig(modalElement: HTMLElement) {
-    const emulatorType =
-      modalElement.querySelector<HTMLInputElement>(
-        'input[name="switch-emulator-type"]:checked',
-      )?.value || 'yuzu';
-    const emulatorPath =
-      modalElement
-        .querySelector<HTMLInputElement>('[data-switch-emulator-path]')
-        ?.value.trim() || '';
-    const gamePath =
-      modalElement
-        .querySelector<HTMLInputElement>('[data-switch-game-path]')
-        ?.value.trim() || '';
-    const dataPath =
-      modalElement
-        .querySelector<HTMLInputElement>('[data-switch-data-path]')
-        ?.value.trim() || '';
-    const status = modalElement.querySelector<HTMLElement>(
-      '[data-switch-emulator-status]',
-    );
-
-    if (!emulatorPath || !gamePath || !dataPath) {
-      this.showToast(this.translate('settings.emulatorSetupPathsRequired'), 'error');
-      return false;
-    }
-
-    const paths = this.buildEmulatorLibraryPaths(emulatorType, dataPath);
-    const arcropolisResult =
-      await window.electronAPI?.checkPathAccessible?.(paths.arcropolisPath);
-    const arcropolisInstalled = Boolean(
-      arcropolisResult?.success && arcropolisResult.accessible,
-    );
-
-    this.settings.emulatorType = this.normalizeEmulatorType(emulatorType);
-    this.settings.emulatorPath = emulatorPath;
-    this.settings.gamePath = gamePath;
-    this.settings.modsPath = paths.modsPath;
-    this.settings.pluginsPath = paths.pluginsPath;
-    this.settings.appRunMode = 'emulator';
-    await window.electronAPI.store.set(
-      this.getEmulatorDataPathStoreKey(this.settings.emulatorType),
-      dataPath,
-    );
-    await this.saveSettings();
-
-    this.updateEmulatorTypeUI();
-    this.updateEmulatorPathUI();
-    this.updateGamePathUI();
-    this.updateModsFolderUI();
-    this.updatePluginsFolderUI();
-    await this.refreshCurrentLibraryLists();
-
-    if (!arcropolisInstalled) {
-      this.renderArcropolisMissingPanel(
-        modalElement,
-        status,
-        emulatorType,
-        dataPath,
-        paths,
-      );
-      this.showToast(this.translate('settings.arcropolisMissingTitle'), 'info');
-      return false;
-    }
-
-    this.showToast(this.translate('settings.emulatorSetupSaved'), 'success');
-    return true;
-  }
-
-  renderArcropolisMissingPanel(
-    modalElement: HTMLElement,
-    status: HTMLElement | null,
-    emulatorType: string,
-    dataPath: string,
-    paths: any,
-  ) {
-    if (!status) {
-      return;
-    }
-
-    status.innerHTML = `
-      <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 10px; padding: 14px;">
-        <strong style="color: #ffc107;">${this.escapeHtml(this.translate('settings.arcropolisMissingTitle'))}</strong>
-        <p class="settings-hint" style="margin: 6px 0 12px;">${this.escapeHtml(this.translate('settings.arcropolisMissingDesc'))}</p>
-        <div data-arcropolis-install-progress style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;"></div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="settings-btn" type="button" data-install-arcropolis>
-            <i class="bi bi-download"></i>
-            <span>${this.escapeHtml(this.translate('settings.installArcropolisNow'))}</span>
-          </button>
-          <button class="settings-btn" type="button" data-recheck-arcropolis>
-            <i class="bi bi-arrow-clockwise"></i>
-            <span>${this.escapeHtml(this.translate('settings.recheckArcropolis'))}</span>
-          </button>
-        </div>
-      </div>
-    `;
-
-    status
-      .querySelector<HTMLElement>('[data-install-arcropolis]')
-      ?.addEventListener('click', () => {
-        void this.installArcropolisForEmulatorModal(
-          modalElement,
-          status,
-          emulatorType,
-          dataPath,
-          paths,
-        );
-      });
-
-    status
-      .querySelector<HTMLElement>('[data-recheck-arcropolis]')
-      ?.addEventListener('click', async () => {
-        await this.recheckArcropolisForEmulatorModal(status, paths);
-      });
-  }
-
-  loadArcropolisHintAnimation(container: HTMLElement) {
-    const target = container.querySelector<HTMLElement>(
-      '#switch-emulator-arcropolis-lottie',
-    );
-    if (!target || !window.lottie?.loadAnimation) {
-      return;
-    }
-
-    try {
-      window.lottie.loadAnimation({
-        container: target,
-        renderer: 'svg',
-        loop: true,
-        autoplay: true,
-        path: '../images/tutorial-arcropolisPC.json',
-      });
-    } catch (error) {
-      console.error('Failed to load ARCropolis hint animation:', error);
-    }
-  }
-
-  renderArcropolisInstallGuidance(status: HTMLElement) {
-    status.innerHTML = `
-      <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 10px; padding: 14px;">
-        <strong style="color: #ffc107;">${this.escapeHtml(this.translate('settings.arcropolisInstallingTitle'))}</strong>
-        <div id="switch-emulator-arcropolis-lottie" style="height: 180px; display: flex; align-items: center; justify-content: center; margin: 8px 0 12px;"></div>
-        <div style="background: rgba(255, 193, 7, 0.08); border: 1px solid rgba(255, 193, 7, 0.18); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-          <p style="color: #ffc107; margin: 0 0 8px; font-weight: 600;">
-            <i class="bi bi-info-circle-fill"></i> ${this.escapeHtml(this.translate('settings.arcropolisLookForTitle'))}
-          </p>
-          <ul style="color: var(--text-secondary); margin: 0; padding-left: 18px; line-height: 1.6;">
-            <li>${this.escapeHtml(this.translate('settings.arcropolisLookForLaunch'))}</li>
-            <li>${this.escapeHtml(this.translate('settings.arcropolisLookForCorner'))}</li>
-          </ul>
-        </div>
-        <div data-arcropolis-install-progress style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px;"></div>
-      </div>
-    `;
-    this.loadArcropolisHintAnimation(status);
-  }
-
-  async installArcropolisForEmulatorModal(
-    modalElement: HTMLElement,
-    status: HTMLElement,
-    emulatorType: string,
-    dataPath: string,
-    paths: any,
-  ) {
-    this.renderArcropolisInstallGuidance(status);
-    const progress = status.querySelector<HTMLElement>(
-      '[data-arcropolis-install-progress]',
-    );
-
-    const setProgress = (message: string) => {
-      if (progress) {
-        progress.textContent = message;
-      }
-    };
-
-    try {
-      if (
-        !window.electronAPI?.getSkylineRelease ||
-        !window.electronAPI?.getGithubRelease ||
-        !window.electronAPI?.downloadArcropolis ||
-        !window.electronAPI?.extractSkyline ||
-        !window.electronAPI?.extractArcropolis ||
-        !window.electronAPI?.createDirectory
-      ) {
-        throw new Error('ARCropolis installer is not available');
-      }
-
-      setProgress(this.translate('settings.arcropolisDownloadingSkyline'));
-      const skylineRelease = await window.electronAPI.getSkylineRelease();
-      if (!skylineRelease.success) {
-        throw new Error('Failed to fetch Skyline release');
-      }
-
-      setProgress(this.translate('settings.arcropolisDownloadingArcropolis'));
-      const arcropolisRelease = await window.electronAPI.getGithubRelease();
-      if (!arcropolisRelease.success) {
-        throw new Error('Failed to fetch ARCropolis release');
-      }
-
-      const tempDir = await window.electronAPI.getTempDir?.();
-      if (!tempDir?.success) {
-        throw new Error('Failed to get temp folder');
-      }
-
-      const skylineTempPath = await window.electronAPI.joinPath?.(
-        tempDir.path,
-        `skyline-${Date.now()}.zip`,
-      );
-      const arcropolisTempPath = await window.electronAPI.joinPath?.(
-        tempDir.path,
-        `arcropolis-${Date.now()}.zip`,
-      );
-      if (!skylineTempPath?.success || !arcropolisTempPath?.success) {
-        throw new Error('Failed to prepare downloads');
-      }
-
-      const skylineDownload = await window.electronAPI.downloadArcropolis(
-        skylineRelease.downloadUrl,
-        skylineTempPath.path,
-      );
-      if (!skylineDownload.success) {
-        throw new Error('Skyline download failed');
-      }
-
-      const arcropolisDownload = await window.electronAPI.downloadArcropolis(
-        arcropolisRelease.downloadUrl,
-        arcropolisTempPath.path,
-      );
-      if (!arcropolisDownload.success) {
-        throw new Error('ARCropolis download failed');
-      }
-
-      setProgress(this.translate('settings.arcropolisInstalling'));
-      await window.electronAPI.createDirectory(paths.ultimateModsPath);
-      await window.electronAPI.createDirectory(paths.contentsPath);
-
-      const skylineExtract = await window.electronAPI.extractSkyline(
-        skylineDownload.path,
-        paths.contentsPath,
-      );
-      if (!skylineExtract.success) {
-        throw new Error('Skyline extraction failed');
-      }
-
-      const arcropolisExtract = await window.electronAPI.extractArcropolis(
-        arcropolisDownload.path,
-        paths.contentsPath,
-      );
-      if (!arcropolisExtract.success) {
-        throw new Error('ARCropolis extraction failed');
-      }
-
-      await window.electronAPI.createDirectory(paths.pluginsPath);
-      this.renderArcropolisVerificationQuestion(modalElement, status, paths);
-      this.showToast(this.translate('settings.arcropolisInstalled'), 'success');
-    } catch (error) {
-      console.error('Failed to install ARCropolis from emulator switch modal:', {
-        emulatorType,
-        dataPath,
-        error,
-      });
-      setProgress(
-        `${this.translate('settings.arcropolisInstallFailed')}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      this.renderArcropolisDiscordHelp(status);
-    }
-  }
-
-  renderArcropolisVerificationQuestion(
-    modalElement: HTMLElement,
-    status: HTMLElement,
-    paths: any,
-  ) {
-    status.insertAdjacentHTML(
-      'beforeend',
-      `
-        <div data-arcropolis-verification style="margin-top: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 12px;">
-          <p style="color: var(--text-primary); margin: 0 0 12px;">${this.escapeHtml(this.translate('settings.arcropolisDidItWork'))}</p>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="settings-btn" type="button" data-arcropolis-works>
-              <i class="bi bi-check-circle"></i>
-              <span>${this.escapeHtml(this.translate('settings.arcropolisWorksYes'))}</span>
-            </button>
-            <button class="settings-btn" type="button" data-arcropolis-not-working>
-              <i class="bi bi-x-circle"></i>
-              <span>${this.escapeHtml(this.translate('settings.arcropolisWorksNo'))}</span>
-            </button>
-          </div>
-        </div>
-      `,
-    );
-
-    status
-      .querySelector<HTMLElement>('[data-arcropolis-works]')
-      ?.addEventListener('click', () => {
-        this.showToast(this.translate('settings.emulatorSetupSaved'), 'success');
-        window.modalManager?.closeModal(modalElement, {
-          onModalClosed: () => modalElement.remove(),
-        });
-      });
-
-    status
-      .querySelector<HTMLElement>('[data-arcropolis-not-working]')
-      ?.addEventListener('click', () => {
-        this.renderArcropolisDiscordHelp(status);
-      });
-  }
-
-  renderArcropolisDiscordHelp(status: HTMLElement) {
-    status.insertAdjacentHTML(
-      'beforeend',
-      `
-        <div style="margin-top: 12px; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 10px; padding: 12px;">
-          <strong style="color: #ff4d4d;">${this.escapeHtml(this.translate('settings.arcropolisNeedHelpTitle'))}</strong>
-          <p class="settings-hint" style="margin: 6px 0 12px;">${this.escapeHtml(this.translate('settings.arcropolisNeedHelpDesc'))}</p>
-          <button class="settings-btn" type="button" data-open-arcropolis-discord>
-            <i class="bi bi-discord"></i>
-            <span>${this.escapeHtml(this.translate('settings.openDiscord'))}</span>
-          </button>
-        </div>
-      `,
-    );
-    status
-      .querySelector<HTMLElement>('[data-open-arcropolis-discord]')
-      ?.addEventListener('click', () => {
-        void window.electronAPI?.openUrl?.('https://discord.gg/2zT5Rg46bG');
-      });
-  }
-
-  async recheckArcropolisForEmulatorModal(status: HTMLElement, paths: any) {
-    const progress = status.querySelector<HTMLElement>(
-      '[data-arcropolis-install-progress]',
-    );
-    if (progress) {
-      progress.textContent = this.translate('settings.arcropolisChecking');
-    }
-
-    const arcropolisResult =
-      await window.electronAPI?.checkPathAccessible?.(paths.arcropolisPath);
-    const arcropolisInstalled = Boolean(
-      arcropolisResult?.success && arcropolisResult.accessible,
-    );
-
-    if (!arcropolisInstalled) {
-      if (progress) {
-        progress.textContent = this.translate('settings.arcropolisStillMissing');
-      }
-      return false;
-    }
-
-    if (progress) {
-      progress.textContent = this.translate('settings.arcropolisReady');
-    }
-    status.insertAdjacentHTML(
-      'beforeend',
-      `<div style="margin-top: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 12px; color: var(--text-primary);">
-        <i class="bi bi-check-circle-fill" style="color: #4caf50;"></i>
-        ${this.escapeHtml(this.translate('settings.arcropolisReadyDesc'))}
-      </div>`,
-    );
-    return true;
   }
 
   updateModsFolderUI() {
@@ -4943,6 +4039,12 @@ class SettingsManager {
       const appSoundPaths = await window.electronAPI.store.get('appSoundPaths');
       const appSoundEnabled =
         await window.electronAPI.store.get('appSoundEnabled');
+      const checkDependenciesOnDiscoverDownload =
+        await window.electronAPI.store.get('checkDependenciesOnDiscoverDownload');
+      const hideNsfwDiscoverMods =
+        await window.electronAPI.store.get('hideNsfwDiscoverMods');
+      const showNsfwDiscoverPreviews =
+        await window.electronAPI.store.get('showNsfwDiscoverPreviews');
       const normalizedSwitchTransferMethod =
         this.normalizeSwitchTransferMethod(switchTransferMethod);
       return {
@@ -4999,6 +4101,10 @@ class SettingsManager {
           appSoundEnabled && typeof appSoundEnabled === 'object'
             ? appSoundEnabled
             : {},
+        checkDependenciesOnDiscoverDownload:
+          checkDependenciesOnDiscoverDownload !== false,
+        hideNsfwDiscoverMods: hideNsfwDiscoverMods === true,
+        showNsfwDiscoverPreviews: showNsfwDiscoverPreviews === true,
       };
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -5037,6 +4143,9 @@ class SettingsManager {
         startupSplashSoundPath: null,
         appSoundPaths: {},
         appSoundEnabled: {},
+        checkDependenciesOnDiscoverDownload: true,
+        hideNsfwDiscoverMods: false,
+        showNsfwDiscoverPreviews: false,
       };
     }
   }

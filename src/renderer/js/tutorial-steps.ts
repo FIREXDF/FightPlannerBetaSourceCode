@@ -23,6 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (window.tutorialAPI as any).installARCropolis(p)
         : { success: false };
     },
+    async getSkylineRelease(): Promise<any> {
+      if (tutorialDevMode && devOverrides['dev.installFail']) {
+        return {
+          success: false,
+          error: 'DEV: Simulated Skyline release fetch failure',
+          code: 'DEV_INSTALL_FAILURE',
+          details: { stage: 'fetch-skyline-release' },
+        };
+      }
+      return window.tutorialAPI.getSkylineRelease();
+    },
     async detectYuzuPath(): Promise<any> {
       if (tutorialDevMode && devOverrides['dev.emulatorNotFound'])
         return { success: false };
@@ -34,76 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return window.tutorialAPI.detectRyujinxPath();
     },
   };
-
-  const escapeHtml = (value: string) =>
-    String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-
-  function pastedPathControls(inputId: string, buttonId: string, label: string) {
-    return `
-      <div style="display: flex; gap: 8px; margin-top: 10px;">
-        <input id="${inputId}" type="text" placeholder="Paste ${label} path..." style="flex: 1; min-width: 0; padding: 10px 12px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; outline: none;">
-        <button id="${buttonId}" style="padding: 10px 14px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap;">
-          Use Path
-        </button>
-      </div>
-    `;
-  }
-
-  function enableTutorialNext(nextBtn: HTMLElement | null) {
-    if (!nextBtn) return;
-    nextBtn.style.opacity = '1';
-    nextBtn.style.pointerEvents = 'auto';
-    nextBtn.style.cursor = 'pointer';
-  }
-
-  function renderAcceptedPath(statusDiv: HTMLElement, label: string, path: string) {
-    statusDiv.innerHTML = `
-      <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
-          <div>
-            <strong style="color: #fff; display: block;">${label}</strong>
-            <span style="color: rgba(255,255,255,0.6); font-size: 13px; font-family: monospace;">${escapeHtml(path)}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function attachPastedPathHandler(
-    inputId: string,
-    buttonId: string,
-    storeKey: string,
-    statusDiv: HTMLElement,
-    nextBtn: HTMLElement | null,
-    label: string,
-  ) {
-    const save = async () => {
-      const input = document.querySelector<HTMLInputElement>(`#${inputId}`);
-      const path = input?.value.trim();
-      if (!path) return;
-      await window.tutorialAPI.store.set(storeKey, path);
-      renderAcceptedPath(statusDiv, label, path);
-      enableTutorialNext(nextBtn);
-    };
-
-    document
-      .querySelector<HTMLElement>(`#${buttonId}`)
-      ?.addEventListener('click', save);
-    document
-      .querySelector<HTMLInputElement>(`#${inputId}`)
-      ?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          void save();
-        }
-      });
-  }
 
   // Check for restored dev mode state
   try {
@@ -961,9 +902,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-          const skylineRelease = await window.tutorialAPI.getSkylineRelease();
+          const skylineRelease = await apiWrapper.getSkylineRelease();
           if (!skylineRelease.success)
-            throw new Error('Failed to get Skyline release');
+            throw createTutorialIpcError(
+              'Failed to get Skyline release',
+              skylineRelease,
+            );
 
           const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
           if (!arcropolisRelease.success)
@@ -1101,17 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } catch (error) {
           console.error('Installation error:', error);
-          statusDiv!.innerHTML = `
-                <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px;">
-                    <div style="color: #ff4d4d; margin-bottom: 12px;">
-                        <strong>Installation failed:</strong> ${error.message}
-                    </div>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 12px;">
-                        Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a> for assistance.
-                    </p>
-                </div>
-            `;
-          setupDiscordLinks(statusDiv!);
+          renderTutorialInstallationError(statusDiv!, error);
         }
       },
     },
@@ -1843,7 +1777,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="select-yuzu-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
                             Select Yuzu Folder
                         </button>
-                        ${pastedPathControls('paste-yuzu-path', 'use-yuzu-path-btn', 'Yuzu folder')}
                     </div>
                 `;
             document
@@ -1852,33 +1785,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const path = await window.tutorialAPI.selectFolder();
                 if (path) {
                   await window.tutorialAPI.store.set('tutorial.yuzuPath', path);
-                  renderAcceptedPath(statusDiv!, 'Yuzu folder selected', path);
-                  enableTutorialNext(nextBtn);
+                  statusDiv!.innerHTML = `
+                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
+                                    <div>
+                                        <strong style="color: #fff; display: block;">Selected: ${path}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                  if (nextBtn) {
+                    nextBtn.style.opacity = '1';
+                    nextBtn.style.pointerEvents = 'auto';
+                  }
                 }
               });
-            attachPastedPathHandler(
-              'paste-yuzu-path',
-              'use-yuzu-path-btn',
-              'tutorial.yuzuPath',
-              statusDiv!,
-              nextBtn,
-              'Yuzu folder selected',
-            );
           }
         } catch (error) {
           console.error('Error detecting Yuzu:', error);
-          statusDiv!.innerHTML = `
-            <div style="color: #ff4d4d;">Error detecting Yuzu. Please select manually or paste the folder path.</div>
-            ${pastedPathControls('paste-yuzu-error-path', 'use-yuzu-error-path-btn', 'Yuzu folder')}
-          `;
-          attachPastedPathHandler(
-            'paste-yuzu-error-path',
-            'use-yuzu-error-path-btn',
-            'tutorial.yuzuPath',
-            statusDiv!,
-            nextBtn,
-            'Yuzu folder selected',
-          );
+          statusDiv!.innerHTML =
+            '<div style="color: #ff4d4d;">Error detecting Yuzu. Please select manually.</div>';
         }
       },
     },
@@ -1922,9 +1849,12 @@ document.addEventListener('DOMContentLoaded', () => {
           // Get latest releases (Skyline for exefs, ARCropolis for romfs)
           statusDiv!.innerHTML =
             '<div style="color: #fff;">Fetching latest releases...</div>';
-          const skylineRelease = await window.tutorialAPI.getSkylineRelease();
+          const skylineRelease = await apiWrapper.getSkylineRelease();
           if (!skylineRelease.success)
-            throw new Error('Failed to get Skyline release');
+            throw createTutorialIpcError(
+              'Failed to get Skyline release',
+              skylineRelease,
+            );
           const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
           if (!arcropolisRelease.success)
             throw new Error('Failed to get ARCropolis release');
@@ -2029,17 +1959,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } catch (error) {
           console.error('Installation error:', error);
-          statusDiv!.innerHTML = `
-                <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px;">
-                    <div style="color: #ff4d4d; margin-bottom: 12px;">
-                        <strong>Installation failed:</strong> ${error.message}
-                    </div>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px;">
-                        Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a> for assistance.
-                    </p>
-                </div>
-            `;
-          setupDiscordLinks(statusDiv!);
+          renderTutorialInstallationError(statusDiv!, error);
         }
       },
     },
@@ -2349,7 +2269,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button id="select-ryujinx-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
                             Select Ryujinx Folder
                         </button>
-                        ${pastedPathControls('paste-ryujinx-path', 'use-ryujinx-path-btn', 'Ryujinx folder')}
                     </div>
                 `;
             document
@@ -2361,37 +2280,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     'tutorial.ryujinxPath',
                     path,
                   );
-                  renderAcceptedPath(
-                    statusDiv!,
-                    'Ryujinx folder selected',
-                    path,
-                  );
-                  enableTutorialNext(nextBtn);
+                  statusDiv!.innerHTML = `
+                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
+                                    <div>
+                                        <strong style="color: #fff; display: block;">Selected: ${path}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                  if (nextBtn) {
+                    nextBtn.style.opacity = '1';
+                    nextBtn.style.pointerEvents = 'auto';
+                  }
                 }
               });
-            attachPastedPathHandler(
-              'paste-ryujinx-path',
-              'use-ryujinx-path-btn',
-              'tutorial.ryujinxPath',
-              statusDiv!,
-              nextBtn,
-              'Ryujinx folder selected',
-            );
           }
         } catch (error) {
           console.error('Error detecting Ryujinx:', error);
-          statusDiv!.innerHTML = `
-            <div style="color: #ff4d4d;">Error detecting Ryujinx. Please select manually or paste the folder path.</div>
-            ${pastedPathControls('paste-ryujinx-error-path', 'use-ryujinx-error-path-btn', 'Ryujinx folder')}
-          `;
-          attachPastedPathHandler(
-            'paste-ryujinx-error-path',
-            'use-ryujinx-error-path-btn',
-            'tutorial.ryujinxPath',
-            statusDiv!,
-            nextBtn,
-            'Ryujinx folder selected',
-          );
+          statusDiv!.innerHTML =
+            '<div style="color: #ff4d4d;">Error detecting Ryujinx. Please select manually.</div>';
         }
       },
     },
@@ -2436,10 +2345,13 @@ document.addEventListener('DOMContentLoaded', () => {
           statusDiv!.innerHTML =
             '<div style="color: #fff;">Fetching latest releases...</div>';
 
-          const skylineRelease = await window.tutorialAPI.getSkylineRelease();
+          const skylineRelease = await apiWrapper.getSkylineRelease();
 
           if (!skylineRelease.success)
-            throw new Error('Failed to get Skyline release');
+            throw createTutorialIpcError(
+              'Failed to get Skyline release',
+              skylineRelease,
+            );
 
           const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
           if (!arcropolisRelease.success)
@@ -2554,17 +2466,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } catch (error) {
           console.error('Installation error:', error);
-          statusDiv!.innerHTML = `
-                <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px;">
-                    <div style="color: #ff4d4d; margin-bottom: 12px;">
-                        <strong>Installation failed:</strong> ${error.message}
-                    </div>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px;">
-                        Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a> for assistance.
-                    </p>
-                </div>
-            `;
-          setupDiscordLinks(statusDiv!);
+          renderTutorialInstallationError(statusDiv!, error);
         }
       },
     },
@@ -3609,6 +3511,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setupDiscordLinks(container: HTMLElement) {
     setupExternalLinks(container, 'a[href*="discord.gg"]');
+  }
+
+  function escapeTutorialHtml(value: unknown) {
+    const element = document.createElement('div');
+    element.textContent = value == null ? '' : String(value);
+    return element.innerHTML;
+  }
+
+  function createTutorialIpcError(action: string, result: any) {
+    const error = new Error(`${action}: ${result?.error || 'Unknown error'}`) as Error & {
+      code?: string;
+      details?: unknown;
+    };
+    error.code = result?.code;
+    error.details = result?.details;
+    return error;
+  }
+
+  function renderTutorialInstallationError(container: HTMLElement, error: unknown) {
+    const installationError = error instanceof Error ? error : new Error(String(error));
+    const ipcError = installationError as Error & { code?: string; details?: unknown };
+    const details = [
+      `Message: ${installationError.message}`,
+      ipcError.code ? `Code: ${ipcError.code}` : '',
+      ipcError.details ? `Details: ${JSON.stringify(ipcError.details, null, 2)}` : '',
+      installationError.stack ? `Stack:\n${installationError.stack}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    container.innerHTML = `
+      <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px;">
+        <div style="color: #ff7878; margin-bottom: 8px;"><strong>Installation failed.</strong> ${escapeTutorialHtml(installationError.message)}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0;">
+          <button type="button" data-tutorial-error-details style="padding: 8px 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 7px; background: rgba(255,255,255,0.08); color: #fff; cursor: pointer;">View error details</button>
+          <button type="button" data-tutorial-install-retry style="padding: 8px 12px; border: 0; border-radius: 7px; background: #7a9bff; color: #fff; cursor: pointer; font-weight: 600;"><i class="bi bi-arrow-clockwise"></i> Retry installation</button>
+        </div>
+        <pre data-tutorial-error-output hidden style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; margin: 0 0 14px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.28); color: rgba(255,255,255,0.8); font: 12px/1.45 monospace;">${escapeTutorialHtml(details)}</pre>
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">If it continues, share the details with the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a>.</p>
+      </div>
+    `;
+
+    const detailsButton = container.querySelector<HTMLButtonElement>('[data-tutorial-error-details]');
+    const detailsOutput = container.querySelector<HTMLElement>('[data-tutorial-error-output]');
+    detailsButton?.addEventListener('click', () => {
+      const isHidden = detailsOutput?.hidden ?? true;
+      if (detailsOutput) detailsOutput.hidden = !isHidden;
+      detailsButton.textContent = isHidden ? 'Hide error details' : 'View error details';
+    });
+
+    const retryButton = container.querySelector<HTMLButtonElement>('[data-tutorial-install-retry]');
+    retryButton?.addEventListener('click', () => {
+      retryButton.disabled = true;
+      retryButton.textContent = 'Retrying…';
+      renderStep(currentStep);
+    });
+    setupDiscordLinks(container);
   }
 
   function renderStep(index) {

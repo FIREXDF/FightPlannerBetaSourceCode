@@ -4,6 +4,7 @@ const tabConfigs = {
   characters: 'tabs/characters.html',
   stages: 'tabs/stages.html',
   downloads: 'tabs/downloads.html',
+  marketplace: 'tabs/marketplace.html',
   settings: 'tabs/settings.html',
   fightplanner: 'tabs/fightplanner.html',
 };
@@ -557,6 +558,10 @@ function initializeTabFeatures(tabName) {
     if (window.i18n) {
       window.i18n.updateDOM();
     }
+  }
+
+  if (tabName === 'marketplace') {
+    window.marketplaceDiscover?.initialize();
   }
 
   if (tabName === 'stages') {

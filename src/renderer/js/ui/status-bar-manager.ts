@@ -31,6 +31,7 @@ interface DownloadUpdate {
 
 type StatusTab =
   | 'downloads'
+  | 'marketplace'
   | 'tools'
   | 'plugins'
   | 'settings'
@@ -1129,6 +1130,7 @@ export class StatusBarManager {
   private normalizeTab(tabName: string | null | undefined): StatusTab | null {
     const validTabs: StatusTab[] = [
       'downloads',
+      'marketplace',
       'tools',
       'plugins',
       'settings',
@@ -1396,6 +1398,7 @@ export class StatusBarManager {
       case 'stages':
         return this.getStagesSnapshot();
       case 'fightplanner':
+      case 'marketplace':
       default:
         return { content: this.t('statusBar.ready') };
     }
@@ -1462,6 +1465,7 @@ export class StatusBarManager {
       case 'settings':
       case 'stages':
       case 'fightplanner':
+      case 'marketplace':
       default:
         break;
     }

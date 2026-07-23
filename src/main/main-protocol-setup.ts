@@ -3,7 +3,59 @@ import ProtocolHandler from './protocol-handler';
 
 let protocolHandler: ProtocolHandler | null = null;
 let mainWindow: BrowserWindow | null = null;
-let pendingProtocolUrl: string | null = null;
+let rendererReady = false;
+let startupProtocolCaptured = false;
+const pendingProtocolUrls: string[] = [];
+
+function extractProtocolUrl(args: string[]): string | null {
+  for (const arg of args) {
+    if (typeof arg !== 'string') continue;
+
+    const candidate = arg.trim().replace(/^"(.*)"$/, '$1');
+    if (/^fightplanner:/i.test(candidate)) {
+      return `fightplanner:${candidate.slice(candidate.indexOf(':') + 1)}`;
+    }
+  }
+
+  return null;
+}
+
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  mainWindow.focus();
+}
+
+function dispatchOrQueueProtocolUrl(url: string) {
+  if (
+    !protocolHandler ||
+    !mainWindow ||
+    mainWindow.isDestroyed() ||
+    !rendererReady
+  ) {
+    console.log('[protocol] queueing URL until the main window is ready:', url);
+    pendingProtocolUrls.push(url);
+    return;
+  }
+
+  focusMainWindow();
+  void protocolHandler.handleDeepLink(url);
+}
+
+function flushPendingProtocolUrls() {
+  if (!protocolHandler || !rendererReady || pendingProtocolUrls.length === 0) {
+    return;
+  }
+
+  const urls = pendingProtocolUrls.splice(0);
+  console.log('[protocol] flushing pending URLs:', urls.length);
+
+  for (const url of urls) {
+    dispatchOrQueueProtocolUrl(url);
+  }
+}
 
 console.log(
   '[protocol] init: platform=%s, defaultApp=%s, argv=%j',
@@ -21,43 +73,55 @@ app.on('open-url', (event, url) => {
   event.preventDefault();
   console.log('🔗 Received protocol URL (open-url):', url);
 
-  if (protocolHandler && url.startsWith('fightplanner:')) {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-
-    protocolHandler.handleDeepLink(url);
+  const protocolUrl = extractProtocolUrl([url]);
+  if (protocolUrl) {
+    dispatchOrQueueProtocolUrl(protocolUrl);
   }
 });
 
-export function initializeProtocol(window) {
-  mainWindow = window;
+// This listener must exist before the main window is created. A protocol launch
+// can otherwise arrive while migrations or the first-run tutorial are running.
+app.on('second-instance', (_event, commandLine) => {
+  console.log('[protocol] second-instance with argv:', commandLine);
 
+  const protocolUrl = extractProtocolUrl(commandLine);
+  if (protocolUrl) {
+    console.log('[protocol] URL from second-instance:', protocolUrl);
+    dispatchOrQueueProtocolUrl(protocolUrl);
+  } else if (process.platform === 'linux') {
+    console.log(
+      '[protocol][linux] second-instance did not include a fightplanner URL',
+    );
+  }
+});
+
+export function initializeProtocol(window: BrowserWindow) {
+  mainWindow = window;
   protocolHandler = new ProtocolHandler(mainWindow);
+  rendererReady = false;
 
   console.log('Protocol handler initialized');
 
-  if (pendingProtocolUrl) {
-    const url = pendingProtocolUrl;
-    pendingProtocolUrl = null;
-    console.log('[protocol] flushing pending URL after window ready:', url);
-    window.webContents.once('did-finish-load', () => {
-      setTimeout(() => protocolHandler!.handleDeepLink(url), 300);
-    });
-  }
+  window.webContents.on('did-start-loading', () => {
+    rendererReady = false;
+  });
 
-  if (process.platform === 'win32' || process.platform === 'linux') {
+  window.webContents.on('did-finish-load', () => {
+    rendererReady = true;
+    setTimeout(flushPendingProtocolUrls, 300);
+  });
+
+  if (
+    !startupProtocolCaptured &&
+    (process.platform === 'win32' || process.platform === 'linux')
+  ) {
+    startupProtocolCaptured = true;
     const args = process.argv.slice(1);
     console.log('[protocol][argv] args:', args);
-    const protocolUrl = args.find(
-      (arg) => typeof arg === 'string' && arg.startsWith('fightplanner:'),
-    );
+    const protocolUrl = extractProtocolUrl(args);
     if (protocolUrl) {
       console.log('[protocol][argv] URL found:', protocolUrl);
-      window.webContents.once('did-finish-load', () => {
-        setTimeout(() => protocolHandler!.handleDeepLink(protocolUrl), 300);
-      });
+      pendingProtocolUrls.push(protocolUrl);
     } else if (process.platform === 'linux') {
       console.log(
         '[protocol][linux] no URL in argv at startup. isDefaultProtocolClient=%s',
@@ -68,26 +132,11 @@ export function initializeProtocol(window) {
     }
   }
 
-  app.on('second-instance', (event, commandLine) => {
-    console.log('[protocol] second-instance with argv:', commandLine);
-
-    const protocolUrl = commandLine.find(
-      (arg) => typeof arg === 'string' && arg.startsWith('fightplanner:'),
-    );
-
-    if (protocolUrl && protocolHandler) {
-      console.log('[protocol] URL from second-instance:', protocolUrl);
-
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
-      }
-
-      protocolHandler.handleDeepLink(protocolUrl);
-    } else if (process.platform === 'linux') {
-      console.log(
-        '[protocol][linux] second-instance did not include a fightplanner URL',
-      );
+  window.on('closed', () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+      protocolHandler = null;
+      rendererReady = false;
     }
   });
 }

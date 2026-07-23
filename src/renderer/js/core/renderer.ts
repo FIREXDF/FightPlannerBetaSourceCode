@@ -49,26 +49,6 @@ let currentTimeline: {
   kill: () => void;
 } | null = null;
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-}
-
-async function runDeferredStartupModals(params: URLSearchParams) {
-  if (params.get('postTutorialIntro') === 'true') {
-    await wait(800);
-    window.tutorial?.showInApp?.();
-    await window.tutorialManager?.waitForInAppClose?.();
-  }
-
-  await wait(5000);
-  await window.remoteAnnouncementManager?.checkOnStartup?.();
-
-  if (window.pluginManager && window.settingsManager) {
-    // Handles startup plugin update checks when enabled.
-    await window.pluginManager.checkForUpdatesOnStartup();
-  }
-}
-
 async function switchTab(tabName) {
   if (currentTimeline) {
     currentTimeline.kill();
@@ -163,7 +143,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   const params = new URLSearchParams(window.location.search);
-  void runDeferredStartupModals(params);
+  if (params.get('postTutorialIntro') === 'true') {
+    setTimeout(() => window.tutorial?.showInApp?.(), 800);
+  }
 
   setTimeout(() => {
     const activeTab = document.querySelector<HTMLElement>(
@@ -185,6 +167,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }, 100);
 
+  setTimeout(async () => {
+    if (window.pluginManager && window.settingsManager) {
+      // Handles startup plugin update checks when enabled.
+      window.pluginManager.checkForUpdatesOnStartup();
+    }
+  }, 2000); // Reduced delay slightly as checkForUpdatesOnStartup has its own delays if needed
+
+  setTimeout(() => {
+    window.remoteAnnouncementManager?.checkOnStartup();
+  }, 900);
 });
 
 document.addEventListener('keydown', async (e) => {

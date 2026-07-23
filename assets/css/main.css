@@ -16,6 +16,8 @@
 @import 'settings.css';
 @import 'conflicts.css';
 @import 'marketplace.css';
+@import 'marketplace-launch.css';
+@import 'social-discover.css';
 @import 'preview.css';
 @import 'install.css';
 @import 'tutorial.css';

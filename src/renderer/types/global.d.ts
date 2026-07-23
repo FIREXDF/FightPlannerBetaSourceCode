@@ -32,6 +32,8 @@ import { ModDragDropHandler } from '../js/mods/mod-drag-drop';
 import { SmartRenameManager } from '../js/mods/smart-rename-manager';
 import { StagesManager } from '../js/stages/stages-manager';
 import { I18nClient } from '../js/i18n/i18n-client';
+import { GameBananaMarketplace } from '../js/marketplace/gamebanana-marketplace';
+import { MarketplaceDiscover } from '../js/marketplace/marketplace-discover';
 
 import { ModOperations } from '../js/mods/mod-operations';
 import { ModContextMenuHandler } from '../js/mods/mod-context-menu';
@@ -82,6 +84,9 @@ declare global {
     smartRenameManager: SmartRenameManager;
     stagesManager: StagesManager;
     modProfileManager: ModProfileManager;
+    gameBananaMarketplace: GameBananaMarketplace;
+    marketplaceDiscover: MarketplaceDiscover;
+    socialManager: MarketplaceDiscover;
 
     ModOperations: typeof ModOperations;
     ModContextMenuHandler: typeof ModContextMenuHandler;

@@ -27,7 +27,6 @@ class TutorialManager {
   stepWaitingReason: string | null;
   installDownloadStarted: boolean;
   installConfirmClicked: boolean;
-  closeResolvers: Array<() => void>;
   steps: TutorialStep[];
 
   constructor() {
@@ -43,7 +42,6 @@ class TutorialManager {
     this.stepWaitingReason = null;
     this.installDownloadStarted = false;
     this.installConfirmClicked = false;
-    this.closeResolvers = [];
     this.steps = [
       {
         kind: 'intro',
@@ -261,7 +259,7 @@ class TutorialManager {
         kind: 'spotlight',
         title: 'Install confirmation',
         description:
-          'To continue, open GameBanana in your browser, choose any mod page, then click the fightplanner: 1-click install button. When this app shows the install confirmation modal, click Download & Install.',
+          'This modal confirms the mod download. Click Download & Install to start the install.',
         requiredInstallClick: true,
         target: '#install-confirm-modal .modal-btn-primary',
         placement: 'top',
@@ -270,7 +268,7 @@ class TutorialManager {
         kind: 'spotlight',
         title: '1-click install links',
         description:
-          'To continue, open any mod page on GameBanana in your browser and click the fightplanner: 1-click install button. FightPlanner will continue automatically when the install modal opens.',
+          'Open a GameBanana mod in your browser, then click a fightplanner: 1-click install link. FightPlanner will wait here until the install modal appears.',
         requiredVisible: '#install-confirm-modal',
         target: '#install-confirm-modal .modal-btn-primary',
         placement: 'top',
@@ -339,16 +337,6 @@ class TutorialManager {
     this.installDownloadStarted = false;
     this.createOverlay();
     this.renderStep();
-  }
-
-  waitForInAppClose() {
-    if (!this.overlay) {
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((resolve) => {
-      this.closeResolvers.push(resolve);
-    });
   }
 
   createOverlay() {
@@ -558,19 +546,12 @@ class TutorialManager {
     nextBtn.disabled = waiting;
     if (waitingForTab) {
       nextBtn.textContent = `${this.guideText('Click')} ${this.guideText(step.title.replace(' tab', ''))}`;
-    } else if (waitingForVisible) {
-      nextBtn.textContent =
-        step.requiredVisible === '#install-confirm-modal'
-          ? this.guideMessage('open_gamebanana_1_click_to_continue')
-          : this.guideText('Waiting...');
-    } else if (waitingForHidden) {
+    } else if (waitingForVisible || waitingForHidden) {
       nextBtn.textContent = this.guideText('Waiting...');
     } else if (waitingForChoice) {
       nextBtn.textContent = this.guideText('Choose one');
     } else if (waitingForInstallClick) {
-      nextBtn.textContent = this.guideMessage(
-        'open_gamebanana_then_download_install',
-      );
+      nextBtn.textContent = this.guideText('Waiting...');
     } else if (waitingForDownloadComplete) {
       nextBtn.textContent = this.guideText('Waiting...');
     } else {
@@ -884,8 +865,6 @@ class TutorialManager {
       window.clearInterval(this.guideTimer);
       this.guideTimer = null;
     }
-    const resolvers = this.closeResolvers.splice(0);
-    resolvers.forEach((resolve) => resolve());
   }
 
   async reset() {

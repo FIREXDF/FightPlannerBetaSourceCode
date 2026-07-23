@@ -76,6 +76,14 @@
     </button>
     <button
       class="settings-tab-btn"
+      data-settings-tab="marketplace"
+      data-i18n="settings.marketplace"
+    >
+      <i class="bi bi-shop"></i>
+      Marketplace
+    </button>
+    <button
+      class="settings-tab-btn"
       data-settings-tab="customization"
       data-i18n="settings.customization"
     >
@@ -1176,6 +1184,7 @@
             data-i18n="settings.emulatorPathPlaceholder"
             data-i18n-placeholder
             placeholder="Select emulator executable..."
+            readonly
           />
           <button
             class="settings-btn"
@@ -1202,6 +1211,7 @@
             data-i18n="settings.gamePathPlaceholder"
             data-i18n-placeholder
             placeholder="Select game file..."
+            readonly
           />
           <button
             class="settings-btn"
@@ -1214,28 +1224,6 @@
         <p class="settings-hint" data-i18n="settings.gamePathHint">
           Select your game file (.xci or .nsp)
         </p>
-      </div>
-
-      <div class="settings-section">
-        <label class="settings-label" data-i18n="settings.switchEmulatorSetup"
-          >Switch Emulator Setup</label
-        >
-        <button class="settings-btn-action" id="switch-emulator-setup-btn">
-          <i class="bi bi-arrow-left-right"></i>
-          <div class="settings-btn-action-content">
-            <span
-              class="settings-btn-action-title"
-              data-i18n="settings.switchEmulatorSetupTitle"
-              >Change emulator cleanly</span
-            >
-            <span
-              class="settings-btn-action-desc"
-              data-i18n="settings.switchEmulatorSetupDesc"
-              >Choose a new emulator, paste paths, and check ARCropolis folders</span
-            >
-          </div>
-          <i class="bi bi-arrow-right"></i>
-        </button>
       </div>
 
       <div class="settings-section">
@@ -1349,49 +1337,6 @@
             data-i18n-placeholder="settings.feedbackContactPlaceholder"
             placeholder="Discord, email, or GitHub username"
           />
-
-          <label
-            class="settings-label"
-            for="feedback-log-file"
-            data-i18n="settings.feedbackLogs"
-            >Logs (optional)</label
-          >
-          <div class="feedback-file-row">
-            <input
-              id="feedback-log-file"
-              class="feedback-file-input"
-              type="file"
-              multiple
-              accept=".log,.txt,.json,text/plain,application/json"
-            />
-            <button
-              class="settings-btn feedback-file-btn"
-              id="feedback-choose-log-file"
-              type="button"
-            >
-              <i class="bi bi-paperclip"></i>
-              <span data-i18n="settings.feedbackChooseLogs">Choose log file</span>
-            </button>
-            <button
-              class="settings-btn feedback-file-btn"
-              id="feedback-use-current-logs"
-              type="button"
-            >
-              <i class="bi bi-terminal"></i>
-              <span data-i18n="settings.feedbackUseCurrentLogs">Use current logs</span>
-            </button>
-            <button
-              class="settings-btn feedback-file-clear"
-              id="feedback-clear-log-file"
-              type="button"
-              hidden
-            >
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-          <p class="settings-hint" id="feedback-log-file-name" data-i18n="settings.feedbackLogsHint">
-            Attach a .log, .txt, or .json file up to 2 MB.
-          </p>
 
           <div class="feedback-actions">
             <p class="settings-hint" data-i18n="settings.feedbackHint">
@@ -1980,6 +1925,55 @@
       </div>
     </div>
 
+    <!-- Marketplace Settings -->
+    <div class="settings-tab-content" id="settings-marketplace">
+      <h2 class="settings-title" data-i18n="settings.marketplaceTitle">
+        Marketplace Settings
+      </h2>
+
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.discoverDependencyCheck">
+          Discover Dependency Check
+        </label>
+        <div class="settings-input-group">
+          <label class="settings-switch">
+            <input type="checkbox" id="check-dependencies-on-discover-download-enabled" checked />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span data-i18n="settings.enableDiscoverDependencyCheck">Check dependencies before downloading</span>
+        </div>
+        <p class="settings-hint" data-i18n="settings.discoverDependencyCheckHint">
+          Warn before installing a mod with missing or disabled requirements.
+        </p>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.discoverNsfwContent">
+          Discover NSFW Content
+        </label>
+        <div class="settings-input-group">
+          <label class="settings-switch">
+            <input type="checkbox" id="hide-nsfw-discover-mods-enabled" />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span data-i18n="settings.hideNsfwDiscoverMods">Hide NSFW mods from Discover</span>
+        </div>
+        <p class="settings-hint" data-i18n="settings.hideNsfwDiscoverModsHint">
+          Hide NSFW mods from Featured, search results, and Discover pages.
+        </p>
+        <div class="settings-input-group" style="margin-top: 12px">
+          <label class="settings-switch">
+            <input type="checkbox" id="show-nsfw-discover-previews-enabled" />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span data-i18n="settings.showNsfwDiscoverPreviews">Show NSFW previews without blur</span>
+        </div>
+        <p class="settings-hint" data-i18n="settings.showNsfwDiscoverPreviewsHint">
+          Show NSFW previews directly when NSFW mods are visible.
+        </p>
+      </div>
+    </div>
+
     <!-- Customization Settings -->
     <div class="settings-tab-content" id="settings-customization">
       <h2 class="settings-title" data-i18n="settings.customization">
@@ -2303,26 +2297,6 @@
               class="settings-btn-action-desc"
               data-i18n="settings.openTutorialModsDesc"
               >Switch to the mods tab and show the guide</span
-            >
-          </div>
-          <i class="bi bi-arrow-right"></i>
-        </button>
-        <button
-          class="settings-btn-action"
-          id="open-in-app-tutorial-btn"
-          style="margin-top: 8px"
-        >
-          <i class="bi bi-layout-sidebar-inset"></i>
-          <div class="settings-btn-action-content">
-            <span
-              class="settings-btn-action-title"
-              data-i18n="settings.openInAppTutorial"
-              >Open In-App Tutorial</span
-            >
-            <span
-              class="settings-btn-action-desc"
-              data-i18n="settings.openInAppTutorialDesc"
-              >Show the interface guide directly</span
             >
           </div>
           <i class="bi bi-arrow-right"></i>

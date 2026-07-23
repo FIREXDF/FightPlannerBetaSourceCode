@@ -95,6 +95,16 @@
     "goToSettings": "Aller aux Paramètres"
   },
   "settings": {
+    "marketplace": "Marketplace",
+    "marketplaceTitle": "Paramètres du Marketplace",
+    "discoverDependencyCheck": "Vérification des dépendances",
+    "enableDiscoverDependencyCheck": "Vérifier les dépendances avant le téléchargement",
+    "discoverDependencyCheckHint": "Avertir avant l’installation d’un mod avec des dépendances manquantes ou désactivées.",
+    "discoverNsfwContent": "Contenu NSFW dans Discover",
+    "hideNsfwDiscoverMods": "Masquer les mods NSFW dans Discover",
+    "hideNsfwDiscoverModsHint": "Masquer les mods NSFW des contenus à la une, recherches et pages Discover.",
+    "showNsfwDiscoverPreviews": "Afficher les aperçus NSFW sans flou",
+    "showNsfwDiscoverPreviewsHint": "Afficher directement les aperçus NSFW lorsque ces mods sont visibles.",
     "title": "Paramètres de l'application",
     "general": "App",
     "interface": "Interface",
