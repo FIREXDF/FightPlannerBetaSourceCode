@@ -38,8 +38,13 @@ desktop.ini
 
 # Electron
 *.asar
-worker.js
+
+# Other
 CSS MANAGER/
+CSS-Manager-reconstructed/
 worker-supabase.js
 feedback-worker.js
-docs/supabase-schema.sql
+docs/
+page/
+worker.js
+cloudflare/

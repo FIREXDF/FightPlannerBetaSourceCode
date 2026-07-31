@@ -7,7 +7,10 @@ import { StoreHandlers } from './ipc/handlers/store-handlers';
 import { AppHandlers } from './ipc/handlers/app-handlers';
 import { SystemHandlers } from './ipc/handlers/system-handlers';
 import { ProtocolHandlers } from './ipc/handlers/protocol-handlers';
-import { FtpHandlers, MtpHandlers } from './ipc/handlers/ftp-handlers';
+import {
+  MtpHandlers,
+  SwitchTransferHandlers,
+} from './ipc/handlers/switch-transfer';
 import { UpdateHandlers } from './ipc/handlers/update-handlers';
 import { TutorialHandlers } from './ipc/handlers/tutorial-handlers';
 import { MigrationHandlers } from './ipc/handlers/migration-handlers';
@@ -77,7 +80,7 @@ const invokeStoreHandler = wrapInvoke<StoreHandlers>();
 const invokeAppHandler = wrapInvoke<AppHandlers>();
 const invokeSystemHandler = wrapInvoke<SystemHandlers>();
 const invokeProtocolHandler = wrapInvoke<ProtocolHandlers>();
-const invokeFtpHandler = wrapInvoke<FtpHandlers>();
+const invokeSwitchTransferHandler = wrapInvoke<SwitchTransferHandlers>();
 const invokeMtpHandler = wrapInvoke<MtpHandlers>();
 const invokeUpdateHandler = wrapInvoke<UpdateHandlers>();
 const invokeTutorialHandler = wrapInvoke<TutorialHandlers>();
@@ -153,9 +156,10 @@ const electronAPI = {
   getTempDir: invokeTutorialHandler('get-temp-dir'),
   cancelDownload: invokeSystemHandler('cancel-download'),
   resumeDownload: invokeSystemHandler('resume-download'),
-  sendModsToSwitch: invokeFtpHandler('send-mods-to-switch'),
+  sendModsToSwitch: invokeSwitchTransferHandler('send-mods-to-switch'),
   prepareMtpTransfer: invokeMtpHandler('prepare-mtp-transfer'),
-  readMtpTransferFile: invokeMtpHandler('read-mtp-transfer-file'),
+  readMtpTransferFileChunk: invokeMtpHandler('read-mtp-transfer-file-chunk'),
+  releaseMtpTransfer: invokeMtpHandler('release-mtp-transfer'),
   installModFromPath: invokeModHandler('install-mod-from-path'),
   selectModFile: invokeFileHandler('select-mod-file'),
   handleFilesDropped: invokeModHandler('handle-files-dropped'),
@@ -265,8 +269,8 @@ const electronAPI = {
     ipcRenderer.on('fpp-download-link', (event, data) => callback(data)),
   onOpenFppFile: (callback: (data: { filePath: string }) => void) =>
     ipcRenderer.on('open-fpp-file', (event, data) => callback(data)),
-  onFtpTransferProgress: (callback: (data: any) => void) =>
-    ipcRenderer.on('ftp-transfer-progress', (event, data) => callback(data)),
+  onSwitchTransferProgress: (callback: (data: any) => void) =>
+    ipcRenderer.on('switch-transfer-progress', (event, data) => callback(data)),
   onTutorialWindowClosed: (callback: () => void) =>
     ipcRenderer.on('tutorial-window-closed', () => callback()),
 

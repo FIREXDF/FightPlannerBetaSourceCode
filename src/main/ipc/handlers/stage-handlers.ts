@@ -42,16 +42,16 @@ const StageHandlers = {
     try {
       const win = BrowserWindow.fromWebContents(common.event.sender);
       const result = await dialog.showOpenDialog(win!, {
-        title: 'Select ui_stage_db.xml',
+        title: 'Select ui_stage_db.prc',
         properties: ['openFile'],
-        filters: [{ name: 'Stage XML', extensions: ['xml'] }],
+        filters: [{ name: 'Stage PRC', extensions: ['prc'] }],
       });
 
       if (result.canceled || result.filePaths.length === 0) {
         return createErrorResponse(ErrorCodes.UNKNOWN_ERROR, 'No file selected');
       }
 
-      return importStageLayoutSource(result.filePaths[0]);
+      return await importStageLayoutSource(result.filePaths[0]);
     } catch (error) {
       handleError(error, 'import-stage-layout-source');
       return createErrorResponse(ErrorCodes.FILE_READ_ERROR, error.message);

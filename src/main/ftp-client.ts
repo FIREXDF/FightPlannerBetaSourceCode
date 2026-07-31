@@ -1,25 +1,26 @@
 import * as ftp from 'basic-ftp';
 import { enterPassiveModeIPv4 } from 'basic-ftp';
-import * as fs from 'fs';
+import { createHash, randomUUID } from 'crypto';
+import { createReadStream, promises as fs } from 'fs';
 import * as path from 'path';
+import { Writable } from 'stream';
 
-export interface UploadProgressUpdate {
+export interface UploadFileProgress {
   currentFileName: string;
-  currentModIndex?: number;
-  totalMods?: number;
-  currentModName?: string;
-  transferredCount: number;
-  totalFiles?: number;
-  progress: number;
+  fileSize: number;
+  bytesTransferred: number;
+}
+
+export interface UploadFileProcessed {
+  currentFileName: string;
+  fileSize: number;
+  copied: boolean;
 }
 
 export interface UploadDirectoryOptions {
-  baseTransferredCount?: number;
-  totalFiles?: number;
-  currentModIndex?: number;
-  totalMods?: number;
-  currentModName?: string;
-  onFileUploaded?: (update: UploadProgressUpdate) => void;
+  onFileStarted?: (file: UploadFileProgress) => void;
+  onFileProgress?: (file: UploadFileProgress) => void;
+  onFileProcessed?: (file: UploadFileProcessed) => void;
 }
 
 export default class FTPClient {
@@ -30,174 +31,267 @@ export default class FTPClient {
     this.client.prepareTransfer = enterPassiveModeIPv4;
   }
 
-  async connect(host, port = 5000, user = 'ftp', password = 'ftp') {
-    try {
-      await this.client.access({
-        host: host,
-        port: port,
-        user: user,
-        password: password,
-        secure: false,
-      });
-      console.log(`Connected to FTP server at ${host}:${port}`);
-      return true;
-    } catch (error) {
-      console.error('FTP connection error:', error);
-      throw error;
-    }
+  get closed() {
+    return this.client.closed;
   }
 
-  async disconnect() {
-    try {
-      this.client.close();
-      console.log('FTP connection closed');
-    } catch (error) {
-      console.error('Error closing FTP connection:', error);
-    }
+  async connect(host, port = 5000, user = 'ftp', password = 'ftp') {
+    await this.client.access({
+      host,
+      port,
+      user,
+      password,
+      secure: false,
+    });
+    console.log(`Connected to FTP server at ${host}:${port}`);
+  }
+
+  disconnect() {
+    this.client.close();
+    console.log('FTP connection closed');
   }
 
   async uploadDirectory(
-    localPath,
-    remotePath,
+    localPath: string,
+    remotePath: string,
     options: UploadDirectoryOptions = {},
-  ) {
-    try {
-      remotePath = remotePath.replace(/\\/g, '/');
-      console.log(`Uploading directory: ${localPath} -> ${remotePath}`);
+  ): Promise<number> {
+    const stats = await fs.stat(localPath);
+    if (!stats.isDirectory()) {
+      throw new Error(`${localPath} is not a directory`);
+    }
 
-      const stats = fs.statSync(localPath);
-      if (!stats.isDirectory()) {
-        throw new Error(`${localPath} is not a directory`);
-      }
+    const normalizedRemotePath = remotePath.replace(/\\/g, '/');
+    const entries = await fs.readdir(localPath, { withFileTypes: true });
+    let copiedCount = 0;
 
-      const files = fs.readdirSync(localPath);
-      let uploadedCount = 0;
+    for (const entry of entries) {
+      const localFilePath = path.join(localPath, entry.name);
+      const remoteFilePath = `${normalizedRemotePath}/${entry.name}`;
 
-      for (const file of files) {
-        const localFilePath = path.join(localPath, file);
-        let remoteFilePath = `${remotePath}/${file}`;
-
-        const fileStats = fs.statSync(localFilePath);
-
-        if (fileStats.isDirectory()) {
-          const count = await this.uploadDirectory(
+      if (entry.isDirectory()) {
+        copiedCount += await this.uploadDirectory(
+          localFilePath,
+          remoteFilePath,
+          options,
+        );
+      } else if (entry.isFile()) {
+        if (
+          await this.uploadFileWithProgress(
             localFilePath,
             remoteFilePath,
-            {
-              ...options,
-              baseTransferredCount:
-                (options.baseTransferredCount || 0) + uploadedCount,
-            },
-          );
-          uploadedCount += count;
-        } else if (fileStats.isFile()) {
-          const remoteDir = remotePath;
-          try {
-            await this.client.ensureDir(remoteDir);
-          } catch (dirError) {
-            console.warn(`Could not ensure dir ${remoteDir}, continuing...`);
-          }
-
-          if (
-            await this.remoteFileMatchesFile(
-              localFilePath,
-              remoteFilePath,
-              fileStats.size,
-            )
-          ) {
-            console.log(`Skipped existing file: ${remoteFilePath}`);
-            continue;
-          }
-
-          await this.client.uploadFrom(localFilePath, remoteFilePath);
-          uploadedCount++;
-          const transferredCount =
-            (options.baseTransferredCount || 0) + uploadedCount;
-          const progress =
-            options.totalFiles && options.totalFiles > 0
-              ? Math.min(
-                  100,
-                  Math.round((transferredCount / options.totalFiles) * 100),
-                )
-              : 0;
-
-          options.onFileUploaded?.({
-            currentFileName: path.basename(localFilePath),
-            currentModIndex: options.currentModIndex,
-            totalMods: options.totalMods,
-            currentModName: options.currentModName,
-            transferredCount,
-            totalFiles: options.totalFiles,
-            progress,
-          });
-
-          console.log(`Uploaded: ${remoteFilePath}`);
+            options,
+          )
+        ) {
+          copiedCount++;
         }
       }
-
-      return uploadedCount;
-    } catch (error) {
-      console.error('Error uploading directory:', error);
-      throw error;
     }
+
+    return copiedCount;
   }
 
-  async uploadFile(localPath, remotePath) {
+  async uploadFile(
+    localPath: string,
+    remotePath: string,
+    options: UploadDirectoryOptions = {},
+  ) {
+    return await this.uploadFileWithProgress(localPath, remotePath, options);
+  }
+
+  private async uploadFileWithProgress(
+    localPath: string,
+    remotePath: string,
+    options: UploadDirectoryOptions,
+  ): Promise<boolean> {
+    const normalizedRemotePath = remotePath.replace(/\\/g, '/');
+    const fileStats = await fs.stat(localPath);
+    const currentFileName = path.basename(localPath);
+
+    options.onFileStarted?.({
+      currentFileName,
+      fileSize: fileStats.size,
+      bytesTransferred: 0,
+    });
+
+    if (
+      await this.remoteFileMatchesFile(
+        localPath,
+        normalizedRemotePath,
+        fileStats.size,
+      )
+    ) {
+      console.log(`Skipped identical FTP file: ${normalizedRemotePath}`);
+      options.onFileProcessed?.({
+        currentFileName,
+        fileSize: fileStats.size,
+        copied: false,
+      });
+      return false;
+    }
+
+    const remoteDir = path.posix.dirname(normalizedRemotePath);
+    await this.client.ensureDir(remoteDir);
+    await this.uploadAtomically(
+      localPath,
+      normalizedRemotePath,
+      fileStats.size,
+      options,
+    );
+
+    options.onFileProcessed?.({
+      currentFileName,
+      fileSize: fileStats.size,
+      copied: true,
+    });
+    console.log(`Uploaded FTP file: ${normalizedRemotePath}`);
+    return true;
+  }
+
+  private async uploadAtomically(
+    localPath: string,
+    remotePath: string,
+    fileSize: number,
+    options: UploadDirectoryOptions,
+  ) {
+    const suffix = randomUUID().slice(0, 12);
+    const temporaryPath = this.createTemporaryRemotePath(
+      remotePath,
+      'new',
+      suffix,
+    );
+    const backupPath = this.createTemporaryRemotePath(
+      remotePath,
+      'backup',
+      suffix,
+    );
+
+    this.client.trackProgress((info) => {
+      options.onFileProgress?.({
+        currentFileName: path.basename(localPath),
+        fileSize,
+        bytesTransferred: Math.min(fileSize, info.bytesOverall),
+      });
+    });
+
     try {
-      const remoteDir = path.dirname(remotePath).replace(/\\/g, '/');
-      const normalizedRemotePath = remotePath.replace(/\\/g, '/');
-      const localSize = fs.statSync(localPath).size;
-      await this.client.ensureDir(remoteDir);
-      if (
-        await this.remoteFileMatchesFile(
-          localPath,
-          normalizedRemotePath,
-          localSize,
-        )
-      ) {
-        console.log(`Skipped existing file: ${normalizedRemotePath}`);
-        return false;
+      await this.client.uploadFrom(localPath, temporaryPath);
+    } catch (error) {
+      if (!this.client.closed) {
+        await this.removeIfPresent(temporaryPath);
       }
+      throw error;
+    } finally {
+      this.client.trackProgress();
+    }
 
-      await this.client.uploadFrom(localPath, normalizedRemotePath);
-      console.log(`Uploaded file: ${remotePath}`);
-      return true;
+    try {
+      await this.client.rename(temporaryPath, remotePath);
+      return;
+    } catch (directRenameError) {
+      if (this.client.closed) {
+        throw directRenameError;
+      }
+    }
+
+    let backupCreated = false;
+    try {
+      await this.client.rename(remotePath, backupPath);
+      backupCreated = true;
+      await this.client.rename(temporaryPath, remotePath);
+      await this.removeIfPresent(backupPath);
     } catch (error) {
-      console.error('Error uploading file:', error);
+      if (backupCreated && !this.client.closed) {
+        try {
+          await this.client.rename(backupPath, remotePath);
+        } catch (restoreError) {
+          console.error('Unable to restore FTP backup:', restoreError);
+        }
+      }
+      if (!this.client.closed) {
+        await this.removeIfPresent(temporaryPath);
+      }
       throw error;
     }
   }
 
-  async list(remotePath = '.') {
+  private async removeIfPresent(remotePath: string) {
     try {
-      const files = await this.client.list(remotePath);
-      return files;
+      await this.client.remove(remotePath);
     } catch (error) {
-      console.error('Error listing directory:', error);
-      throw error;
+      // The path may not exist anymore after a successful rename.
     }
   }
 
-  async ensureDir(remotePath) {
-    try {
-      await this.client.ensureDir(remotePath);
-      return true;
-    } catch (error) {
-      console.error('Error ensuring directory:', error);
-      throw error;
-    }
+  private createTemporaryRemotePath(
+    remotePath: string,
+    kind: string,
+    uniqueSuffix: string,
+  ) {
+    const directory = path.posix.dirname(remotePath);
+    const fileName = path.posix.basename(remotePath);
+    const extension = path.posix.extname(fileName);
+    const baseName = extension
+      ? fileName.slice(0, -extension.length)
+      : fileName;
+    const suffix = `.fightplanner-${kind}-${uniqueSuffix}`;
+    const maxBaseLength = Math.max(1, 255 - suffix.length - extension.length);
+    return path.posix.join(
+      directory,
+      `${baseName.slice(0, maxBaseLength)}${suffix}${extension}`,
+    );
   }
 
   private async remoteFileMatchesFile(
-    _localPath: string,
+    localPath: string,
     remotePath: string,
     localSize: number,
   ) {
+    let remoteSize: number;
     try {
-      const remoteSize = await this.client.size(remotePath.replace(/\\/g, '/'));
-      return remoteSize === localSize;
+      remoteSize = await this.client.size(remotePath);
     } catch (error) {
+      if (this.client.closed) {
+        throw error;
+      }
       return false;
     }
+
+    if (remoteSize !== localSize) {
+      return false;
+    }
+
+    const [localHash, remoteHash] = await Promise.all([
+      this.hashLocalFile(localPath),
+      this.hashRemoteFile(remotePath),
+    ]);
+    return localHash === remoteHash;
+  }
+
+  private async hashLocalFile(localPath: string) {
+    const hash = createHash('sha256');
+
+    await new Promise<void>((resolve, reject) => {
+      const stream = createReadStream(localPath);
+      stream.on('error', reject);
+      hash.on('error', reject);
+      hash.on('finish', resolve);
+      stream.pipe(hash);
+    });
+
+    return hash.digest('hex');
+  }
+
+  private async hashRemoteFile(remotePath: string) {
+    const hash = createHash('sha256');
+    const sink = new Writable({
+      write(chunk, _encoding, callback) {
+        hash.update(chunk);
+        callback();
+      },
+    });
+
+    await this.client.downloadTo(sink, remotePath);
+    return hash.digest('hex');
   }
 }

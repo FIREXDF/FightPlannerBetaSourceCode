@@ -1,3 +1,18 @@
+interface ProfileTheme {
+  bannerColor1?: string;
+  bannerColor2?: string;
+  backgroundColor1?: string;
+  backgroundColor2?: string;
+  accentColor?: string;
+  usernameColor?: string;
+  bannerStyle?: 'diagonal' | 'radial' | 'solid' | 'split';
+  backgroundStyle?: 'gradient' | 'spotlight' | 'solid';
+  bannerAngle?: number;
+  avatarShape?: 'circle' | 'rounded' | 'square';
+  avatarRing?: 'subtle' | 'bold' | 'double';
+  usernameEffect?: 'none' | 'gradient' | 'glow' | 'shadow';
+}
+
 interface UserFields {
   username?: string;
   photoURL?: string;
@@ -5,6 +20,7 @@ interface UserFields {
   photoPublicId?: string;
   bannerPublicId?: string;
   badges?: string[];
+  profileTheme?: ProfileTheme | string | null;
 
   privacySettings?: {
     showEmail?: boolean;

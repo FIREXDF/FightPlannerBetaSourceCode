@@ -42,7 +42,15 @@ interface CharacterCssEntry {
   isMii: boolean;
   isBoss: boolean;
   isHiddenBoss: boolean;
+  isGroup: boolean;
+  groupId: string | null;
   slots: CharacterCssSlot[];
+}
+
+interface CharacterCssGroupCreate {
+  id: string;
+  nameId: string;
+  displayName: string;
 }
 
 interface CharacterCssSlot {
@@ -65,6 +73,8 @@ class CharactersManager {
   initialized: boolean;
   cssVisibleCharacters: CharacterCssEntry[];
   cssHiddenCharacters: CharacterCssEntry[];
+  cssGroups: Map<string, CharacterCssEntry[]>;
+  cssCreatedGroups: Map<string, CharacterCssGroupCreate>;
   cssRenamedCharacters: Map<string, string>;
   cssDraggedCharacterId: string | null;
   cssLoaded: boolean;
@@ -89,6 +99,8 @@ class CharactersManager {
     this.initialized = false;
     this.cssVisibleCharacters = [];
     this.cssHiddenCharacters = [];
+    this.cssGroups = new Map();
+    this.cssCreatedGroups = new Map();
     this.cssRenamedCharacters = new Map();
     this.cssDraggedCharacterId = null;
     this.cssLoaded = false;
@@ -226,6 +238,33 @@ class CharactersManager {
       });
     }
 
+    const slotsButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-slots-btn',
+    );
+    if (slotsButton) {
+      const replacement = slotsButton.cloneNode(true) as HTMLButtonElement;
+      slotsButton.parentNode?.replaceChild(replacement, slotsButton);
+      replacement.addEventListener('click', () => {
+        this.openCssUsedSlotsModal();
+      });
+    }
+
+    const createGroupButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-create-group-btn',
+    );
+    if (createGroupButton) {
+      const replacement = createGroupButton.cloneNode(
+        true,
+      ) as HTMLButtonElement;
+      createGroupButton.parentNode?.replaceChild(
+        replacement,
+        createGroupButton,
+      );
+      replacement.addEventListener('click', () => {
+        this.openCreateCssGroupModal();
+      });
+    }
+
     const movesetsButton = document.querySelector<HTMLButtonElement>(
       '#character-movesets-btn',
     );
@@ -279,8 +318,13 @@ class CharactersManager {
       '#character-css-change-source-btn',
     );
     if (changeSourceButton) {
-      const replacement = changeSourceButton.cloneNode(true) as HTMLButtonElement;
-      changeSourceButton.parentNode?.replaceChild(replacement, changeSourceButton);
+      const replacement = changeSourceButton.cloneNode(
+        true,
+      ) as HTMLButtonElement;
+      changeSourceButton.parentNode?.replaceChild(
+        replacement,
+        changeSourceButton,
+      );
       replacement.addEventListener('click', () => {
         this.openCharacterCssSourceImport();
       });
@@ -1214,6 +1258,8 @@ ${category}
       this.cssHiddenCharacters = result.hiddenCharacters.map((entry) =>
         this.hydrateCssCharacter(entry),
       );
+      this.cssGroups = this.hydrateCssGroups(result.groups);
+      this.cssCreatedGroups.clear();
       this.cssSelectedCharacterId = duplicateOptions.newUiCharaId;
       this.cssSelectedSlotIndex = 0;
       this.cssPanelMode = 'msbt';
@@ -1383,12 +1429,10 @@ Add to CSS
 
   getUniqueCssNameId(baseNameId: string) {
     const usedIds = new Set(
-      [...this.cssVisibleCharacters, ...this.cssHiddenCharacters].flatMap(
-        (character) => [
-          character.nameId,
-          character.id.replace(/^ui_chara_/, ''),
-        ],
-      ),
+      this.getAllCssCharacters().flatMap((character) => [
+        character.nameId,
+        character.id.replace(/^ui_chara_/, ''),
+      ]),
     );
     const normalizedBase =
       baseNameId
@@ -1473,6 +1517,8 @@ Add to CSS
       this.cssHiddenCharacters = result.hiddenCharacters.map((entry) =>
         this.hydrateCssCharacter(entry),
       );
+      this.cssGroups = this.hydrateCssGroups(result.groups);
+      this.cssCreatedGroups.clear();
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
       this.cssSelectedCharacterId =
@@ -1487,7 +1533,10 @@ Add to CSS
       console.error('[CharactersManager] Failed to load CSS layout:', error);
       if (grid) {
         const message = error.message || 'Failed to load CSS layout';
-        if (message.includes('ui_chara_db.json') || message.includes('msg_name')) {
+        if (
+          message.includes('ui_chara_db.json') ||
+          message.includes('msg_name')
+        ) {
           grid.innerHTML = '';
           this.renderCharacterCssSourceImport();
           return;
@@ -1503,12 +1552,30 @@ Add to CSS
 
   renderCharacterCssSourceImport() {
     const grid = document.querySelector<HTMLElement>('#character-css-grid');
-    const inspector = document.querySelector<HTMLElement>('#character-css-inspector');
-    const saveButton = document.querySelector<HTMLButtonElement>('#character-css-save-btn');
-    const hiddenButton = document.querySelector<HTMLButtonElement>('#character-css-hidden-btn');
-    const changeSourceButton = document.querySelector<HTMLButtonElement>('#character-css-change-source-btn');
-    const randomizeButton = document.querySelector<HTMLButtonElement>('#character-css-randomize-btn');
-    const previewButton = document.querySelector<HTMLButtonElement>('#character-css-preview-btn');
+    const inspector = document.querySelector<HTMLElement>(
+      '#character-css-inspector',
+    );
+    const saveButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-save-btn',
+    );
+    const hiddenButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-hidden-btn',
+    );
+    const changeSourceButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-change-source-btn',
+    );
+    const randomizeButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-randomize-btn',
+    );
+    const previewButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-preview-btn',
+    );
+    const slotsButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-slots-btn',
+    );
+    const createGroupButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-create-group-btn',
+    );
     const prcName = this.cssSourcePrcPath
       ? this.cssSourcePrcPath.split(/[\\/]/).pop()
       : this.t('characters.cssSourceMissing', 'Not selected');
@@ -1521,10 +1588,9 @@ Add to CSS
     const canImport =
       Boolean(
         this.cssSourcePrcPath &&
-          this.cssSourceLayoutPath &&
-          this.cssSourceMsbtPath,
-      ) &&
-      !this.cssSourceImporting;
+        this.cssSourceLayoutPath &&
+        this.cssSourceMsbtPath,
+      ) && !this.cssSourceImporting;
 
     if (grid) {
       grid.innerHTML = `
@@ -1592,9 +1658,12 @@ Add to CSS
     }
     if (saveButton) saveButton.disabled = true;
     if (hiddenButton) hiddenButton.disabled = true;
-    if (changeSourceButton) changeSourceButton.disabled = this.cssSourceImporting;
+    if (changeSourceButton)
+      changeSourceButton.disabled = this.cssSourceImporting;
     if (randomizeButton) randomizeButton.disabled = true;
     if (previewButton) previewButton.disabled = true;
+    if (slotsButton) slotsButton.disabled = true;
+    if (createGroupButton) createGroupButton.disabled = true;
   }
 
   openCharacterCssSourceImport() {
@@ -1617,6 +1686,8 @@ Add to CSS
     this.cssPrefetchedLayout = null;
     this.cssVisibleCharacters = [];
     this.cssHiddenCharacters = [];
+    this.cssGroups.clear();
+    this.cssCreatedGroups.clear();
     this.cssRenamedCharacters.clear();
     this.cssCharacterUpdates.clear();
     this.cssSelectedCharacterId = null;
@@ -1631,7 +1702,8 @@ Add to CSS
 
   async selectCharacterCssSourceFile(sourceKind: 'prc' | 'layout' | 'msbt') {
     try {
-      const result = await window.electronAPI.selectCharacterCssSourceFile(sourceKind);
+      const result =
+        await window.electronAPI.selectCharacterCssSourceFile(sourceKind);
       if (!result.success) {
         return;
       }
@@ -1669,7 +1741,9 @@ Add to CSS
         msgNamePath: this.cssSourceMsbtPath,
       });
       if (!result.success) {
-        throw new Error(result.error || 'Failed to import Character CSS source files');
+        throw new Error(
+          result.error || 'Failed to import Character CSS source files',
+        );
       }
 
       this.cssPrefetchedLayout = null;
@@ -1679,6 +1753,8 @@ Add to CSS
       this.cssHiddenCharacters = result.hiddenCharacters.map((entry) =>
         this.hydrateCssCharacter(entry),
       );
+      this.cssGroups = this.hydrateCssGroups(result.groups);
+      this.cssCreatedGroups.clear();
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
       this.cssSelectedCharacterId =
@@ -1714,6 +1790,15 @@ Add to CSS
       number: info?.number || character.number || '',
       imageUrl: this.getCssCharacterImage(character.nameId),
     };
+  }
+
+  hydrateCssGroups(groups: Record<string, CharacterCssEntry[]> | undefined) {
+    return new Map(
+      Object.entries(groups || {}).map(([groupId, characters]) => [
+        groupId,
+        characters.map((character) => this.hydrateCssCharacter(character)),
+      ]),
+    );
   }
 
   getCssCharacterImage(nameId: string) {
@@ -1764,12 +1849,18 @@ Add to CSS
     const previewButton = document.querySelector<HTMLButtonElement>(
       '#character-css-preview-btn',
     );
+    const slotsButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-slots-btn',
+    );
+    const createGroupButton = document.querySelector<HTMLButtonElement>(
+      '#character-css-create-group-btn',
+    );
     const saveButton = document.querySelector<HTMLButtonElement>(
       '#character-css-save-btn',
     );
 
     if (visibleCount) {
-      visibleCount.textContent = String(this.cssVisibleCharacters.length);
+      visibleCount.textContent = String(this.getCssPreviewCharacters().length);
     }
     if (hiddenCount) {
       hiddenCount.textContent = `${this.cssHiddenCharacters.length} hidden`;
@@ -1788,6 +1879,12 @@ Add to CSS
       previewButton.disabled =
         this.cssSaving || this.cssVisibleCharacters.length === 0;
     }
+    if (slotsButton) {
+      slotsButton.disabled = this.cssSaving;
+    }
+    if (createGroupButton) {
+      createGroupButton.disabled = this.cssSaving;
+    }
     if (saveButton) {
       saveButton.disabled = this.cssSaving;
       saveButton.classList.toggle('is-loading', this.cssSaving);
@@ -1801,6 +1898,9 @@ Add to CSS
   createCssCharacterCell(character: CharacterCssEntry) {
     const cell = document.createElement('div');
     cell.className = 'character-css-cell';
+    if (character.isGroup) {
+      cell.classList.add('is-group');
+    }
     if (character.id === this.cssSelectedCharacterId) {
       cell.classList.add('is-selected');
     }
@@ -1808,19 +1908,21 @@ Add to CSS
     cell.dataset.characterId = character.id;
 
     const escapedName = this.escapeHtml(character.displayName);
-    const imageMarkup = character.imageUrl
-      ? `<img src="${character.imageUrl}" alt="${escapedName}" class="character-css-image" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">`
-      : '';
+    const imageMarkup =
+      !character.isGroup && character.imageUrl
+        ? `<img src="${character.imageUrl}" alt="${escapedName}" class="character-css-image" onerror="this.hidden=true; this.nextElementSibling.hidden=false;">`
+        : '';
+    const groupSize = this.cssGroups.get(character.id)?.length || 0;
 
     cell.innerHTML = `
 <div class="character-css-image-frame">
 ${imageMarkup}
-<div class="character-css-placeholder" ${character.imageUrl ? 'hidden' : ''}>
-<i class="bi bi-person-circle"></i>
+<div class="character-css-placeholder" ${imageMarkup ? 'hidden' : ''}>
+<i class="bi ${character.isGroup ? 'bi-collection-fill' : 'bi-person-circle'}"></i>
 </div>
 </div>
 <div class="character-css-name">${escapedName}</div>
-${character.number ? `<span class="character-css-number">#${this.escapeHtml(character.number)}</span>` : ''}
+${character.isGroup ? `<span class="character-css-group-count">${groupSize}</span>` : character.number ? `<span class="character-css-number">#${this.escapeHtml(character.number)}</span>` : ''}
 <button class="character-css-hide-btn" type="button" title="Hide">
 <i class="bi bi-eye-slash"></i>
 </button>
@@ -1870,6 +1972,11 @@ ${character.number ? `<span class="character-css-number">#${this.escapeHtml(char
       return;
     }
 
+    if (character.isGroup) {
+      this.renderCssGroupInspector(inspector, character);
+      return;
+    }
+
     const slot =
       character.slots[this.cssSelectedSlotIndex] || character.slots[0];
     const escapedName = this.escapeHtml(character.displayName);
@@ -1893,6 +2000,7 @@ ${character.imageUrl ? `<img src="${character.imageUrl}" alt="${escapedName}">` 
 <i class="bi bi-copy"></i>
 Duplicate
 </button>
+${this.cssGroups.size > 0 ? `<button class="input-btn" type="button" data-css-action="move-to-group"><i class="bi bi-folder-symlink"></i>Move to Group</button>` : ''}
 <button class="input-btn character-css-danger-btn" type="button" data-css-action="remove-character">
 <i class="bi bi-trash3"></i>
 Remove
@@ -1939,6 +2047,103 @@ ${this.cssPanelMode === 'prc' ? this.renderCssPrcPanel(character) : this.renderC
       ?.addEventListener('click', () => {
         void this.removeSelectedCssCharacter();
       });
+    inspector
+      .querySelector<HTMLButtonElement>('[data-css-action="move-to-group"]')
+      ?.addEventListener('click', () => {
+        this.openMoveCssCharacterToGroupModal(character);
+      });
+  }
+
+  renderCssGroupInspector(inspector: HTMLElement, group: CharacterCssEntry) {
+    const members = this.cssGroups.get(group.id) || [];
+    inspector.innerHTML = `
+<div class="character-css-inspector-header">
+  <div class="character-css-inspector-thumb character-css-group-thumb">
+    <i class="bi bi-collection-fill"></i>
+  </div>
+  <div>
+    <strong>${this.escapeHtml(group.displayName)}</strong>
+    <span>${this.escapeHtml(group.id)}</span>
+  </div>
+</div>
+<div class="character-css-form">
+  <label class="character-css-field">
+    <span>Group Display Name</span>
+    <input type="text" data-css-group-name value="${this.escapeHtml(group.displayName)}">
+  </label>
+  <label class="character-css-field">
+    <span>Name ID</span>
+    <input type="text" value="${this.escapeHtml(group.nameId)}" readonly>
+  </label>
+  <div class="character-css-group-summary">
+    <i class="bi bi-people-fill"></i>
+    <strong>${members.length}</strong>
+    <span>character${members.length === 1 ? '' : 's'} in this group</span>
+  </div>
+  <button class="input-btn" type="button" data-css-action="open-group">
+    <i class="bi bi-folder2-open"></i>
+    Manage Group
+  </button>
+  <button class="input-btn character-css-danger-btn" type="button" data-css-action="remove-group" ${members.length > 0 ? 'disabled title="Move every member out before deleting this group"' : ''}>
+    <i class="bi bi-trash3"></i>
+    Delete Empty Group
+  </button>
+</div>`;
+
+    inspector
+      .querySelector<HTMLInputElement>('[data-css-group-name]')
+      ?.addEventListener('input', (event) => {
+        const value = (event.currentTarget as HTMLInputElement).value;
+        group.displayName = value;
+        this.cssRenamedCharacters.set(group.nameId, value);
+        const createdGroup = this.cssCreatedGroups.get(group.id);
+        if (createdGroup) {
+          createdGroup.displayName = value;
+        }
+        this.cssDirty = true;
+      });
+    inspector
+      .querySelector<HTMLButtonElement>('[data-css-action="open-group"]')
+      ?.addEventListener('click', () => {
+        this.openCssGroupModal(group.id);
+      });
+    inspector
+      .querySelector<HTMLButtonElement>('[data-css-action="remove-group"]')
+      ?.addEventListener('click', () => {
+        this.removeCssGroup(group);
+      });
+  }
+
+  removeCssGroup(group: CharacterCssEntry) {
+    if ((this.cssGroups.get(group.id)?.length || 0) > 0) {
+      window.toastManager?.warning?.(
+        'Move every member out of the group before deleting it.',
+        4000,
+      );
+      return;
+    }
+    if (this.cssCreatedGroups.has(group.id)) {
+      if (
+        !window.confirm(`Delete the empty CSS group “${group.displayName}”?`)
+      ) {
+        return;
+      }
+      this.cssVisibleCharacters = this.cssVisibleCharacters.filter(
+        (entry) => entry.id !== group.id,
+      );
+      this.cssHiddenCharacters = this.cssHiddenCharacters.filter(
+        (entry) => entry.id !== group.id,
+      );
+      this.cssGroups.delete(group.id);
+      this.cssCreatedGroups.delete(group.id);
+      this.cssRenamedCharacters.delete(group.nameId);
+      this.cssSelectedCharacterId = this.cssVisibleCharacters[0]?.id || null;
+      this.cssDirty = true;
+      this.renderCssEditor();
+      return;
+    }
+
+    void this.removeSelectedCssCharacter();
   }
 
   renderCssPrcPanel(character: CharacterCssEntry) {
@@ -1957,6 +2162,39 @@ ${this.cssPanelMode === 'prc' ? this.renderCssPrcPanel(character) : this.renderC
 <input type="checkbox" data-css-field="${key}" ${value ? 'checked' : ''}>
 <span>${label}</span>
 </label>`;
+    const select = (
+      label: string,
+      key: string,
+      value: string,
+      options: Array<{ value: string; label: string }>,
+    ) => `
+<label class="character-css-field">
+<span>${label}</span>
+<select data-css-field="${key}">
+${options
+  .map(
+    (option) =>
+      `<option value="${this.escapeHtml(option.value)}" ${option.value === value ? 'selected' : ''}>${this.escapeHtml(option.label)}</option>`,
+  )
+  .join('')}
+</select>
+</label>`;
+    const fighterTypes = [
+      'fighter_type_normal',
+      'fighter_type_both',
+      'fighter_type_opened',
+      'fighter_type_closed',
+      'fighter_type_other',
+    ];
+    const echoOptions = [
+      { value: '', label: 'None' },
+      ...this.getAllCssCharacters()
+        .filter((entry) => !entry.isGroup && entry.id !== character.id)
+        .map((entry) => ({
+          value: entry.id,
+          label: `${entry.displayName} — ${entry.id}`,
+        })),
+    ];
 
     return `
 <div class="character-css-form">
@@ -1966,8 +2204,13 @@ ${field('Series ID', 'uiSeriesId', character.uiSeriesId)}
 ${field('Name ID', 'nameId', character.nameId)}
 ${field('Fighter Kind', 'fighterKind', character.fighterKind)}
 ${field('Fighter Kind Corps', 'fighterKindCorps', character.fighterKindCorps)}
-${field('Echo Fighter', 'altCharaId', character.altCharaId)}
-${field('Fighter Type', 'fighterType', character.fighterType)}
+${select('Echo Fighter', 'altCharaId', character.altCharaId, echoOptions)}
+${select(
+  'Fighter Type',
+  'fighterType',
+  character.fighterType,
+  fighterTypes.map((value) => ({ value, label: value })),
+)}
 <div class="character-css-form-grid">
 ${field('Exhibit Year', 'exhibitYear', character.exhibitYear, 'number')}
 ${field('Colors', 'colorNum', character.colorNum, 'number')}
@@ -2033,8 +2276,19 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
       this.cssHiddenCharacters.find(
         (character) => character.id === characterId,
       ) ||
+      [...this.cssGroups.values()]
+        .flat()
+        .find((character) => character.id === characterId) ||
       null
     );
+  }
+
+  getAllCssCharacters() {
+    return [
+      ...this.cssVisibleCharacters,
+      ...this.cssHiddenCharacters,
+      ...[...this.cssGroups.values()].flat(),
+    ];
   }
 
   setCssCharacterUpdate(characterId: string, key: string, value: any) {
@@ -2153,9 +2407,16 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
       return;
     }
 
-    const characters = [...this.cssVisibleCharacters, ...this.cssHiddenCharacters]
-      .filter((character) => !character.isRandom);
-    const selected = this.findCssCharacter(this.cssSelectedCharacterId || '') || characters[0];
+    const characters = this.getAllCssCharacters().filter(
+      (character) => !character.isRandom && !character.isGroup,
+    );
+    const selectedCandidate = this.findCssCharacter(
+      this.cssSelectedCharacterId || '',
+    );
+    const selected =
+      selectedCandidate && !selectedCandidate.isGroup
+        ? selectedCandidate
+        : characters[0];
     if (!selected) {
       return;
     }
@@ -2165,7 +2426,8 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
     });
 
     const modal = document.createElement('div');
-    modal.className = 'character-modal-overlay character-css-duplicate-modal-overlay';
+    modal.className =
+      'character-modal-overlay character-css-duplicate-modal-overlay';
     modal.innerHTML = `
 <div class="character-modal character-css-duplicate-modal">
 <div class="character-modal-header">
@@ -2173,7 +2435,15 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
 <button class="character-modal-close" type="button"><i class="bi bi-x-lg"></i></button>
 </div>
 <form class="character-modal-body character-css-duplicate-form">
-<label class="character-css-field"><span>Installed mod</span><select name="installedMod"><option value="">Select mod...</option>${[...installedMods.entries()].sort(([, left], [, right]) => left.localeCompare(right)).map(([modPath, modName]) => `<option value="${this.escapeHtml(modPath)}">${this.escapeHtml(modName)}</option>`).join('')}</select></label>
+<label class="character-css-field"><span>Installed mod</span><select name="installedMod"><option value="">Select mod...</option>${[
+      ...installedMods.entries(),
+    ]
+      .sort(([, left], [, right]) => left.localeCompare(right))
+      .map(
+        ([modPath, modName]) =>
+          `<option value="${this.escapeHtml(modPath)}">${this.escapeHtml(modName)}</option>`,
+      )
+      .join('')}</select></label>
 <button class="input-btn" type="button" data-action="browse">Choose external mod</button>
 <input name="modPath" type="hidden" required>
 <label class="character-css-field"><span>Base fighter</span><select name="sourceCharacterId">${characters.map((character) => `<option value="${this.escapeHtml(character.id)}" ${character.id === selected.id ? 'selected' : ''}>${this.escapeHtml(character.displayName)} (${this.escapeHtml(character.nameId)})</option>`).join('')}</select></label>
@@ -2194,33 +2464,67 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
     const form = modal.querySelector<HTMLFormElement>('form')!;
     const errorEl = modal.querySelector<HTMLElement>('[data-role="error"]')!;
     const close = () => this.closeCharacterModal(modal);
-    modal.querySelector<HTMLElement>('.character-modal-close')?.addEventListener('click', close);
-    modal.querySelector<HTMLElement>('[data-action="cancel"]')?.addEventListener('click', close);
+    modal
+      .querySelector<HTMLElement>('.character-modal-close')
+      ?.addEventListener('click', close);
+    modal
+      .querySelector<HTMLElement>('[data-action="cancel"]')
+      ?.addEventListener('click', close);
     this.bindBackdropClose(modal, close);
     const detectMod = async (modPath: string) => {
       (form.elements.namedItem('modPath') as HTMLInputElement).value = modPath;
-      const detectionEl = modal.querySelector<HTMLElement>('[data-role="detection"]')!;
+      const detectionEl = modal.querySelector<HTMLElement>(
+        '[data-role="detection"]',
+      )!;
       try {
         const scan = await window.electronAPI.scanMod(modPath);
-        const fighterNames = (scan.success ? scan.data.fighterNames : []).filter((name) => !name.startsWith('item/'));
-        const detected = characters.filter((character) => fighterNames.some((name) => name.toLowerCase() === character.nameId.toLowerCase()));
-        if (detected.length === 0) throw new Error('No SSBU fighter detected. Mod needs fighter/<character> files.');
-        const base = detected.length === 1 ? detected[0] : detected.find((character) => character.id === (form.elements.namedItem('sourceCharacterId') as HTMLSelectElement).value) || detected[0];
-        (form.elements.namedItem('sourceCharacterId') as HTMLInputElement).value = base.id;
-        (form.elements.namedItem('newNameId') as HTMLInputElement).value = `${base.nameId}_echo`;
-        (form.elements.namedItem('newDisplayName') as HTMLInputElement).value = `${base.displayName} Echo`;
+        const fighterNames = (
+          scan.success ? scan.data.fighterNames : []
+        ).filter((name) => !name.startsWith('item/'));
+        const detected = characters.filter((character) =>
+          fighterNames.some(
+            (name) => name.toLowerCase() === character.nameId.toLowerCase(),
+          ),
+        );
+        if (detected.length === 0)
+          throw new Error(
+            'No SSBU fighter detected. Mod needs fighter/<character> files.',
+          );
+        const base =
+          detected.length === 1
+            ? detected[0]
+            : detected.find(
+                (character) =>
+                  character.id ===
+                  (
+                    form.elements.namedItem(
+                      'sourceCharacterId',
+                    ) as HTMLSelectElement
+                  ).value,
+              ) || detected[0];
+        (
+          form.elements.namedItem('sourceCharacterId') as HTMLInputElement
+        ).value = base.id;
+        (form.elements.namedItem('newNameId') as HTMLInputElement).value =
+          `${base.nameId}_echo`;
+        (form.elements.namedItem('newDisplayName') as HTMLInputElement).value =
+          `${base.displayName} Echo`;
         const detectedSlots = (scan.success ? scan.data.currentSlots : [])
           .filter((slot) => /^c\d{2,3}$/i.test(slot))
           .map((slot) => Number(slot.slice(1)))
           .filter((slot) => slot >= 8)
           .sort((left, right) => left - right);
         if (detectedSlots.length > 0) {
-          (form.elements.namedItem('colorStartIndex') as HTMLInputElement).value = String(detectedSlots[0]);
-          (form.elements.namedItem('colorCount') as HTMLInputElement).value = String(Math.min(detectedSlots.length, 8));
+          (
+            form.elements.namedItem('colorStartIndex') as HTMLInputElement
+          ).value = String(detectedSlots[0]);
+          (form.elements.namedItem('colorCount') as HTMLInputElement).value =
+            String(Math.min(detectedSlots.length, 8));
         }
-        detectionEl.textContent = detected.length === 1
-          ? `Detected: ${base.displayName} (${base.nameId})`
-          : `Several fighters detected (${detected.map((character) => character.nameId).join(', ')}). Verify base fighter.`;
+        detectionEl.textContent =
+          detected.length === 1
+            ? `Detected: ${base.displayName} (${base.nameId})`
+            : `Several fighters detected (${detected.map((character) => character.nameId).join(', ')}). Verify base fighter.`;
         detectionEl.hidden = false;
         detectionEl.style.color = 'var(--success-color, #2ea043)';
       } catch (error) {
@@ -2229,14 +2533,18 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
         detectionEl.style.color = '';
       }
     };
-    form.querySelector<HTMLSelectElement>('[name="installedMod"]')?.addEventListener('change', (event) => {
-      const modPath = (event.target as HTMLSelectElement).value;
-      if (modPath) void detectMod(modPath);
-    });
-    modal.querySelector<HTMLButtonElement>('[data-action="browse"]')?.addEventListener('click', async () => {
-      const modPath = await window.electronAPI.selectFolder();
-      if (modPath) void detectMod(modPath);
-    });
+    form
+      .querySelector<HTMLSelectElement>('[name="installedMod"]')
+      ?.addEventListener('change', (event) => {
+        const modPath = (event.target as HTMLSelectElement).value;
+        if (modPath) void detectMod(modPath);
+      });
+    modal
+      .querySelector<HTMLButtonElement>('[data-action="browse"]')
+      ?.addEventListener('click', async () => {
+        const modPath = await window.electronAPI.selectFolder();
+        if (modPath) void detectMod(modPath);
+      });
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const data = new FormData(form);
@@ -2246,7 +2554,9 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
         errorEl.hidden = false;
         return;
       }
-      const createButton = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      const createButton = form.querySelector<HTMLButtonElement>(
+        'button[type="submit"]',
+      )!;
       const createButtonHtml = createButton.innerHTML;
       this.cssSaving = true;
       createButton.disabled = true;
@@ -2261,12 +2571,19 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
           useTwoBaseModels: String(data.get('useTwoBaseModels')) === 'true',
           modPath,
         });
-        if (!result.success) throw new Error(result.error || 'Echo creation failed');
+        if (!result.success)
+          throw new Error(result.error || 'Echo creation failed');
         const warnings = Array.isArray(result.warnings) ? result.warnings : [];
         if (warnings.length > 0) {
-          window.toastManager?.warning?.(`Echo created. ${warnings.join(' ')}`, 8000);
+          window.toastManager?.warning?.(
+            `Echo created. ${warnings.join(' ')}`,
+            8000,
+          );
         } else {
-          window.toastManager?.success?.(`Echo ${result.newUiCharaId} created.`, 5000);
+          window.toastManager?.success?.(
+            `Echo ${result.newUiCharaId} created.`,
+            5000,
+          );
         }
         this.cssLoaded = false;
         await this.loadCssLayout();
@@ -2324,6 +2641,8 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
       this.cssHiddenCharacters = result.hiddenCharacters.map((entry) =>
         this.hydrateCssCharacter(entry),
       );
+      this.cssGroups = this.hydrateCssGroups(result.groups);
+      this.cssCreatedGroups.clear();
       this.cssSelectedCharacterId = duplicateOptions.newUiCharaId;
       this.cssSelectedSlotIndex = 0;
       this.cssRenamedCharacters.clear();
@@ -2496,6 +2815,8 @@ Duplicate
       this.cssHiddenCharacters = result.hiddenCharacters.map((entry) =>
         this.hydrateCssCharacter(entry),
       );
+      this.cssGroups = this.hydrateCssGroups(result.groups);
+      this.cssCreatedGroups.clear();
       this.cssSelectedCharacterId =
         this.cssVisibleCharacters[0]?.id ||
         this.cssHiddenCharacters[0]?.id ||
@@ -2504,9 +2825,10 @@ Duplicate
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
       this.cssDirty = !isEcho;
-      const removalWarnings = 'warnings' in result && Array.isArray(result.warnings)
-        ? result.warnings
-        : [];
+      const removalWarnings =
+        'warnings' in result && Array.isArray(result.warnings)
+          ? result.warnings
+          : [];
       if (removalWarnings.length > 0) {
         window.toastManager?.warning?.(removalWarnings.join(' '), 7000);
       } else {
@@ -2560,9 +2882,11 @@ ${character.imageUrl ? `<img src="${character.imageUrl}" alt="${this.escapeHtml(
 <span>${this.escapeHtml(character.id)}</span>
 </div>
 </div>
-<p>${character.fighterType === 'fighter_type_opened'
-  ? 'This removes the Echo and automatically restores its detected mod files, slots, config, and UI names.'
-  : 'This removes the entry from the generated Character CSS data. Apply Layout after removing to rebuild the mod.'}</p>
+<p>${
+        character.fighterType === 'fighter_type_opened'
+          ? 'This removes the Echo and automatically restores its detected mod files, slots, config, and UI names.'
+          : 'This removes the entry from the generated Character CSS data. Apply Layout after removing to rebuild the mod.'
+      }</p>
 <div class="character-css-duplicate-actions">
 <button class="input-btn" type="button" data-action="cancel">Cancel</button>
 <button class="input-btn character-css-danger-btn" type="button" data-action="confirm-remove">
@@ -2592,6 +2916,298 @@ Remove
         ?.addEventListener('click', () => close(true));
       this.bindBackdropClose(modal, () => close(false));
     });
+  }
+
+  openCreateCssGroupModal() {
+    if (this.cssSaving) {
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className =
+      'character-modal-overlay character-css-duplicate-modal-overlay';
+    modal.innerHTML = `
+<div class="character-modal character-css-duplicate-modal">
+  <div class="character-modal-header">
+    <h2>Create CSS Group</h2>
+    <button class="character-modal-close" type="button"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <form class="character-modal-body character-css-duplicate-form">
+    <label class="character-css-field"><span>Group ID</span><input name="groupId" value="ui_chara_" autocomplete="off"></label>
+    <label class="character-css-field"><span>Name ID</span><input name="nameId" autocomplete="off"></label>
+    <label class="character-css-field"><span>Display Name</span><input name="displayName" autocomplete="off"></label>
+    <div class="character-css-duplicate-error" hidden></div>
+    <div class="character-css-duplicate-actions">
+      <button class="input-btn" type="button" data-action="cancel">Cancel</button>
+      <button class="input-btn character-css-save-btn" type="submit"><i class="bi bi-collection-fill"></i>Create Group</button>
+    </div>
+  </form>
+</div>`;
+    document.body.appendChild(modal);
+
+    const close = () => this.closeCharacterModal(modal);
+    modal
+      .querySelector<HTMLElement>('.character-modal-close')
+      ?.addEventListener('click', close);
+    modal
+      .querySelector<HTMLElement>('[data-action="cancel"]')
+      ?.addEventListener('click', close);
+    this.bindBackdropClose(modal, close);
+    modal
+      .querySelector<HTMLFormElement>('form')
+      ?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const form = event.currentTarget as HTMLFormElement;
+        const data = new FormData(form);
+        const rawId = String(data.get('groupId') || '').trim();
+        const id = rawId.startsWith('ui_chara_') ? rawId : `ui_chara_${rawId}`;
+        const nameId = String(data.get('nameId') || '').trim();
+        const displayName = String(data.get('displayName') || '').trim();
+        const error = form.querySelector<HTMLElement>(
+          '.character-css-duplicate-error',
+        );
+        const ids = new Set(
+          this.getAllCssCharacters().map((entry) => entry.id),
+        );
+        const nameIds = new Set(
+          this.getAllCssCharacters().map((entry) => entry.nameId),
+        );
+        let message = '';
+        if (id === 'ui_chara_' || !nameId || !displayName) {
+          message = 'All group fields are required.';
+        } else if (ids.has(id)) {
+          message = `The ID ${id} already exists.`;
+        } else if (nameIds.has(nameId)) {
+          message = `The Name ID ${nameId} already exists.`;
+        }
+        if (message) {
+          if (error) {
+            error.textContent = message;
+            error.hidden = false;
+          }
+          return;
+        }
+
+        const group: CharacterCssEntry = {
+          id,
+          nameId,
+          displayName,
+          number: '',
+          imageUrl: null,
+          order: this.cssVisibleCharacters.length,
+          hidden: false,
+          canSelect: false,
+          isRandom: false,
+          uiSeriesId: '',
+          fighterKind: '',
+          fighterKindCorps: '',
+          altCharaId: '',
+          fighterType: '',
+          exhibitYear: '',
+          colorNum: '0',
+          colorStartIndex: '0',
+          isMii: false,
+          isBoss: false,
+          isHiddenBoss: false,
+          isGroup: true,
+          groupId: null,
+          slots: [],
+        };
+        const selectedIndex = this.cssVisibleCharacters.findIndex(
+          (entry) => entry.id === this.cssSelectedCharacterId,
+        );
+        this.cssVisibleCharacters.splice(
+          selectedIndex >= 0
+            ? selectedIndex + 1
+            : this.cssVisibleCharacters.length,
+          0,
+          group,
+        );
+        this.cssGroups.set(id, []);
+        this.cssCreatedGroups.set(id, { id, nameId, displayName });
+        this.cssSelectedCharacterId = id;
+        this.cssDirty = true;
+        close();
+        this.renderCssEditor();
+      });
+  }
+
+  openMoveCssCharacterToGroupModal(character: CharacterCssEntry) {
+    if (this.cssSaving || character.isGroup) {
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className =
+      'character-modal-overlay character-css-duplicate-modal-overlay';
+    const options = [
+      '<option value="">Root / Displayed</option>',
+      ...[...this.cssGroups.keys()].map((groupId) => {
+        const group = this.findCssCharacter(groupId);
+        return `<option value="${this.escapeHtml(groupId)}" ${character.groupId === groupId ? 'selected' : ''}>${this.escapeHtml(group?.displayName || groupId)}</option>`;
+      }),
+    ].join('');
+    modal.innerHTML = `
+<div class="character-modal character-css-duplicate-modal">
+  <div class="character-modal-header">
+    <h2>Move ${this.escapeHtml(character.displayName)}</h2>
+    <button class="character-modal-close" type="button"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <form class="character-modal-body character-css-duplicate-form">
+    <label class="character-css-field"><span>Destination</span><select name="groupId">${options}</select></label>
+    <div class="character-css-duplicate-actions">
+      <button class="input-btn" type="button" data-action="cancel">Cancel</button>
+      <button class="input-btn character-css-save-btn" type="submit"><i class="bi bi-folder-symlink"></i>Move</button>
+    </div>
+  </form>
+</div>`;
+    document.body.appendChild(modal);
+    const close = () => this.closeCharacterModal(modal);
+    modal
+      .querySelector<HTMLElement>('.character-modal-close')
+      ?.addEventListener('click', close);
+    modal
+      .querySelector<HTMLElement>('[data-action="cancel"]')
+      ?.addEventListener('click', close);
+    this.bindBackdropClose(modal, close);
+    modal
+      .querySelector<HTMLFormElement>('form')
+      ?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const groupId = String(
+          new FormData(event.currentTarget as HTMLFormElement).get('groupId') ||
+            '',
+        );
+        this.moveCssCharacterToGroup(character.id, groupId || null);
+        close();
+      });
+  }
+
+  moveCssCharacterToGroup(characterId: string, groupId: string | null) {
+    const character = this.findCssCharacter(characterId);
+    if (!character || character.isGroup || character.groupId === groupId) {
+      return;
+    }
+
+    this.cssVisibleCharacters = this.cssVisibleCharacters.filter(
+      (entry) => entry.id !== characterId,
+    );
+    this.cssHiddenCharacters = this.cssHiddenCharacters.filter(
+      (entry) => entry.id !== characterId,
+    );
+    for (const members of this.cssGroups.values()) {
+      const index = members.findIndex((entry) => entry.id === characterId);
+      if (index >= 0) {
+        members.splice(index, 1);
+      }
+    }
+
+    character.groupId = groupId;
+    character.hidden = false;
+    if (groupId) {
+      const members = this.cssGroups.get(groupId);
+      if (!members) {
+        throw new Error(`CSS group not found: ${groupId}`);
+      }
+      members.push(character);
+    } else {
+      this.cssVisibleCharacters.push(character);
+    }
+    this.cssSelectedCharacterId = character.id;
+    this.cssDirty = true;
+    this.renderCssEditor();
+  }
+
+  openCssGroupModal(groupId: string) {
+    const group = this.findCssCharacter(groupId);
+    if (!group?.isGroup) {
+      return;
+    }
+    document
+      .querySelector<HTMLElement>('.character-css-group-modal-overlay')
+      ?.remove();
+
+    const members = this.cssGroups.get(groupId) || [];
+    const modal = document.createElement('div');
+    modal.className =
+      'character-modal-overlay character-css-group-modal-overlay';
+    modal.innerHTML = `
+<div class="character-modal character-css-group-modal">
+  <div class="character-modal-header">
+    <h2>${this.escapeHtml(group.displayName)}</h2>
+    <button class="character-modal-close" type="button"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="character-modal-body">
+    <p class="character-css-group-help">Characters inside a group keep their own display order. Use the arrows to reorder or return one to the root list.</p>
+    <div class="character-css-hidden-list">
+      ${
+        members
+          .map(
+            (character, index) => `
+<div class="character-css-hidden-row character-css-group-row" data-character-id="${this.escapeHtml(character.id)}">
+  <div class="character-css-hidden-thumb">
+    ${character.imageUrl ? `<img src="${character.imageUrl}" alt="${this.escapeHtml(character.displayName)}">` : '<i class="bi bi-person-circle"></i>'}
+  </div>
+  <button class="character-css-group-character" type="button" data-action="select">${this.escapeHtml(character.displayName)}</button>
+  <div class="character-css-group-actions">
+    <button class="input-btn" type="button" data-action="up" ${index === 0 ? 'disabled' : ''} title="Move up"><i class="bi bi-arrow-up"></i></button>
+    <button class="input-btn" type="button" data-action="down" ${index === members.length - 1 ? 'disabled' : ''} title="Move down"><i class="bi bi-arrow-down"></i></button>
+    <button class="input-btn" type="button" data-action="ungroup" title="Move to root"><i class="bi bi-box-arrow-up-right"></i></button>
+  </div>
+</div>`,
+          )
+          .join('') ||
+        '<div class="characters-empty-state">This group is empty. Select a fighter and use “Move to Group”.</div>'
+      }
+    </div>
+  </div>
+</div>`;
+    document.body.appendChild(modal);
+    const close = () => this.closeCharacterModal(modal);
+    modal
+      .querySelector<HTMLElement>('.character-modal-close')
+      ?.addEventListener('click', close);
+    this.bindBackdropClose(modal, close);
+    modal
+      .querySelectorAll<HTMLElement>('.character-css-group-row')
+      .forEach((row) => {
+        const characterId = row.dataset.characterId!;
+        row
+          .querySelector<HTMLElement>('[data-action="select"]')
+          ?.addEventListener('click', () => {
+            this.cssSelectedCharacterId = characterId;
+            close();
+            this.renderCssEditor();
+          });
+        row
+          .querySelector<HTMLElement>('[data-action="ungroup"]')
+          ?.addEventListener('click', () => {
+            modal.remove();
+            this.moveCssCharacterToGroup(characterId, null);
+          });
+        (['up', 'down'] as const).forEach((action) => {
+          row
+            .querySelector<HTMLElement>(`[data-action="${action}"]`)
+            ?.addEventListener('click', () => {
+              const currentIndex = members.findIndex(
+                (entry) => entry.id === characterId,
+              );
+              const nextIndex = currentIndex + (action === 'up' ? -1 : 1);
+              if (
+                currentIndex < 0 ||
+                nextIndex < 0 ||
+                nextIndex >= members.length
+              ) {
+                return;
+              }
+              const [member] = members.splice(currentIndex, 1);
+              members.splice(nextIndex, 0, member);
+              this.cssDirty = true;
+              modal.remove();
+              this.openCssGroupModal(groupId);
+            });
+        });
+      });
   }
 
   moveCssCharacter(sourceId: string, targetId: string) {
@@ -2722,6 +3338,169 @@ Unhide
       });
   }
 
+  openCssUsedSlotsModal() {
+    const fighters = this.getAllCssCharacters().filter(
+      (character) =>
+        !character.isGroup &&
+        character.fighterKind.trim() &&
+        Number(character.colorNum) > 0,
+    );
+    const usage = new Map<string, Map<number, CharacterCssEntry[]>>();
+    fighters.forEach((character) => {
+      const fighterSlots =
+        usage.get(character.fighterKind) ||
+        new Map<number, CharacterCssEntry[]>();
+      const start = Math.max(0, Number(character.colorStartIndex) || 0);
+      const count = Math.max(0, Number(character.colorNum) || 0);
+      for (let slot = start; slot < Math.min(256, start + count); slot += 1) {
+        const characters = fighterSlots.get(slot) || [];
+        characters.push(character);
+        fighterSlots.set(slot, characters);
+      }
+      usage.set(character.fighterKind, fighterSlots);
+    });
+
+    const modal = document.createElement('div');
+    modal.className =
+      'character-modal-overlay character-css-slots-modal-overlay';
+    const header = Array.from(
+      { length: 256 },
+      (_, slot) => `<th scope="col">${slot}</th>`,
+    ).join('');
+    const usedSlotCount = [...usage.values()].reduce(
+      (count, slots) =>
+        count +
+        [...slots.values()].filter((characters) => characters.length > 0)
+          .length,
+      0,
+    );
+    const conflictCount = [...usage.values()].reduce(
+      (count, slots) =>
+        count +
+        [...slots.values()].filter((characters) => characters.length > 1)
+          .length,
+      0,
+    );
+    const rows = [...usage.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([fighterKind, slots]) => {
+        const cells = Array.from({ length: 256 }, (_, slot) => {
+          const characters = slots.get(slot) || [];
+          if (characters.length === 0) {
+            return '<td class="is-empty" aria-hidden="true"></td>';
+          }
+          const names = characters
+            .map((character) => `${character.displayName} (${character.id})`)
+            .join('\n');
+          const isConflict = characters.length > 1;
+          const stateLabel = isConflict
+            ? `${characters.length} characters conflict`
+            : 'Slot used';
+          return `<td class="${isConflict ? 'is-conflict' : 'is-used'}" title="${this.escapeHtml(names)}" data-character-id="${this.escapeHtml(characters[0].id)}" role="button" tabindex="0" aria-label="${this.escapeHtml(`${fighterKind}, slot ${slot}: ${stateLabel}`)}"><span>${isConflict ? characters.length : '<i class="bi bi-check2"></i>'}</span></td>`;
+        }).join('');
+        return `<tr><th class="character-css-slots-fighter" scope="row"><span>${this.escapeHtml(fighterKind)}</span></th>${cells}</tr>`;
+      })
+      .join('');
+    modal.innerHTML = `
+<div class="character-modal character-css-slots-modal">
+  <div class="character-modal-header">
+    <div class="character-css-slots-heading">
+      <span class="character-css-slots-heading-icon"><i class="bi bi-grid-3x3-gap-fill"></i></span>
+      <div>
+        <h2>Used Slots</h2>
+        <p>Review fighter slot allocation and resolve overlaps.</p>
+      </div>
+    </div>
+    <button class="character-modal-close" type="button" aria-label="Close Used Slots"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="character-css-slots-summary">
+    <div class="character-css-slots-stats" aria-label="Slot summary">
+      <span><strong>${usage.size}</strong> fighter kinds</span>
+      <span><strong>${usedSlotCount}</strong> used slots</span>
+      <span class="${conflictCount > 0 ? 'has-conflicts' : ''}"><strong>${conflictCount}</strong> conflicts</span>
+    </div>
+    <div class="character-css-slots-legend" aria-label="Legend">
+      <span class="is-used"><i></i>Used</span>
+      <span class="is-conflict"><i></i>Conflict</span>
+      <span class="is-empty"><i></i>Available</span>
+    </div>
+  </div>
+  <div class="character-css-slots-scroll">
+    ${
+      rows
+        ? `<table class="character-css-slots-table">
+      <thead><tr><th class="character-css-slots-fighter" scope="col"><span>Fighter Kind</span></th>${header}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`
+        : `<div class="character-css-slots-empty">
+      <i class="bi bi-grid-3x3-gap"></i>
+      <strong>No fighter slots found</strong>
+      <span>Import a Character CSS source to inspect its slot allocation.</span>
+    </div>`
+    }
+  </div>
+</div>`;
+    document.body.appendChild(modal);
+    const close = () => this.closeCharacterModal(modal);
+    modal
+      .querySelector<HTMLElement>('.character-modal-close')
+      ?.addEventListener('click', close);
+    this.bindBackdropClose(modal, close);
+    modal
+      .querySelectorAll<HTMLElement>('[data-character-id]')
+      .forEach((cell) => {
+        const selectCharacter = () => {
+          const characterId = cell.dataset.characterId;
+          if (!characterId) return;
+          this.cssSelectedCharacterId = characterId;
+          const character = this.findCssCharacter(characterId);
+          if (character?.groupId) {
+            this.openCssGroupModal(character.groupId);
+          }
+          close();
+          this.renderCssEditor();
+        };
+        cell.addEventListener('click', selectCharacter);
+        cell.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectCharacter();
+          }
+        });
+      });
+  }
+
+  getCssPreviewCharacters() {
+    return this.cssVisibleCharacters.flatMap((character) =>
+      character.isGroup ? this.cssGroups.get(character.id) || [] : [character],
+    );
+  }
+
+  renderCssPreviewRows(
+    characters: CharacterCssEntry[],
+    oddRowIcons: number,
+    evenRowIcons: number,
+  ) {
+    const rows: CharacterCssEntry[][] = [];
+    let offset = 0;
+    let isOdd = true;
+    while (offset < characters.length) {
+      const rowSize = Math.max(1, isOdd ? oddRowIcons : evenRowIcons);
+      rows.push(characters.slice(offset, offset + rowSize));
+      offset += rowSize;
+      isOdd = !isOdd;
+    }
+
+    return rows
+      .map(
+        (row) =>
+          `<div class="character-css-preview-row">${row
+            .map((character) => this.renderCssPreviewTile(character))
+            .join('')}</div>`,
+      )
+      .join('');
+  }
+
   openCssPreviewModal() {
     const existingModal = document.querySelector<HTMLElement>(
       '.character-css-preview-overlay',
@@ -2730,17 +3509,20 @@ Unhide
 
     const modal = document.createElement('div');
     modal.className = 'character-css-preview-overlay';
-    const visibleCharacters = this.cssVisibleCharacters;
+    const visibleCharacters = this.getCssPreviewCharacters();
 
     modal.innerHTML = `
 <div class="character-css-preview-stage is-layout-only">
 <button class="character-css-preview-close" type="button" title="Close">
 <i class="bi bi-x-lg"></i>
 </button>
-<div class="character-css-preview-grid">
-${visibleCharacters
-  .map((character) => this.renderCssPreviewTile(character))
-  .join('')}
+<div class="character-css-preview-controls">
+  <label>Odd rows <input type="number" min="1" max="64" value="13" data-preview-odd></label>
+  <label>Even rows <input type="number" min="1" max="64" value="13" data-preview-even></label>
+  <button class="input-btn" type="button" data-preview-refresh><i class="bi bi-arrow-clockwise"></i>Refresh</button>
+</div>
+<div class="character-css-preview-grid" data-preview-grid>
+${this.renderCssPreviewRows(visibleCharacters, 13, 13)}
 </div>
 </div>
 `;
@@ -2751,6 +3533,37 @@ ${visibleCharacters
     modal
       .querySelector<HTMLElement>('.character-css-preview-close')
       ?.addEventListener('click', close);
+    const refresh = () => {
+      const odd = Number(
+        modal.querySelector<HTMLInputElement>('[data-preview-odd]')?.value,
+      );
+      const even = Number(
+        modal.querySelector<HTMLInputElement>('[data-preview-even]')?.value,
+      );
+      const grid = modal.querySelector<HTMLElement>('[data-preview-grid]');
+      if (!grid || !Number.isFinite(odd) || !Number.isFinite(even)) {
+        return;
+      }
+      grid.innerHTML = this.renderCssPreviewRows(
+        visibleCharacters,
+        Math.max(1, Math.trunc(odd)),
+        Math.max(1, Math.trunc(even)),
+      );
+    };
+    modal
+      .querySelector<HTMLElement>('[data-preview-refresh]')
+      ?.addEventListener('click', refresh);
+    modal.addEventListener('click', (event) => {
+      const tile = (event.target as HTMLElement).closest<HTMLElement>(
+        '[data-preview-character-id]',
+      );
+      if (!tile?.dataset.previewCharacterId) {
+        return;
+      }
+      this.cssSelectedCharacterId = tile.dataset.previewCharacterId;
+      close();
+      this.renderCssEditor();
+    });
     this.bindBackdropClose(modal, close);
     const escapeHandler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -2768,7 +3581,7 @@ ${visibleCharacters
       : '';
 
     return `
-<div class="character-css-preview-tile">
+<div class="character-css-preview-tile" data-preview-character-id="${this.escapeHtml(character.id)}">
 ${image}
 <div class="character-css-preview-placeholder" ${character.imageUrl ? 'hidden' : ''}>
 <i class="bi bi-person-fill"></i>
@@ -2795,6 +3608,13 @@ ${image}
         hiddenCharacterIds: this.cssHiddenCharacters.map(
           (character) => character.id,
         ),
+        groups: Object.fromEntries(
+          [...this.cssGroups.entries()].map(([groupId, characters]) => [
+            groupId,
+            characters.map((character) => character.id),
+          ]),
+        ),
+        createdGroups: [...this.cssCreatedGroups.values()],
         renamedCharacters,
         characterUpdates: Object.fromEntries(this.cssCharacterUpdates),
       });
@@ -2806,6 +3626,7 @@ ${image}
       this.cssDirty = false;
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
+      this.cssCreatedGroups.clear();
       window.toastManager?.success?.('Character CSS Layout saved.', 3500);
       if (result.stderr?.includes('MSBT changes')) {
         window.toastManager?.warning?.(

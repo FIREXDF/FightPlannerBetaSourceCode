@@ -619,6 +619,31 @@ body.no-animations .characters-view-exit-right {
   cursor: grabbing;
 }
 
+.character-css-cell.is-group {
+  border-color: rgba(var(--accent-rgb), 0.28);
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.12), transparent 65%),
+    var(--bg-primary);
+}
+
+.character-css-cell.is-group .character-css-placeholder {
+  font-size: 42px;
+}
+
+.character-css-group-count {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 26px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.88);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
 .character-css-image-frame {
   position: relative;
   min-height: 0;
@@ -758,6 +783,392 @@ body.no-animations .characters-view-exit-right {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.character-css-group-thumb {
+  color: var(--accent-color);
+  font-size: 28px;
+}
+
+.character-css-group-summary {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: 9px;
+  background: var(--bg-accent-subtle);
+  color: var(--text-secondary);
+}
+
+.character-css-group-summary i,
+.character-css-group-summary strong {
+  color: var(--accent-color);
+}
+
+.character-css-group-modal {
+  width: min(760px, calc(100vw - 48px));
+}
+
+.character-css-group-help {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.character-css-group-row {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+}
+
+.character-css-group-character {
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.character-css-group-character:hover {
+  color: var(--accent-color);
+}
+
+.character-css-group-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.character-css-group-actions .input-btn {
+  min-width: 34px;
+  padding: 8px;
+}
+
+.character-css-slots-modal {
+  width: min(1520px, calc(100vw - 40px));
+  height: min(860px, calc(100vh - 40px));
+  max-width: none;
+  background: var(--bg-modal);
+}
+
+.character-css-slots-modal .character-modal-header {
+  flex: 0 0 auto;
+  padding: 18px 20px;
+  background: var(--bg-card);
+}
+
+.character-css-slots-heading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.character-css-slots-heading-icon {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: 10px;
+  background: var(--bg-accent-subtle);
+  color: var(--accent-color);
+  font-size: 19px;
+}
+
+.character-css-slots-heading > div {
+  min-width: 0;
+}
+
+.character-css-slots-modal .character-modal-header h2 {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.character-css-slots-modal .character-modal-header p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.character-css-slots-modal .character-modal-close {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.character-css-slots-summary {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.character-css-slots-stats,
+.character-css-slots-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-css-slots-stats > span,
+.character-css-slots-legend > span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.character-css-slots-stats strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.character-css-slots-stats .has-conflicts {
+  border-color: rgba(var(--danger-rgb), 0.28);
+  background: rgba(var(--danger-rgb), 0.1);
+  color: var(--danger-color);
+}
+
+.character-css-slots-stats .has-conflicts strong {
+  color: var(--danger-color);
+}
+
+.character-css-slots-legend > span {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.character-css-slots-legend i {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--border-hover);
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+}
+
+.character-css-slots-legend .is-used i {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.32);
+}
+
+.character-css-slots-legend .is-conflict i {
+  border-color: rgba(var(--danger-rgb), 0.58);
+  background: rgba(var(--danger-rgb), 0.34);
+}
+
+.character-css-slots-scroll {
+  flex: 1;
+  min-height: 0;
+  margin: 16px 20px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  overflow: auto;
+}
+
+.character-css-slots-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.character-css-slots-table th,
+.character-css-slots-table td {
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.character-css-slots-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 34px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.character-css-slots-table .character-css-slots-fighter {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 210px;
+  max-width: 210px;
+  overflow: hidden;
+  padding: 0 12px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-css-slots-table thead .character-css-slots-fighter {
+  z-index: 4;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.character-css-slots-table .character-css-slots-fighter span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-css-slots-table tbody tr:nth-child(even) td.is-empty {
+  background: var(--bg-transparent-03);
+}
+
+.character-css-slots-table tbody tr:hover .character-css-slots-fighter {
+  background: var(--bg-item-hover-alt);
+  color: var(--text-primary);
+}
+
+.character-css-slots-table td.is-empty {
+  background: var(--bg-secondary);
+}
+
+.character-css-slots-table td.is-used,
+.character-css-slots-table td.is-conflict {
+  position: relative;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.character-css-slots-table td.is-used > span,
+.character-css-slots-table td.is-conflict > span {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.character-css-slots-table td.is-used {
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent-color);
+}
+
+.character-css-slots-table td.is-used > span {
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.character-css-slots-table td.is-conflict {
+  background: rgba(var(--danger-rgb), 0.12);
+  color: var(--danger-color);
+}
+
+.character-css-slots-table td.is-conflict > span {
+  background: rgba(var(--danger-rgb), 0.2);
+}
+
+.character-css-slots-table td.is-used:hover,
+.character-css-slots-table td.is-conflict:hover {
+  z-index: 1;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.character-css-slots-table td.is-used:hover {
+  background: rgba(var(--accent-rgb), 0.24);
+}
+
+.character-css-slots-table td.is-conflict:hover {
+  background: rgba(var(--danger-rgb), 0.24);
+}
+
+.character-css-slots-table td[role='button']:focus-visible {
+  z-index: 2;
+  outline: 2px solid var(--accent-color);
+  outline-offset: -3px;
+}
+
+.character-css-slots-empty {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.character-css-slots-empty > i {
+  margin-bottom: 4px;
+  color: var(--accent-color);
+  font-size: 36px;
+}
+
+.character-css-slots-empty strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.character-css-slots-empty span {
+  max-width: 48ch;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+body.no-animations .character-css-slots-table td.is-used,
+body.no-animations .character-css-slots-table td.is-conflict {
+  transition: none;
+}
+
+@media (max-width: 760px) {
+  .character-css-slots-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+  }
+
+  .character-css-slots-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .character-css-slots-scroll {
+    margin: 12px;
+  }
 }
 
 .character-css-inspector {
@@ -946,6 +1357,34 @@ body.no-animations .characters-view-exit-right {
   background: #050607;
 }
 
+.character-css-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 56px 10px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0c0e10;
+  color: #fff;
+}
+
+.character-css-preview-controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.character-css-preview-controls input {
+  width: 64px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: #050607;
+  color: #fff;
+}
+
 .character-css-preview-close {
   position: absolute;
   top: 10px;
@@ -968,14 +1407,19 @@ body.no-animations .characters-view-exit-right {
   z-index: 1;
   width: 100%;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   justify-content: center;
-  align-content: center;
   align-items: center;
   overflow: auto;
   gap: 4px;
   padding: 22px 18px 34px;
   background: #050607;
+}
+
+.character-css-preview-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
 }
 
 .character-css-preview-tile {
@@ -988,6 +1432,12 @@ body.no-animations .characters-view-exit-right {
   border-radius: 5px;
   background: linear-gradient(180deg, #15171a 0%, #090a0c 100%);
   box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.46);
+  cursor: pointer;
+}
+
+.character-css-preview-tile:hover {
+  border-color: rgba(var(--accent-rgb), 0.72);
+  transform: translateY(-2px);
 }
 
 .character-css-preview-tile img {

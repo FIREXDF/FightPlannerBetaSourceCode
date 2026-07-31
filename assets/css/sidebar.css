@@ -57,7 +57,7 @@
   --sidebar-tab-icon: url('../images/icons/downloads.svg');
 }
 
-.sidebar-btn[data-tab='marketplace'] {
+.sidebar-btn[data-tab='social'] {
   --sidebar-tab-icon: url('../images/icons/social.svg');
 }
 

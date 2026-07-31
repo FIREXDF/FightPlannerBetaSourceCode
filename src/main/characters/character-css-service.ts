@@ -112,6 +112,8 @@ export interface CharacterCssEntry {
   isMii: boolean;
   isBoss: boolean;
   isHiddenBoss: boolean;
+  isGroup: boolean;
+  groupId: string | null;
   slots: CharacterCssSlot[];
 }
 
@@ -131,13 +133,22 @@ export interface CharacterCssLayoutData {
   source: 'saved' | 'canonical';
   visibleCharacters: CharacterCssEntry[];
   hiddenCharacters: CharacterCssEntry[];
+  groups: Record<string, CharacterCssEntry[]>;
 }
 
 export interface CharacterCssLayoutPayload {
   visibleCharacterIds: string[];
   hiddenCharacterIds: string[];
+  groups?: Record<string, string[]>;
+  createdGroups?: CharacterCssGroupCreate[];
   renamedCharacters?: Record<string, string>;
   characterUpdates?: Record<string, CharacterCssUpdate>;
+}
+
+export interface CharacterCssGroupCreate {
+  id: string;
+  nameId: string;
+  displayName: string;
 }
 
 export interface CharacterCssSourceImportPayload {
@@ -389,7 +400,11 @@ function replaceNameId(value: string, sourceNameId: string, newNameId: string) {
   );
 }
 
-function renameEchoUiAssets(dirPath: string, sourceNameId: string, newNameId: string) {
+function renameEchoUiAssets(
+  dirPath: string,
+  sourceNameId: string,
+  newNameId: string,
+) {
   if (!fs.existsSync(dirPath)) {
     return;
   }
@@ -406,7 +421,9 @@ function renameEchoUiAssets(dirPath: string, sourceNameId: string, newNameId: st
 
     const nextPath = path.join(dirPath, nextName);
     if (fs.existsSync(nextPath)) {
-      throw new Error(`Cannot rename mod file because target already exists: ${nextPath}`);
+      throw new Error(
+        `Cannot rename mod file because target already exists: ${nextPath}`,
+      );
     }
     fs.renameSync(currentPath, nextPath);
   }
@@ -460,7 +477,8 @@ function restoreEchoBackups(modPath: string) {
   const backupConfig = path.join(backupRoot, 'config.json');
   const absentMarker = path.join(backupRoot, 'config.absent');
   if (fs.existsSync(backupConfig)) fs.copyFileSync(backupConfig, configPath);
-  else if (fs.existsSync(absentMarker) && fs.existsSync(configPath)) fs.unlinkSync(configPath);
+  else if (fs.existsSync(absentMarker) && fs.existsSync(configPath))
+    fs.unlinkSync(configPath);
   else if (fs.existsSync(backupRoot) && fs.existsSync(configPath)) {
     const generatedBackup = path.join(backupRoot, 'generated-config.json');
     if (fs.existsSync(generatedBackup)) fs.unlinkSync(generatedBackup);
@@ -481,22 +499,43 @@ function restoreEchoBackups(modPath: string) {
   }
 }
 
-function detectEchoModPath(baseNameId: string, echoNameId: string, echoSlots: string[]) {
+function detectEchoModPath(
+  baseNameId: string,
+  echoNameId: string,
+  echoSlots: string[],
+) {
   const modsPath = store.get('modsPath') as string | null;
   if (!modsPath || !fs.existsSync(modsPath)) return null;
   const echoAssetPattern = new RegExp(`_${echoNameId}_`, 'i');
-  const scored = fs.readdirSync(modsPath, { withFileTypes: true })
+  const scored = fs
+    .readdirSync(modsPath, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
       const modPath = path.join(modsPath, entry.name);
-      let score = fs.existsSync(path.join(modPath, '.fightplanner-echo-backup')) ? 10 : 0;
+      let score = fs.existsSync(path.join(modPath, '.fightplanner-echo-backup'))
+        ? 10
+        : 0;
       const uiFiles = [
         path.join(modPath, 'ui', 'replace', 'chara'),
         path.join(modPath, 'ui', 'replace_patch', 'chara'),
       ].flatMap(listFilesRecursive);
-      if (uiFiles.some((filePath) => echoAssetPattern.test(path.basename(filePath)))) score += 20;
-      const fighterFiles = listFilesRecursive(path.join(modPath, 'fighter', baseNameId));
-      if (fighterFiles.some((filePath) => echoSlots.some((slot) => filePath.includes(`${path.sep}${slot}${path.sep}`)))) score += 5;
+      if (
+        uiFiles.some((filePath) =>
+          echoAssetPattern.test(path.basename(filePath)),
+        )
+      )
+        score += 20;
+      const fighterFiles = listFilesRecursive(
+        path.join(modPath, 'fighter', baseNameId),
+      );
+      if (
+        fighterFiles.some((filePath) =>
+          echoSlots.some((slot) =>
+            filePath.includes(`${path.sep}${slot}${path.sep}`),
+          ),
+        )
+      )
+        score += 5;
       return { modPath, score };
     })
     .filter((candidate) => candidate.score > 0)
@@ -515,8 +554,16 @@ function mergeEchoConfig(generated: any, existing: any) {
   ];
 
   arraySections.forEach((section) => {
-    if (Array.isArray(generated?.[section]) || Array.isArray(existing?.[section])) {
-      merged[section] = [...new Set([...(generated?.[section] || []), ...(existing?.[section] || [])])];
+    if (
+      Array.isArray(generated?.[section]) ||
+      Array.isArray(existing?.[section])
+    ) {
+      merged[section] = [
+        ...new Set([
+          ...(generated?.[section] || []),
+          ...(existing?.[section] || []),
+        ]),
+      ];
     }
   });
   objectSections.forEach((section) => {
@@ -857,7 +904,11 @@ function setHashTextIfPresent(
   if (index < 0) {
     index = getCssManagerFieldIndex(entry, collection, hash);
   }
-  if (index >= 0 && Array.isArray(entry?.[collection]) && entry[collection][index]) {
+  if (
+    index >= 0 &&
+    Array.isArray(entry?.[collection]) &&
+    entry[collection][index]
+  ) {
     entry[collection][index]['#text'] = String(value);
   }
 }
@@ -900,7 +951,9 @@ function createMsgNameMap(msgNameJson: any) {
       map.set(entry.label, entry);
     }
   }
-  for (const [label, value] of Object.entries(msgNameJson?.added_labels ?? {})) {
+  for (const [label, value] of Object.entries(
+    msgNameJson?.added_labels ?? {},
+  )) {
     if (!map.has(label)) {
       map.set(label, { label, value });
     }
@@ -933,9 +986,20 @@ function getDisplayName(nameId: string, msgNameJson: any) {
     .join(' ');
 }
 
+function normalizeGroupId(value: string) {
+  const normalized = value.trim();
+  if (!normalized || /^0x0+$/i.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function getMsgValue(msgNameJson: any, label: string) {
   const entry = createMsgNameMap(msgNameJson).get(label);
-  return typeof entry?.value === 'string' ? denormalizeMsgValue(entry.value) : '';
+  return typeof entry?.value === 'string'
+    ? denormalizeMsgValue(entry.value)
+    : '';
 }
 
 function setMsgValue(msgNameJson: any, label: string, value: string) {
@@ -949,7 +1013,10 @@ function setMsgValue(msgNameJson: any, label: string, value: string) {
     return;
   }
 
-  if (!msgNameJson.added_labels || typeof msgNameJson.added_labels !== 'object') {
+  if (
+    !msgNameJson.added_labels ||
+    typeof msgNameJson.added_labels !== 'object'
+  ) {
     msgNameJson.added_labels = {};
   }
   msgNameJson.added_labels[label] = normalizedValue;
@@ -971,7 +1038,12 @@ function buildCharacterSlots(entry: any, msgNameJson: any): CharacterCssSlot[] {
       slotIndex,
       cxxIndex,
       nxxIndex,
-      characallLabel: getHashText(entry, 'hash40', `characall_label_c${nxxKey}`, ''),
+      characallLabel: getHashText(
+        entry,
+        'hash40',
+        `characall_label_c${nxxKey}`,
+        '',
+      ),
       namChr0: getMsgValue(msgNameJson, `nam_chr0_${textKey}`),
       namChr1: getMsgValue(msgNameJson, `nam_chr1_${textKey}`),
       namChr2: getMsgValue(msgNameJson, `nam_chr2_${textKey}`),
@@ -994,6 +1066,7 @@ function buildCharacterEntry(entry: any, msgNameJson: any): CharacterCssEntry {
   const order = Number(getHashText(entry, 'sbyte', 'disp_order', '-1'));
   const canSelect =
     getHashText(entry, 'bool', 'can_select', 'False') === 'True';
+  const isGroup = getHashText(entry, 'byte', 'is_group', '0') === '1';
 
   return {
     id: uiCharaId,
@@ -1017,7 +1090,9 @@ function buildCharacterEntry(entry: any, msgNameJson: any): CharacterCssEntry {
     isBoss: getHashText(entry, 'bool', 'is_boss', 'False') === 'True',
     isHiddenBoss:
       getHashText(entry, 'bool', 'is_hidden_boss', 'False') === 'True',
-    slots: buildCharacterSlots(entry, msgNameJson),
+    isGroup,
+    groupId: normalizeGroupId(getHashText(entry, 'hash40', 'group_hash', '')),
+    slots: isGroup ? [] : buildCharacterSlots(entry, msgNameJson),
   };
 }
 
@@ -1107,8 +1182,16 @@ function writePersistedCharacterCssData(
   msgNameJson: any,
   layoutJson?: any,
 ) {
-  fs.writeFileSync(getPersistedCharaJsonPath(), JSON.stringify(charaJson), 'utf8');
-  fs.writeFileSync(getPersistedMsgNameJsonPath(), JSON.stringify(msgNameJson), 'utf8');
+  fs.writeFileSync(
+    getPersistedCharaJsonPath(),
+    JSON.stringify(charaJson),
+    'utf8',
+  );
+  fs.writeFileSync(
+    getPersistedMsgNameJsonPath(),
+    JSON.stringify(msgNameJson),
+    'utf8',
+  );
   if (layoutJson) {
     fs.writeFileSync(
       getPersistedLayoutJsonPath(),
@@ -1128,6 +1211,7 @@ function validateLayoutPayload(
   const orderedIds = [
     ...(payload.visibleCharacterIds || []),
     ...(payload.hiddenCharacterIds || []),
+    ...Object.values(payload.groups || {}).flat(),
   ];
 
   if (orderedIds.length !== sourceIds.length) {
@@ -1156,11 +1240,84 @@ function validateLayoutPayload(
 
   const mismatchedIds = [...sourceCounts.entries()]
     .filter(([id, count]) => payloadCounts.get(id) !== count)
-    .map(([id, count]) => `${id} expected ${count}, received ${payloadCounts.get(id) || 0}`);
+    .map(
+      ([id, count]) =>
+        `${id} expected ${count}, received ${payloadCounts.get(id) || 0}`,
+    );
   if (mismatchedIds.length > 0) {
     throw new Error(
       `Character identifier counts do not match source: ${mismatchedIds.join('; ')}`,
     );
+  }
+}
+
+function applyCreatedCharacterCssGroups(
+  charaJson: any,
+  msgNameJson: any,
+  createdGroups: CharacterCssGroupCreate[] | undefined,
+) {
+  if (!createdGroups?.length) {
+    return;
+  }
+
+  const structs = getStructList(charaJson);
+  const existingIds = new Set(
+    structs.map((entry) => getHashText(entry, 'hash40', 'ui_chara_id', '')),
+  );
+  const existingNameIds = new Set(
+    structs.map((entry) => String(entry?.string?.['#text'] || '')),
+  );
+
+  for (const group of createdGroups) {
+    const id = group.id.trim();
+    const nameId = group.nameId.trim();
+    const displayName = group.displayName.trim();
+    if (!id.startsWith('ui_chara_')) {
+      throw new Error(`Group ID must start with ui_chara_: ${id || '(empty)'}`);
+    }
+    if (!nameId || !displayName) {
+      throw new Error('Group Name ID and display name cannot be empty');
+    }
+    if (existingIds.has(id)) {
+      throw new Error(`Character or group ID already exists: ${id}`);
+    }
+    if (existingNameIds.has(nameId)) {
+      throw new Error(`Character or group Name ID already exists: ${nameId}`);
+    }
+
+    structs.push({
+      '@index': String(structs.length),
+      hash40: [
+        {
+          '@hash': 'ui_chara_id',
+          '#text': id,
+        },
+      ],
+      string: {
+        '@hash': 'name_id',
+        '#text': nameId,
+      },
+      sbyte: [
+        {
+          '@hash': 'disp_order',
+          '#text': '0',
+        },
+      ],
+      byte: [
+        {
+          '@hash': 'is_group',
+          '#text': '1',
+        },
+      ],
+    });
+    setMsgValue(msgNameJson, `nam_chr1_00_${nameId}`, displayName);
+    existingIds.add(id);
+    existingNameIds.add(nameId);
+  }
+
+  charaJson.struct.list.struct = structs;
+  if (charaJson.struct.list['@size']) {
+    charaJson.struct.list['@size'] = String(structs.length);
   }
 }
 
@@ -1172,7 +1329,6 @@ function updateMsgNameJson(
     return msgNameJson;
   }
 
-  const msgMap = createMsgNameMap(msgNameJson);
   for (const [nameId, displayName] of Object.entries(renamedCharacters)) {
     const trimmedName = displayName.trim();
     if (!trimmedName) {
@@ -1180,10 +1336,7 @@ function updateMsgNameJson(
     }
 
     const label = `nam_chr1_00_${nameId}`;
-    const entry = msgMap.get(label);
-    if (entry) {
-      entry.value = normalizeMsgValue(trimmedName);
-    }
+    setMsgValue(msgNameJson, label, trimmedName);
   }
 
   return msgNameJson;
@@ -1199,14 +1352,24 @@ function duplicateNameLabels(
     ? [...msgNameJson.strings]
     : [];
   const originalStringCount = Number(msgNameJson?.TXT2?.NumberOfStrings);
-  if (Number.isInteger(originalStringCount) && originalStringCount >= 0 && sourceStrings.length > originalStringCount) {
+  if (
+    Number.isInteger(originalStringCount) &&
+    originalStringCount >= 0 &&
+    sourceStrings.length > originalStringCount
+  ) {
     const accidentallyAppended = sourceStrings.splice(originalStringCount);
     msgNameJson.strings = sourceStrings;
-    if (!msgNameJson.added_labels || typeof msgNameJson.added_labels !== 'object') {
+    if (
+      !msgNameJson.added_labels ||
+      typeof msgNameJson.added_labels !== 'object'
+    ) {
       msgNameJson.added_labels = {};
     }
     accidentallyAppended.forEach((entry) => {
-      if (typeof entry?.label === 'string' && typeof entry?.value === 'string') {
+      if (
+        typeof entry?.label === 'string' &&
+        typeof entry?.value === 'string'
+      ) {
         msgNameJson.added_labels[entry.label] = entry.value;
       }
     });
@@ -1216,7 +1379,9 @@ function duplicateNameLabels(
       .map((entry) => entry?.label)
       .filter((label): label is string => typeof label === 'string'),
   );
-  Object.keys(msgNameJson.added_labels || {}).forEach((label) => existingLabels.add(label));
+  Object.keys(msgNameJson.added_labels || {}).forEach((label) =>
+    existingLabels.add(label),
+  );
 
   for (const entry of sourceStrings) {
     const label = String(entry?.label || '');
@@ -1233,7 +1398,11 @@ function duplicateNameLabels(
   }
 
   for (const [label, value] of Object.entries(msgNameJson.added_labels || {})) {
-    if (!label.endsWith(`_${sourceNameId}`) && !label.includes(`_${sourceNameId}_`)) continue;
+    if (
+      !label.endsWith(`_${sourceNameId}`) &&
+      !label.includes(`_${sourceNameId}_`)
+    )
+      continue;
     const newLabel = label.replace(sourceNameId, newNameId);
     if (!existingLabels.has(newLabel)) {
       setMsgValue(msgNameJson, newLabel, String(value));
@@ -1304,7 +1473,12 @@ function applyCharacterUpdates(
       setHashText(entry, 'byte', 'color_num', update.colorNum);
     }
     if (typeof update.colorStartIndex === 'string') {
-      ensureHashText(entry, 'byte', 'color_start_index', update.colorStartIndex);
+      ensureHashText(
+        entry,
+        'byte',
+        'color_start_index',
+        update.colorStartIndex,
+      );
     }
     if (typeof update.canSelect === 'boolean') {
       setHashTextIfPresent(
@@ -1315,10 +1489,20 @@ function applyCharacterUpdates(
       );
     }
     if (typeof update.isMii === 'boolean') {
-      setHashTextIfPresent(entry, 'bool', 'is_mii', update.isMii ? 'True' : 'False');
+      setHashTextIfPresent(
+        entry,
+        'bool',
+        'is_mii',
+        update.isMii ? 'True' : 'False',
+      );
     }
     if (typeof update.isBoss === 'boolean') {
-      setHashTextIfPresent(entry, 'bool', 'is_boss', update.isBoss ? 'True' : 'False');
+      setHashTextIfPresent(
+        entry,
+        'bool',
+        'is_boss',
+        update.isBoss ? 'True' : 'False',
+      );
     }
     if (typeof update.isHiddenBoss === 'boolean') {
       setHashTextIfPresent(
@@ -1409,6 +1593,7 @@ function applyLayoutToCharaJson(
       'can_select',
       entry?.string?.['#text'] === 'random' ? 'False' : 'True',
     );
+    setHashTextIfPresent(entry, 'hash40', 'group_hash', '');
     nextEntries.push(entry);
   });
 
@@ -1420,10 +1605,35 @@ function applyLayoutToCharaJson(
 
     setHashText(entry, 'sbyte', 'disp_order', -1);
     setHashTextIfPresent(entry, 'bool', 'can_select', 'False');
+    setHashTextIfPresent(entry, 'hash40', 'group_hash', '');
     nextEntries.push(entry);
   });
 
-  charaJson.struct.list.struct = nextEntries;
+  for (const [groupId, characterIds] of Object.entries(payload.groups || {})) {
+    characterIds.forEach((id, index) => {
+      const entry = entriesById.get(id)?.shift();
+      if (!entry) {
+        return;
+      }
+
+      setHashText(
+        entry,
+        'sbyte',
+        'disp_order',
+        getCharacterCssSbyteOrder(index),
+      );
+      ensureHashText(entry, 'hash40', 'group_hash', groupId);
+      nextEntries.push(entry);
+    });
+  }
+
+  charaJson.struct.list.struct = nextEntries.map((entry, index) => ({
+    ...entry,
+    '@index': String(index),
+  }));
+  if (charaJson.struct.list['@size']) {
+    charaJson.struct.list['@size'] = String(nextEntries.length);
+  }
   return charaJson;
 }
 
@@ -1479,51 +1689,55 @@ function runParamXml(inputXmlPath: string) {
     }
   });
 
-  return new Promise<ToolExecutionResult & { outputPath: string }>((resolve, reject) => {
-    const child = spawn(executablePath, ['-a', inputXmlPath], {
-      cwd: workingDirectory,
-      windowsHide: true,
-    });
+  return new Promise<ToolExecutionResult & { outputPath: string }>(
+    (resolve, reject) => {
+      const child = spawn(executablePath, ['-a', inputXmlPath], {
+        cwd: workingDirectory,
+        windowsHide: true,
+      });
 
-    let stdout = '';
-    let stderr = '';
+      let stdout = '';
+      let stderr = '';
 
-    child.stdout.on('data', (chunk) => {
-      stdout += String(chunk);
-    });
+      child.stdout.on('data', (chunk) => {
+        stdout += String(chunk);
+      });
 
-    child.stderr.on('data', (chunk) => {
-      stderr += String(chunk);
-    });
+      child.stderr.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
 
-    child.on('error', reject);
-    child.on('close', (exitCode) => {
-      if (exitCode !== 0) {
-        reject(
-          new Error(
-            `ParamXML exited with code ${exitCode}.${stderr ? ` ${stderr.trim()}` : ''}`,
-          ),
+      child.on('error', reject);
+      child.on('close', (exitCode) => {
+        if (exitCode !== 0) {
+          reject(
+            new Error(
+              `ParamXML exited with code ${exitCode}.${stderr ? ` ${stderr.trim()}` : ''}`,
+            ),
+          );
+          return;
+        }
+
+        const outputPath = outputCandidates.find((candidate) =>
+          fs.existsSync(candidate),
         );
-        return;
-      }
+        if (!outputPath) {
+          const output = [stderr.trim(), stdout.trim()]
+            .filter(Boolean)
+            .join(' ');
+          const details = output ? ` ${output}` : '';
+          reject(
+            new Error(
+              `ParamXML completed but did not generate ${outputCandidates.map((candidate) => path.basename(candidate)).join(' or ')}.${details}`,
+            ),
+          );
+          return;
+        }
 
-      const outputPath = outputCandidates.find((candidate) =>
-        fs.existsSync(candidate),
-      );
-      if (!outputPath) {
-        const output = [stderr.trim(), stdout.trim()].filter(Boolean).join(' ');
-        const details = output ? ` ${output}` : '';
-        reject(
-          new Error(
-            `ParamXML completed but did not generate ${outputCandidates.map((candidate) => path.basename(candidate)).join(' or ')}.${details}`,
-          ),
-        );
-        return;
-      }
-
-      resolve({ stdout, stderr, outputPath });
-    });
-  });
+        resolve({ stdout, stderr, outputPath });
+      });
+    },
+  );
 }
 
 function runParamXmlDisassemble(inputPrcPath: string, outputXmlPath: string) {
@@ -1540,42 +1754,46 @@ function runParamXmlDisassemble(inputPrcPath: string, outputXmlPath: string) {
     args.push('-l', labelsPath);
   }
 
-  return new Promise<ToolExecutionResult & { outputPath: string }>((resolve, reject) => {
-    const child = spawn(executablePath, args, {
-      cwd: workingDirectory,
-      windowsHide: true,
-    });
+  return new Promise<ToolExecutionResult & { outputPath: string }>(
+    (resolve, reject) => {
+      const child = spawn(executablePath, args, {
+        cwd: workingDirectory,
+        windowsHide: true,
+      });
 
-    let stdout = '';
-    let stderr = '';
+      let stdout = '';
+      let stderr = '';
 
-    child.stdout.on('data', (chunk) => {
-      stdout += String(chunk);
-    });
+      child.stdout.on('data', (chunk) => {
+        stdout += String(chunk);
+      });
 
-    child.stderr.on('data', (chunk) => {
-      stderr += String(chunk);
-    });
+      child.stderr.on('data', (chunk) => {
+        stderr += String(chunk);
+      });
 
-    child.on('error', reject);
-    child.on('close', (exitCode) => {
-      if (exitCode !== 0) {
-        reject(
-          new Error(
-            `ParamXML exited with code ${exitCode}.${stderr ? ` ${stderr.trim()}` : ''}`,
-          ),
-        );
-        return;
-      }
+      child.on('error', reject);
+      child.on('close', (exitCode) => {
+        if (exitCode !== 0) {
+          reject(
+            new Error(
+              `ParamXML exited with code ${exitCode}.${stderr ? ` ${stderr.trim()}` : ''}`,
+            ),
+          );
+          return;
+        }
 
-      if (!fs.existsSync(outputXmlPath)) {
-        reject(new Error('ParamXML completed but did not generate XML output'));
-        return;
-      }
+        if (!fs.existsSync(outputXmlPath)) {
+          reject(
+            new Error('ParamXML completed but did not generate XML output'),
+          );
+          return;
+        }
 
-      resolve({ stdout, stderr, outputPath: outputXmlPath });
-    });
-  });
+        resolve({ stdout, stderr, outputPath: outputXmlPath });
+      });
+    },
+  );
 }
 
 function resolveMsbtEditorExecutable() {
@@ -1883,18 +2101,35 @@ export function getCharacterCssLayoutData(): CharacterCssLayoutData {
     buildCharacterEntry(entry, msgNameJson),
   );
 
-  const visibleCharacters = entries
+  const rootEntries = entries.filter((entry) => !entry.groupId);
+  const visibleCharacters = rootEntries
     .filter((entry) => !entry.hidden)
     .sort((left, right) => left.order - right.order);
-  const hiddenCharacters = entries
+  const hiddenCharacters = rootEntries
     .filter((entry) => entry.hidden)
     .sort((left, right) => left.displayName.localeCompare(right.displayName));
+  const groups = entries
+    .filter((entry) => entry.groupId)
+    .reduce<Record<string, CharacterCssEntry[]>>((result, entry) => {
+      const groupId = entry.groupId!;
+      (result[groupId] ||= []).push(entry);
+      return result;
+    }, {});
+  entries
+    .filter((entry) => entry.isGroup)
+    .forEach((entry) => {
+      groups[entry.id] ||= [];
+    });
+  Object.values(groups).forEach((characters) => {
+    characters.sort((left, right) => left.order - right.order);
+  });
 
   logCharacterCss('Layout data built', {
     source: currentChara.source,
     total: entries.length,
     visible: visibleCharacters.length,
     hidden: hiddenCharacters.length,
+    groups: Object.keys(groups).length,
     missingOrder: entries.filter((entry) => Number.isNaN(entry.order)).length,
     sample: entries.slice(0, 5).map((entry) => ({
       id: entry.id,
@@ -1910,10 +2145,13 @@ export function getCharacterCssLayoutData(): CharacterCssLayoutData {
     source: currentChara.source,
     visibleCharacters,
     hiddenCharacters,
+    groups,
   };
 }
 
-export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload) {
+export function duplicateCharacterCssEntry(
+  payload: DuplicateCharacterCssPayload,
+) {
   const newUiCharaId = payload.newUiCharaId.trim();
   if (!newUiCharaId || !newUiCharaId.startsWith('ui_chara_')) {
     throw new Error('The new Character ID must start with ui_chara_');
@@ -1937,7 +2175,8 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
 
   if (
     structs.some(
-      (entry) => getHashText(entry, 'hash40', 'ui_chara_id', '') === newUiCharaId,
+      (entry) =>
+        getHashText(entry, 'hash40', 'ui_chara_id', '') === newUiCharaId,
     )
   ) {
     throw new Error(`Character ID already exists: ${newUiCharaId}`);
@@ -1946,8 +2185,7 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
   const sourceEntry = structs[sourceIndex];
   const sourceNameId = String(sourceEntry?.string?.['#text'] || '');
   const newNameId =
-    payload.newNameId?.trim() ||
-    newUiCharaId.replace(/^ui_chara_/, '').trim();
+    payload.newNameId?.trim() || newUiCharaId.replace(/^ui_chara_/, '').trim();
 
   if (!newNameId) {
     throw new Error('The new Name ID cannot be empty');
@@ -1958,7 +2196,12 @@ export function duplicateCharacterCssEntry(payload: DuplicateCharacterCssPayload
   setHashText(duplicatedEntry, 'hash40', 'ui_chara_id', newUiCharaId);
   duplicatedEntry.string['#text'] = newNameId;
   const duplicatedOrder = getCharacterCssSbyteOrder(structs.length);
-  setHashTextIfPresent(duplicatedEntry, 'sbyte', 'skill_list_order', duplicatedOrder);
+  setHashTextIfPresent(
+    duplicatedEntry,
+    'sbyte',
+    'skill_list_order',
+    duplicatedOrder,
+  );
   setHashText(duplicatedEntry, 'sbyte', 'disp_order', duplicatedOrder);
   setHashTextIfPresent(duplicatedEntry, 'bool', 'is_dlc', 'False');
   setHashTextIfPresent(duplicatedEntry, 'bool', 'is_patch', 'False');
@@ -2026,20 +2269,32 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
   const newNameId = payload.newNameId.trim().toLowerCase();
   const modPath = payload.modPath.trim();
   if (!/^[a-z0-9_]+$/.test(newNameId)) {
-    throw new Error('Name ID only accepts lowercase letters, numbers and underscores');
+    throw new Error(
+      'Name ID only accepts lowercase letters, numbers and underscores',
+    );
   }
-  if (!Number.isInteger(payload.colorCount) || payload.colorCount < 1 || payload.colorCount > 8) {
+  if (
+    !Number.isInteger(payload.colorCount) ||
+    payload.colorCount < 1 ||
+    payload.colorCount > 8
+  ) {
     throw new Error('Color count must be between 1 and 8');
   }
-  if (!Number.isInteger(payload.colorStartIndex) || payload.colorStartIndex < 0 || payload.colorStartIndex > 255) {
+  if (
+    !Number.isInteger(payload.colorStartIndex) ||
+    payload.colorStartIndex < 0 ||
+    payload.colorStartIndex > 255
+  ) {
     throw new Error('Color start index must be between 0 and 255');
   }
   if (!fs.existsSync(modPath) || !fs.statSync(modPath).isDirectory()) {
     throw new Error('Select an existing mod folder');
   }
 
-  const sourceEntry = [...getCharacterCssLayoutData().visibleCharacters, ...getCharacterCssLayoutData().hiddenCharacters]
-    .find((entry) => entry.id === payload.sourceCharacterId);
+  const sourceEntry = [
+    ...getCharacterCssLayoutData().visibleCharacters,
+    ...getCharacterCssLayoutData().hiddenCharacters,
+  ].find((entry) => entry.id === payload.sourceCharacterId);
   if (!sourceEntry) {
     throw new Error(`Character not found: ${payload.sourceCharacterId}`);
   }
@@ -2055,21 +2310,42 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
   ];
   const uiAssets = uiAssetRoots.flatMap(listFilesRecursive);
   const sourceAssetPattern = new RegExp(`_${sourceEntry.nameId}_`, 'i');
-  if (!uiAssets.some((filePath) => sourceAssetPattern.test(path.basename(filePath)))) {
-    throw new Error(`No chara UI asset found for ${sourceEntry.nameId}. Add ui/replace/chara or ui/replace_patch/chara files first.`);
+  if (
+    !uiAssets.some((filePath) =>
+      sourceAssetPattern.test(path.basename(filePath)),
+    )
+  ) {
+    throw new Error(
+      `No chara UI asset found for ${sourceEntry.nameId}. Add ui/replace/chara or ui/replace_patch/chara files first.`,
+    );
   }
 
   const warnings: string[] = [];
-  if (!uiAssets.some((filePath) => path.basename(filePath).toLowerCase().startsWith(`chara_7_${sourceEntry.nameId.toLowerCase()}_`))) {
+  if (
+    !uiAssets.some((filePath) =>
+      path
+        .basename(filePath)
+        .toLowerCase()
+        .startsWith(`chara_7_${sourceEntry.nameId.toLowerCase()}_`),
+    )
+  ) {
     warnings.push('Missing chara_7 asset: Echo CSS tile may be blank.');
   }
   const voiceDir = path.join(modPath, 'sound', 'bank', 'fighter_voice');
-  if (!listFilesRecursive(voiceDir).some((filePath) => /\.nus3bank$/i.test(filePath))) {
-    warnings.push('No fighter voice .nus3bank found: simultaneous base/Echo matches may share voices.');
+  if (
+    !listFilesRecursive(voiceDir).some((filePath) =>
+      /\.nus3bank$/i.test(filePath),
+    )
+  ) {
+    warnings.push(
+      'No fighter voice .nus3bank found: simultaneous base/Echo matches may share voices.',
+    );
   }
   const disabledUiPatches = disableConflictingEchoUiPatches(modPath);
   if (disabledUiPatches.length > 0) {
-    warnings.push(`Disabled conflicting UI patches: ${disabledUiPatches.join(', ')}. Backups are in .fightplanner-echo-backup.`);
+    warnings.push(
+      `Disabled conflicting UI patches: ${disabledUiPatches.join(', ')}. Backups are in .fightplanner-echo-backup.`,
+    );
   }
 
   const newUiCharaId = `ui_chara_${newNameId}`;
@@ -2083,7 +2359,9 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
 
   const currentLayout = getCharacterCssLayoutData();
   const layoutPayload: CharacterCssLayoutPayload = {
-    visibleCharacterIds: currentLayout.visibleCharacters.map((entry) => entry.id),
+    visibleCharacterIds: currentLayout.visibleCharacters.map(
+      (entry) => entry.id,
+    ),
     hiddenCharacterIds: currentLayout.hiddenCharacters.map((entry) => entry.id),
     characterUpdates: {
       [payload.sourceCharacterId]: {
@@ -2132,8 +2410,10 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
   );
 
   try {
-    const echoSlots = Array.from({ length: payload.colorCount }, (_, index) =>
-      `c${String(payload.colorStartIndex + index).padStart(2, '0')}`,
+    const echoSlots = Array.from(
+      { length: payload.colorCount },
+      (_, index) =>
+        `c${String(payload.colorStartIndex + index).padStart(2, '0')}`,
     );
     const scan = await ModScanner.scanModFiles(modPath);
     const sourceSlots = Object.keys(scan.pathData[sourceEntry.nameId] || {})
@@ -2150,7 +2430,12 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
       new Map([
         [
           sourceEntry.nameId,
-          new Map(sourceSlots.map((sourceSlot, index) => [sourceSlot, echoSlots[index]])),
+          new Map(
+            sourceSlots.map((sourceSlot, index) => [
+              sourceSlot,
+              echoSlots[index],
+            ]),
+          ),
         ],
       ]),
       scan.pathData,
@@ -2173,7 +2458,9 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
       'utf8',
     );
   } catch (error) {
-    throw new Error(`Echo CSS created, but config.json generation failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Echo CSS created, but config.json generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   return { success: true as const, newUiCharaId, modPath, warnings };
@@ -2189,7 +2476,10 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
   const echo = structs.find(
     (entry) => getHashText(entry, 'hash40', 'ui_chara_id', '') === characterId,
   );
-  if (!echo || getHashText(echo, 'hash40', 'fighter_type', '') !== 'fighter_type_opened') {
+  if (
+    !echo ||
+    getHashText(echo, 'hash40', 'fighter_type', '') !== 'fighter_type_opened'
+  ) {
     throw new Error('Selected character is not a secondary Echo');
   }
 
@@ -2202,17 +2492,22 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
   const echoNameId = String(echo?.string?.['#text'] || '');
   const baseNameId = String(base?.string?.['#text'] || '');
   const colorCount = Number(getHashText(echo, 'byte', 'color_num', '0'));
-  const colorStart = Number(getHashText(echo, 'byte', 'color_start_index', '0'));
-  const echoSlots = Array.from({ length: colorCount }, (_, index) =>
-    `c${String(colorStart + index).padStart(2, '0')}`,
+  const colorStart = Number(
+    getHashText(echo, 'byte', 'color_start_index', '0'),
   );
-  const originalSlots = Array.from({ length: colorCount }, (_, index) =>
-    `c${String(index).padStart(2, '0')}`,
+  const echoSlots = Array.from(
+    { length: colorCount },
+    (_, index) => `c${String(colorStart + index).padStart(2, '0')}`,
+  );
+  const originalSlots = Array.from(
+    { length: colorCount },
+    (_, index) => `c${String(index).padStart(2, '0')}`,
   );
   const requestedModPath = payload.modPath?.trim();
-  const modPath = requestedModPath && fs.existsSync(requestedModPath)
-    ? requestedModPath
-    : detectEchoModPath(baseNameId, echoNameId, echoSlots);
+  const modPath =
+    requestedModPath && fs.existsSync(requestedModPath)
+      ? requestedModPath
+      : detectEchoModPath(baseNameId, echoNameId, echoSlots);
   const warnings: string[] = [];
 
   if (modPath) {
@@ -2226,7 +2521,12 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
         new Map([
           [
             baseNameId,
-            new Map(availableEchoSlots.map((slot) => [slot, originalSlots[echoSlots.indexOf(slot)]])),
+            new Map(
+              availableEchoSlots.map((slot) => [
+                slot,
+                originalSlots[echoSlots.indexOf(slot)],
+              ]),
+            ),
           ],
         ]),
         scan.pathData,
@@ -2235,29 +2535,50 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
       );
     }
 
-    renameEchoUiAssets(path.join(modPath, 'ui', 'replace', 'chara'), echoNameId, baseNameId);
-    renameEchoUiAssets(path.join(modPath, 'ui', 'replace_patch', 'chara'), echoNameId, baseNameId);
+    renameEchoUiAssets(
+      path.join(modPath, 'ui', 'replace', 'chara'),
+      echoNameId,
+      baseNameId,
+    );
+    renameEchoUiAssets(
+      path.join(modPath, 'ui', 'replace_patch', 'chara'),
+      echoNameId,
+      baseNameId,
+    );
     restoreEchoBackups(modPath);
   } else {
-    warnings.push('Echo mod folder not found. CSS/MSBT entry removed; file rollback skipped.');
+    warnings.push(
+      'Echo mod folder not found. CSS/MSBT entry removed; file rollback skipped.',
+    );
   }
 
   setHashText(base, 'hash40', 'fighter_type', 'fighter_type_normal');
   setHashText(base, 'hash40', 'alt_chara_id', '0x02302d482a');
   const nextStructs = structs.filter((entry) => entry !== echo);
-  nextStructs.forEach((entry, index) => { entry['@index'] = String(index); });
+  nextStructs.forEach((entry, index) => {
+    entry['@index'] = String(index);
+  });
   charaJson.struct.list.struct = nextStructs;
-  if (charaJson.struct.list['@size']) charaJson.struct.list['@size'] = String(nextStructs.length);
+  if (charaJson.struct.list['@size'])
+    charaJson.struct.list['@size'] = String(nextStructs.length);
 
   layoutJson.struct.list.struct = getStructList(layoutJson)
-    .filter((entry) => getHashText(entry, 'hash40', 'ui_chara_id', '') !== characterId)
+    .filter(
+      (entry) =>
+        getHashText(entry, 'hash40', 'ui_chara_id', '') !== characterId,
+    )
     .map((entry, index) => ({ ...entry, '@index': String(index) }));
   if (layoutJson.struct.list['@size']) {
-    layoutJson.struct.list['@size'] = String(layoutJson.struct.list.struct.length);
+    layoutJson.struct.list['@size'] = String(
+      layoutJson.struct.list.struct.length,
+    );
   }
   if (msgNameJson.added_labels) {
     Object.keys(msgNameJson.added_labels).forEach((label) => {
-      if (label.endsWith(`_${echoNameId}`) || label.includes(`_${echoNameId}_`)) {
+      if (
+        label.endsWith(`_${echoNameId}`) ||
+        label.includes(`_${echoNameId}_`)
+      ) {
         delete msgNameJson.added_labels[label];
       }
     });
@@ -2269,7 +2590,12 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
     visibleCharacterIds: current.visibleCharacters.map((entry) => entry.id),
     hiddenCharacterIds: current.hiddenCharacters.map((entry) => entry.id),
   });
-  return { success: true as const, ...getCharacterCssLayoutData(), modPath, warnings };
+  return {
+    success: true as const,
+    ...getCharacterCssLayoutData(),
+    modPath,
+    warnings,
+  };
 }
 
 export function removeCharacterCssEntry(payload: RemoveCharacterCssPayload) {
@@ -2306,15 +2632,14 @@ export function removeCharacterCssEntry(payload: RemoveCharacterCssPayload) {
 export async function saveCharacterCssLayout(
   payload: CharacterCssLayoutPayload,
 ) {
-  const charaJson = applyLayoutToCharaJson(
-    clone(readCurrentCharaJson().json),
-    payload,
-  );
+  const charaJson = clone(readCurrentCharaJson().json);
   const layoutJson = clone(readCurrentLayoutJson());
   const msgNameJson = updateMsgNameJson(
     clone(readCurrentMsgNameJson()),
     payload.renamedCharacters,
   );
+  applyCreatedCharacterCssGroups(charaJson, msgNameJson, payload.createdGroups);
+  applyLayoutToCharaJson(charaJson, payload);
   applyCharacterUpdates(charaJson, msgNameJson, payload.characterUpdates);
 
   const persistedCharaJsonPath = getPersistedCharaJsonPath();
@@ -2348,6 +2673,7 @@ export async function saveCharacterCssLayout(
   const generatedLayoutPrcPath = layoutPrcResult.outputPath;
 
   const hasMsbtChanges =
+    (payload.createdGroups?.length || 0) > 0 ||
     Object.keys(payload.renamedCharacters || {}).length > 0 ||
     Object.keys(payload.characterUpdates || {}).length > 0;
   let msbtResult: ToolExecutionResult = { stdout: '', stderr: '' };

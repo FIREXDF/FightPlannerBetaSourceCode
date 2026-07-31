@@ -6,8 +6,9 @@ class SocialGameBananaManager extends SocialManagerBase {
     );
     if (!discoverContent) return;
 
-    discoverContent.innerHTML =
-      '<div class="social-loading"><i class="bi bi-hourglass-split"></i><p>Loading mods...</p></div>';
+    discoverContent.innerHTML = `<div class="social-loading"><i class="bi bi-hourglass-split"></i><p>${this.escapeHtml(
+      this.getSocialTranslation('social.loadingMods', 'Loading mods...'),
+    )}</p></div>`;
 
     try {
       const [submissionsData, subfeedData] = await Promise.all([
@@ -42,12 +43,24 @@ class SocialGameBananaManager extends SocialManagerBase {
         </div>
         <div class="social-gamebanana-featured">
           <div class="social-gamebanana-carousel-header">
-            <h3 class="social-gamebanana-section-title">Featured</h3>
+            <h3 class="social-gamebanana-section-title">${this.escapeHtml(
+              this.getSocialTranslation('social.featured', 'Featured'),
+            )}</h3>
             <div class="social-gamebanana-carousel-actions">
-              <button class="social-gamebanana-carousel-btn" data-direction="prev" aria-label="Previous featured mod">
+              <button class="social-gamebanana-carousel-btn" data-direction="prev" aria-label="${this.escapeHtml(
+                this.getSocialTranslation(
+                  'social.previousFeaturedMod',
+                  'Previous featured mod',
+                ),
+              )}">
                 <i class="bi bi-chevron-left"></i>
               </button>
-              <button class="social-gamebanana-carousel-btn" data-direction="next" aria-label="Next featured mod">
+              <button class="social-gamebanana-carousel-btn" data-direction="next" aria-label="${this.escapeHtml(
+                this.getSocialTranslation(
+                  'social.nextFeaturedMod',
+                  'Next featured mod',
+                ),
+              )}">
                 <i class="bi bi-chevron-right"></i>
               </button>
             </div>
@@ -56,14 +69,21 @@ class SocialGameBananaManager extends SocialManagerBase {
             ${
               featuredMods.length
                 ? this.renderGameBananaFeaturedStack()
-                : '<div class="social-gamebanana-featured-empty">No featured GameBanana mods found</div>'
+                : `<div class="social-gamebanana-featured-empty">${this.escapeHtml(
+                    this.getSocialTranslation(
+                      'social.noFeaturedGameBananaMods',
+                      'No featured GameBanana mods found.',
+                    ),
+                  )}</div>`
             }
           </div>
         </div>
         <div class="social-gamebanana-mods">
           <div class="social-gamebanana-mods-header">
             <div class="social-gamebanana-mods-title-row">
-              <h3 class="social-gamebanana-section-title">Mods</h3>
+              <h3 class="social-gamebanana-section-title">${this.escapeHtml(
+                this.getSocialTranslation('social.mods', 'Mods'),
+              )}</h3>
             </div>
             <div class="social-gamebanana-mods-actions">
               ${this.renderGameBananaSortControl()}
@@ -83,8 +103,12 @@ class SocialGameBananaManager extends SocialManagerBase {
       this.hydrateVisibleGameBananaDownloadCounts();
     } catch (error) {
       console.error('[Social] Error loading GameBanana featured mods:', error);
-      discoverContent.innerHTML =
-        '<div class="social-error-state"><i class="bi bi-exclamation-triangle"></i><p>Failed to load GameBanana mods</p></div>';
+      discoverContent.innerHTML = `<div class="social-error-state"><i class="bi bi-exclamation-triangle"></i><p>${this.escapeHtml(
+        this.getSocialTranslation(
+          'social.failedToLoadGameBananaMods',
+          'Failed to load GameBanana mods.',
+        ),
+      )}</p></div>`;
     }
   }
 
@@ -94,7 +118,12 @@ class SocialGameBananaManager extends SocialManagerBase {
     return `
       <label class="social-gamebanana-search" for="social-gamebanana-search-input">
         <i class="bi bi-search"></i>
-        <input id="social-gamebanana-search-input" type="search" value="${query}" placeholder="Search GameBanana mods" autocomplete="off">
+        <input id="social-gamebanana-search-input" type="search" value="${query}" placeholder="${this.escapeHtml(
+          this.getSocialTranslation(
+            'social.searchGameBananaMods',
+            'Search GameBanana mods',
+          ),
+        )}" autocomplete="off">
       </label>
     `;
   }
@@ -106,13 +135,33 @@ class SocialGameBananaManager extends SocialManagerBase {
       label: string;
       icon: string;
     }[] = [
-      { id: 'recent', label: 'Recent', icon: 'clock-history' },
-      { id: 'popularity', label: 'Popularity', icon: 'hand-thumbs-up' },
-      { id: 'downloads', label: 'Downloads', icon: 'download' },
+      {
+        id: 'recent',
+        label: this.getSocialTranslation('social.sortRecent', 'Recent'),
+        icon: 'clock-history',
+      },
+      {
+        id: 'popularity',
+        label: this.getSocialTranslation(
+          'social.sortPopularity',
+          'Popularity',
+        ),
+        icon: 'hand-thumbs-up',
+      },
+      {
+        id: 'downloads',
+        label: this.getSocialTranslation('social.sortDownloads', 'Downloads'),
+        icon: 'download',
+      },
     ];
 
     return `
-      <div class="custom-select social-gamebanana-sort" id="social-gamebanana-sort-select" role="button" tabindex="0" aria-label="Sort Discover mods">
+      <div class="custom-select social-gamebanana-sort" id="social-gamebanana-sort-select" role="button" tabindex="0" aria-label="${this.escapeHtml(
+        this.getSocialTranslation(
+          'social.sortDiscoverMods',
+          'Sort Discover mods',
+        ),
+      )}">
         <div class="custom-select-trigger">
           <span class="selected-value">
             ${this.escapeHtml(options.find((option) => option.id === activeSort)?.label || 'Recent')}
@@ -140,7 +189,12 @@ class SocialGameBananaManager extends SocialManagerBase {
 
     return `
       <div id="social-gamebanana-category-filter-area">
-        <div class="social-gamebanana-category-filters" aria-label="Discover category filters">
+        <div class="social-gamebanana-category-filters" aria-label="${this.escapeHtml(
+          this.getSocialTranslation(
+            'social.discoverCategoryFilters',
+            'Discover category filters',
+          ),
+        )}">
           ${this.getGameBananaCategoryFilters()
             .map((filter) => this.renderGameBananaCategoryFilterButton(filter))
             .join('')}
@@ -178,20 +232,35 @@ class SocialGameBananaManager extends SocialManagerBase {
     if (!Array.isArray(this.gameBananaSkinSubcategories)) {
       return `
         <div class="social-gamebanana-subcategory-filters">
-          <span class="social-gamebanana-subcategory-loading">Loading skins...</span>
+          <span class="social-gamebanana-subcategory-loading">${this.escapeHtml(
+            this.getSocialTranslation(
+              'social.loadingSkins',
+              'Loading skins...',
+            ),
+          )}</span>
         </div>
       `;
     }
 
     const selectedId = this.getGameBananaActiveSkinCategoryId();
     const buttons = [
-      { _idRow: 3330, _sName: 'All skins' },
+      {
+        _idRow: 3330,
+        _sName: this.getSocialTranslation('social.allSkins', 'All skins'),
+      },
       ...this.gameBananaSkinSubcategories,
     ];
 
     return `
-      <div class="social-gamebanana-subcategory-filters social-gamebanana-skin-picker" aria-label="Skin subcategory filters">
-        <label class="social-gamebanana-skin-picker-label" for="social-gamebanana-skin-select">Character</label>
+      <div class="social-gamebanana-subcategory-filters social-gamebanana-skin-picker" aria-label="${this.escapeHtml(
+        this.getSocialTranslation(
+          'social.skinSubcategoryFilters',
+          'Skin subcategory filters',
+        ),
+      )}">
+        <label class="social-gamebanana-skin-picker-label" for="social-gamebanana-skin-select">${this.escapeHtml(
+          this.getSocialTranslation('social.character', 'Character'),
+        )}</label>
         <select id="social-gamebanana-skin-select" class="social-gamebanana-skin-select">
           ${buttons
             .map((category) => {
@@ -210,15 +279,47 @@ class SocialGameBananaManager extends SocialManagerBase {
 
   getGameBananaCategoryFilters() {
     return [
-      { id: 'all', label: 'All' },
-      { id: 'skins', label: 'Skins', model: 'Mod', categoryId: 3330 },
-      { id: 'stages', label: 'Stages', model: 'Mod', categoryId: 6089 },
-      { id: 'sounds', label: 'Sounds', model: 'Sound' },
-      { id: 'effects', label: 'Effects', model: 'Mod', categoryId: 1177 },
-      { id: 'gameplay', label: 'Gameplay', model: 'Mod', categoryId: 26521 },
+      { id: 'all', label: this.getSocialTranslation('social.all', 'All') },
+      {
+        id: 'skins',
+        label: this.getSocialTranslation('social.skins', 'Skins'),
+        model: 'Mod',
+        categoryId: 3330,
+      },
+      {
+        id: 'stages',
+        label: this.getSocialTranslation('social.stages', 'Stages'),
+        model: 'Mod',
+        categoryId: 6089,
+      },
+      {
+        id: 'sounds',
+        label: this.getSocialTranslation('social.sounds', 'Sounds'),
+        model: 'Sound',
+      },
+      {
+        id: 'effects',
+        label: this.getSocialTranslation('social.effects', 'Effects'),
+        model: 'Mod',
+        categoryId: 1177,
+      },
+      {
+        id: 'gameplay',
+        label: this.getSocialTranslation('social.gameplay', 'Gameplay'),
+        model: 'Mod',
+        categoryId: 26521,
+      },
       { id: 'ui', label: 'UI', model: 'Mod', categoryId: 1760 },
-      { id: 'tools', label: 'Tools', model: 'Tool' },
-      { id: 'wips', label: 'WiPs', model: 'Wip' },
+      {
+        id: 'tools',
+        label: this.getSocialTranslation('social.tools', 'Tools'),
+        model: 'Tool',
+      },
+      {
+        id: 'wips',
+        label: this.getSocialTranslation('social.wips', 'WiPs'),
+        model: 'Wip',
+      },
     ];
   }
 
@@ -914,7 +1015,9 @@ class SocialGameBananaManager extends SocialManagerBase {
     visibleRecords.forEach((mod) => this.cacheGameBananaSubmission(mod));
 
     if (visibleRecords.length === 0) {
-      return '<div class="social-empty-state"><i class="bi bi-inbox"></i><p>No mods found</p></div>';
+      return `<div class="social-empty-state"><i class="bi bi-inbox"></i><p>${this.escapeHtml(
+        this.getSocialTranslation('social.noModsFound', 'No mods found.'),
+      )}</p></div>`;
     }
 
     return `
@@ -1246,7 +1349,12 @@ class SocialGameBananaManager extends SocialManagerBase {
       <button class="social-gamebanana-page-btn" data-page-action="prev" ${canGoBack ? '' : 'disabled'}>
         <i class="bi bi-chevron-left"></i>
       </button>
-      <span class="social-gamebanana-page-label">Page ${this.gameBananaModsPage} / ${this.gameBananaModsTotalPages}</span>
+      <span class="social-gamebanana-page-label">${this.escapeHtml(
+        this.getSocialTranslation('social.pageLabel', 'Page {{current}} / {{total}}', {
+          current: String(this.gameBananaModsPage),
+          total: String(this.gameBananaModsTotalPages),
+        }),
+      )}</span>
       <button class="social-gamebanana-page-btn" data-page-action="next" ${canGoNext ? '' : 'disabled'}>
         <i class="bi bi-chevron-right"></i>
       </button>
@@ -1255,7 +1363,12 @@ class SocialGameBananaManager extends SocialManagerBase {
 
   renderGameBananaFeaturedStack() {
     if (this.gameBananaFeaturedMods.length === 0) {
-      return '<div class="social-gamebanana-featured-empty">No featured mods in this category</div>';
+      return `<div class="social-gamebanana-featured-empty">${this.escapeHtml(
+        this.getSocialTranslation(
+          'social.noFeaturedModsInCategory',
+          'No featured mods in this category.',
+        ),
+      )}</div>`;
     }
 
     return this.gameBananaFeaturedMods
@@ -1313,7 +1426,11 @@ class SocialGameBananaManager extends SocialManagerBase {
             <span>${period}</span>
           </div>
           <h3 class="social-gamebanana-card-title">${name}</h3>
-          <p class="social-gamebanana-card-creator">by ${creator}</p>
+          <p class="social-gamebanana-card-creator">${this.escapeHtml(
+            this.getSocialTranslation('social.byAuthor', 'by {{author}}', {
+              author: creator,
+            }),
+          )}</p>
           <div class="social-gamebanana-card-footer">
             <span><i class="bi bi-hand-thumbs-up"></i> ${likes}</span>
             <span><i class="bi bi-chat-left"></i> ${comments}</span>
@@ -1355,7 +1472,11 @@ class SocialGameBananaManager extends SocialManagerBase {
         <div class="social-gamebanana-card-body">
           <p class="social-gamebanana-card-category">${category}</p>
           <h3 class="social-gamebanana-card-title">${name}</h3>
-          <p class="social-gamebanana-card-creator">by ${creator}</p>
+          <p class="social-gamebanana-card-creator">${this.escapeHtml(
+            this.getSocialTranslation('social.byAuthor', 'by {{author}}', {
+              author: creator,
+            }),
+          )}</p>
           <div class="social-gamebanana-card-footer">
             <span><i class="bi bi-hand-thumbs-up"></i> ${likes}</span>
             <span><i class="bi bi-eye"></i> ${views}</span>
@@ -1375,10 +1496,17 @@ class SocialGameBananaManager extends SocialManagerBase {
         ${imageHtml}
         ${
           isNsfw
-            ? `<div class="social-gamebanana-nsfw-overlay" aria-label="NSFW preview blurred">
+            ? `<div class="social-gamebanana-nsfw-overlay" aria-label="${this.escapeHtml(
+                this.getSocialTranslation(
+                  'social.nsfwPreviewBlurred',
+                  'NSFW preview blurred',
+                ),
+              )}">
                 <i class="bi bi-eye-slash"></i>
                 <span>NSFW</span>
-                <button class="social-gamebanana-nsfw-reveal-btn" type="button">Show anyway</button>
+                <button class="social-gamebanana-nsfw-reveal-btn" type="button">${this.escapeHtml(
+                  this.getSocialTranslation('social.showAnyway', 'Show anyway'),
+                )}</button>
               </div>`
             : ''
         }
@@ -3178,7 +3306,10 @@ class SocialGameBananaManager extends SocialManagerBase {
     const profileUrl = this.escapeHtml(merged._sProfileUrl || '');
     const description = this.escapeHtml(
       this.getGameBananaSubmissionDescription(details, fallback || undefined) ||
-        'No description available.',
+        this.getSocialTranslation(
+          'social.noDescriptionAvailable',
+          'No description available.',
+        ),
     );
     const likes = Number(merged._nLikeCount || 0);
     const comments = Number(merged._nPostCount || 0);
@@ -3198,7 +3329,11 @@ class SocialGameBananaManager extends SocialManagerBase {
             ${dateAdded ? `<span>${dateAdded}</span>` : ''}
           </div>
           <h3 class="social-gamebanana-detail-name">${name}</h3>
-          <p class="social-gamebanana-detail-author">by ${creator}</p>
+          <p class="social-gamebanana-detail-author">${this.escapeHtml(
+            this.getSocialTranslation('social.byAuthor', 'by {{author}}', {
+              author: creator,
+            }),
+          )}</p>
           <div class="social-gamebanana-detail-stats">
             <span><i class="bi bi-hand-thumbs-up"></i> ${likes}</span>
             <span><i class="bi bi-chat-left"></i> ${comments}</span>
@@ -3219,7 +3354,9 @@ class SocialGameBananaManager extends SocialManagerBase {
       <div class="social-gamebanana-detail-page">
         <div class="social-gamebanana-detail-toolbar">
           <button class="social-back-button social-gamebanana-detail-back">
-            <i class="bi bi-arrow-left"></i> Back
+            <i class="bi bi-arrow-left"></i> ${this.escapeHtml(
+              this.getSocialTranslation('social.back', 'Back'),
+            )}
           </button>
           ${
             profileUrl
@@ -3269,12 +3406,19 @@ class SocialGameBananaManager extends SocialManagerBase {
 
     return `
       <div class="social-gamebanana-wip-info">
-        <h4 class="social-gamebanana-wip-title">WiP Progress</h4>
+        <h4 class="social-gamebanana-wip-title">${this.escapeHtml(
+          this.getSocialTranslation('social.wipProgress', 'Work in progress'),
+        )}</h4>
         <div class="social-gamebanana-wip-grid">
           ${
             state
               ? `<div class="social-gamebanana-wip-item">
-                  <span>Development state</span>
+                  <span>${this.escapeHtml(
+                    this.getSocialTranslation(
+                      'social.developmentState',
+                      'Development state',
+                    ),
+                  )}</span>
                   <strong>${this.escapeHtml(state)}</strong>
                 </div>`
               : ''
@@ -3282,7 +3426,12 @@ class SocialGameBananaManager extends SocialManagerBase {
           ${
             hasCompletion
               ? `<div class="social-gamebanana-wip-item">
-                  <span>Completion</span>
+                  <span>${this.escapeHtml(
+                    this.getSocialTranslation(
+                      'social.completionLabel',
+                      'Completion',
+                    ),
+                  )}</span>
                   <strong>${Math.max(0, Math.min(100, completion))}%</strong>
                 </div>`
               : ''
@@ -3290,7 +3439,17 @@ class SocialGameBananaManager extends SocialManagerBase {
         </div>
         ${
           hasCompletion
-            ? `<div class="social-gamebanana-wip-progress" aria-label="Completion ${Math.max(0, Math.min(100, completion))}%">
+            ? `<div class="social-gamebanana-wip-progress" aria-label="${this.escapeHtml(
+                this.getSocialTranslation(
+                  'social.completion',
+                  'Completion {{percent}}%',
+                  {
+                    percent: String(
+                      Math.max(0, Math.min(100, completion)),
+                    ),
+                  },
+                ),
+              )}">
                 <span style="width: ${Math.max(0, Math.min(100, completion))}%"></span>
               </div>`
             : ''
@@ -3304,11 +3463,18 @@ class SocialGameBananaManager extends SocialManagerBase {
     const links = [
       ...gameBananaWorks.map((work) => ({
         label:
-          work?._sName || work?.name || work?._sProfileUrl || 'Finished work',
+          work?._sName ||
+          work?.name ||
+          work?._sProfileUrl ||
+          this.getSocialTranslation('social.finishedWork', 'Finished work'),
         url: work?._sProfileUrl || work?.url || '',
       })),
       ...remoteWorks.map((work) => ({
-        label: work?.description || work?.title || work?.url || 'Remote work',
+        label:
+          work?.description ||
+          work?.title ||
+          work?.url ||
+          this.getSocialTranslation('social.remoteWork', 'Remote work'),
         url: work?.url || work?._sUrl || '',
       })),
     ].filter((work) => work.url);
@@ -3317,7 +3483,9 @@ class SocialGameBananaManager extends SocialManagerBase {
 
     return `
       <div class="social-gamebanana-wip-finished">
-        <span>Finished work</span>
+        <span>${this.escapeHtml(
+          this.getSocialTranslation('social.finishedWork', 'Finished work'),
+        )}</span>
         ${links
           .map((work) => {
             const gameBananaInfo = this.getGameBananaInfoFromProfileUrl(
@@ -3460,10 +3628,13 @@ class SocialGameBananaManager extends SocialManagerBase {
   }
 
   renderGameBananaFileList(files: GameBananaFileEntry[], loading = false) {
+    const filesTitle = this.escapeHtml(
+      this.getSocialTranslation('social.files', 'Files'),
+    );
     if (loading) {
       return `
         <div class="social-gamebanana-files">
-          <h4 class="social-gamebanana-files-title">Files</h4>
+          <h4 class="social-gamebanana-files-title">${filesTitle}</h4>
           <div class="social-gamebanana-files-list">
             ${Array.from({ length: 3 }, () => this.renderGameBananaFileSkeletonCard()).join('')}
           </div>
@@ -3474,15 +3645,20 @@ class SocialGameBananaManager extends SocialManagerBase {
     if (!Array.isArray(files) || files.length === 0) {
       return `
         <div class="social-gamebanana-files">
-          <h4 class="social-gamebanana-files-title">Files</h4>
-          <p class="social-gamebanana-files-empty">No downloadable files found.</p>
+          <h4 class="social-gamebanana-files-title">${filesTitle}</h4>
+          <p class="social-gamebanana-files-empty">${this.escapeHtml(
+            this.getSocialTranslation(
+              'social.noDownloadableFiles',
+              'No downloadable files found.',
+            ),
+          )}</p>
         </div>
       `;
     }
 
     return `
       <div class="social-gamebanana-files">
-        <h4 class="social-gamebanana-files-title">Files</h4>
+        <h4 class="social-gamebanana-files-title">${filesTitle}</h4>
         <div class="social-gamebanana-files-list">
           ${files.map((file) => this.renderGameBananaFileCard(file)).join('')}
         </div>
@@ -3507,7 +3683,11 @@ class SocialGameBananaManager extends SocialManagerBase {
   }
 
   renderGameBananaFileCard(file: GameBananaFileEntry) {
-    const fileName = this.escapeHtml(file._sFile || 'Download');
+    const downloadText = this.getSocialTranslation(
+      'social.download',
+      'Download',
+    );
+    const fileName = this.escapeHtml(file._sFile || downloadText);
     const description = this.escapeHtml(file._sDescription || '');
     const size = this.escapeHtml(
       this.formatGameBananaFileSize(file._nFilesize),
@@ -3531,7 +3711,7 @@ class SocialGameBananaManager extends SocialManagerBase {
         </div>
         <button class="social-gamebanana-file-download-btn" data-download-url="${downloadUrl}" data-file-id="${this.escapeHtml(file._idRow || '')}" ${downloadUrl ? '' : 'disabled'}>
           <i class="bi bi-download"></i>
-          <span>Download</span>
+          <span>${this.escapeHtml(downloadText)}</span>
         </button>
       </div>
     `;
@@ -3645,7 +3825,7 @@ class SocialGameBananaManager extends SocialManagerBase {
     if (!this.authToken) return [];
 
     const response = await this.fetchWithAuth(
-      `${this.API_URL}/list/links?idToken=${this.authToken}`,
+      `${this.API_URL}/list/links`,
     );
 
     if (!response.ok) return [];

@@ -217,6 +217,15 @@ class SocialManagerBase {
     return div.innerHTML;
   }
 
+  getSocialTranslation(
+    key: string,
+    fallback: string,
+    params: Record<string, string> = {},
+  ) {
+    const translation = window.i18n?.t?.(key, params);
+    return translation && translation !== key ? translation : fallback;
+  }
+
   isAuthErrorPayload(data: any) {
     const rawMessage =
       typeof data === 'string'
@@ -263,8 +272,15 @@ class SocialManagerBase {
       data?.disableReason ||
       data?.disable_reason;
     return reason
-      ? `Account disabled: ${reason}`
-      : 'Account disabled. You have been signed out.';
+      ? this.getSocialTranslation(
+          'social.accountDisabledReason',
+          `Account disabled: ${reason}`,
+          { reason },
+        )
+      : this.getSocialTranslation(
+          'social.accountDisabledSignedOut',
+          'Account disabled. You have been signed out.',
+        );
   }
 
   async clearStoredSocialSession() {
@@ -292,7 +308,14 @@ class SocialManagerBase {
     this.showLoginScreen();
 
     if (window.modalManager?.showAlert) {
-      window.modalManager.showAlert('error', 'Account disabled', message);
+      window.modalManager.showAlert(
+        'error',
+        this.getSocialTranslation(
+          'social.accountDisabled',
+          'Account disabled',
+        ),
+        message,
+      );
     } else if (window.toastManager) {
       window.toastManager.error(message);
     }
@@ -400,16 +423,21 @@ class SocialManagerBase {
     try {
       const parsedUrl = new URL(nextUrl, window.location.href);
       if (parsedUrl.searchParams.has('idToken')) {
-        parsedUrl.searchParams.set('idToken', this.authToken);
+        parsedUrl.searchParams.delete('idToken');
         nextUrl = parsedUrl.toString();
       }
     } catch (error) {
       if (nextUrl.includes('idToken=')) {
-        nextUrl = nextUrl.replace(
-          /([?&]idToken=)[^&]*/,
-          `$1${encodeURIComponent(this.authToken)}`,
-        );
+        nextUrl = nextUrl
+          .replace(/([?&])idToken=[^&]*&?/, '$1')
+          .replace(/[?&]$/, '');
       }
+    }
+
+    if (nextUrl.startsWith(this.API_URL)) {
+      const headers = new Headers(nextOptions.headers || {});
+      headers.set('Authorization', `Bearer ${this.authToken}`);
+      nextOptions.headers = headers;
     }
 
     const body = nextOptions.body;
@@ -651,7 +679,7 @@ class SocialManagerBase {
         renderer: 'svg',
         loop: false,
         autoplay: true,
-        path: '../images/social1.json',
+        path: '../images/social.json',
         rendererSettings: {
           preserveAspectRatio: 'xMidYMid slice',
           className: 'lottie-animation-fullscreen',
@@ -860,32 +888,64 @@ class SocialManagerBase {
           throw new Error(`Social service error ${response.status}`);
         }
 
-        let errorMessage = 'Login failed';
+        let errorMessage = this.getSocialTranslation(
+          'social.loginFailed',
+          'Login failed.',
+        );
 
         const supabaseErrorCode =
           data.error?.message || data.error?.code || data.error_code;
 
         if (data.error?.message === 'USER_DISABLED') {
           const disableReason =
-            data.error.disableReason || 'Account has been disabled';
-          errorMessage = `Account disabled: ${disableReason}`;
+            data.error.disableReason ||
+            this.getSocialTranslation(
+              'social.accountHasBeenDisabled',
+              'Account has been disabled.',
+            );
+          errorMessage = this.getSocialTranslation(
+            'social.accountDisabledReason',
+            `Account disabled: ${disableReason}`,
+            { reason: disableReason },
+          );
         } else if (supabaseErrorCode) {
           const errorMessages = {
-            EMAIL_NOT_FOUND: 'Email not found',
-            INVALID_PASSWORD: 'Invalid password',
-            INVALID_EMAIL: 'Invalid email address',
-            USER_DISABLED: 'Account disabled',
+            EMAIL_NOT_FOUND: this.getSocialTranslation(
+              'social.emailNotFound',
+              'Email not found.',
+            ),
+            INVALID_PASSWORD: this.getSocialTranslation(
+              'social.invalidPassword',
+              'Invalid password.',
+            ),
+            INVALID_EMAIL: this.getSocialTranslation(
+              'social.invalidEmail',
+              'Invalid email address.',
+            ),
+            USER_DISABLED: this.getSocialTranslation(
+              'social.accountDisabled',
+              'Account disabled',
+            ),
             TOO_MANY_ATTEMPTS_TRY_LATER:
-              'Too many attempts, please try again later',
+              this.getSocialTranslation(
+                'social.tooManyAttempts',
+                'Too many attempts. Please try again later.',
+              ),
             email_not_confirmed:
-              'Please confirm your email before signing in. Check your inbox.',
-            invalid_credentials: 'Invalid email or password.',
+              this.getSocialTranslation(
+                'social.confirmEmailBeforeSignIn',
+                'Please confirm your email before signing in. Check your inbox.',
+              ),
+            invalid_credentials: this.getSocialTranslation(
+              'social.invalidCredentials',
+              'Invalid email or password.',
+            ),
           } as Record<string, string>;
           errorMessage =
             errorMessages[supabaseErrorCode] ||
             data.error?.message ||
             data.msg ||
-            'Login failed';
+            this.getSocialTranslation('social.loginFailed', 'Login failed.');
         } else if (data.msg) {
           errorMessage = data.msg;
         }
@@ -944,7 +1004,12 @@ class SocialManagerBase {
       document.querySelector<HTMLInputElement>('#social-remember');
 
     const forgot = document.querySelector<HTMLElement>('#social-forgot');
-    const create = document.querySelector<HTMLElement>('#social-create');
+    const joinWaitlist = document.querySelector<HTMLElement>(
+      '#social-join-waitlist',
+    );
+    const useInvite = document.querySelector<HTMLElement>(
+      '#social-use-invite',
+    );
     const discoverOnly = document.querySelector<HTMLElement>(
       '#social-discover-only',
     );
@@ -980,8 +1045,9 @@ class SocialManagerBase {
         const originalButtonText = submitButton ? submitButton.innerHTML : '';
         if (submitButton) {
           submitButton.disabled = true;
-          submitButton.innerHTML =
-            '<i class="bi bi-hourglass-split"></i> Signing in...';
+          submitButton.innerHTML = `<i class="bi bi-hourglass-split"></i> ${this.escapeHtml(
+            this.getSocialTranslation('social.signingIn', 'Signing in...'),
+          )}`;
         }
         emailInput.disabled = true;
         passInput.disabled = true;
@@ -1039,10 +1105,17 @@ class SocialManagerBase {
       });
     }
 
-    if (create) {
-      create.addEventListener('click', (e) => {
+    if (joinWaitlist) {
+      joinWaitlist.addEventListener('click', (e) => {
         e.preventDefault();
-        this.showRegisterModal();
+        this.showRegisterModal('waitlist');
+      });
+    }
+
+    if (useInvite) {
+      useInvite.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showRegisterModal('invite');
       });
     }
 
@@ -1089,7 +1162,10 @@ class SocialManagerBase {
     profileContainer.style.display = 'flex';
     profileContainer.classList.add('guest-discover-only');
 
-    const navItems = document.querySelectorAll<HTMLElement>('.social-nav-item');
+    const socialRoot =
+      document.querySelector<HTMLElement>('#tab-social') || document;
+    const navItems =
+      socialRoot.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
       item.classList.toggle(
         'active',
@@ -1097,7 +1173,8 @@ class SocialManagerBase {
       );
     });
 
-    const sections = document.querySelectorAll<HTMLElement>('.social-section');
+    const sections =
+      socialRoot.querySelectorAll<HTMLElement>('.social-section');
     sections.forEach((section) => {
       const isDiscover = section.id === 'social-section-discover';
       section.classList.toggle('active', isDiscover);
@@ -1107,7 +1184,7 @@ class SocialManagerBase {
     });
 
     this.setupGameBananaSearchEvents();
-    this.loadDiscover();
+    void this.loadDiscover();
   }
 
   showForgotPasswordModal() {
@@ -1182,8 +1259,9 @@ class SocialManagerBase {
 
         if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.innerHTML =
-            '<i class="bi bi-hourglass-split"></i> Sending...';
+          submitBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> ${this.escapeHtml(
+            this.getSocialTranslation('social.sending', 'Sending...'),
+          )}`;
         }
 
         try {
@@ -1198,7 +1276,10 @@ class SocialManagerBase {
           if (response.ok && !data.error) {
             if (window.toastManager) {
               window.toastManager.success(
-                'Password reset email sent! Check your inbox.',
+                this.getSocialTranslation(
+                  'social.passwordResetEmailSent',
+                  'Password reset email sent! Check your inbox.',
+                ),
               );
             }
             this.hideForgotPasswordModal();
@@ -1224,15 +1305,19 @@ class SocialManagerBase {
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML =
-              '<i class="bi bi-envelope"></i> Send Reset Link';
+            submitBtn.innerHTML = `<i class="bi bi-envelope"></i> ${this.escapeHtml(
+              this.getSocialTranslation(
+                'social.sendResetLink',
+                'Send Reset Link',
+              ),
+            )}`;
           }
         }
       });
     }
   }
 
-  showRegisterModal() {
+  showRegisterModal(step: 'waitlist' | 'invite' | 'account' = 'waitlist') {
     if (this.authToken && this.userData) {
       console.log(
         '[Social] Cannot show register modal: user is already logged in',
@@ -1245,14 +1330,61 @@ class SocialManagerBase {
       modal.style.display = 'flex';
       modal.style.opacity = '1';
 
-      const emailInput =
-        document.querySelector<HTMLInputElement>('#social-email');
-      const registerEmailInput = document.querySelector<HTMLInputElement>(
-        '#social-register-email',
-      );
-      if (emailInput && registerEmailInput && emailInput.value) {
-        registerEmailInput.value = emailInput.value;
+      const loginEmail =
+        document.querySelector<HTMLInputElement>('#social-email')?.value || '';
+      if (loginEmail) {
+        const targetId =
+          step === 'invite' ? '#social-invite-email' : '#social-waitlist-email';
+        const target =
+          document.querySelector<HTMLInputElement>(targetId);
+        if (target && !target.value) target.value = loginEmail;
       }
+      this.showRegistrationStep(step);
+    }
+  }
+
+  showRegistrationStep(step: 'waitlist' | 'invite' | 'account') {
+    const waitlistForm = document.querySelector<HTMLElement>(
+      '#social-waitlist-form',
+    );
+    const inviteForm =
+      document.querySelector<HTMLElement>('#social-invite-form');
+    const accountForm = document.querySelector<HTMLElement>(
+      '#social-register-form',
+    );
+    if (waitlistForm) {
+      waitlistForm.style.display = step === 'waitlist' ? 'flex' : 'none';
+    }
+    if (inviteForm) {
+      inviteForm.style.display = step === 'invite' ? 'flex' : 'none';
+    }
+    if (accountForm) {
+      accountForm.style.display = step === 'account' ? 'flex' : 'none';
+    }
+
+    const title =
+      document.querySelector<HTMLElement>('#social-register-title');
+    if (title) {
+      const titles = {
+        waitlist: {
+          key: 'social.joinWaitlist',
+          fallback: 'Join the waitlist',
+        },
+        invite: {
+          key: 'social.useInviteCode',
+          fallback: 'Use your invite code',
+        },
+        account: {
+          key: 'social.createAccount',
+          fallback: 'Create Account',
+        },
+      };
+      const selected = titles[step];
+      title.dataset.i18n = selected.key;
+      title.textContent = this.getSocialTranslation(
+        selected.key,
+        selected.fallback,
+      );
     }
   }
 
@@ -1261,10 +1393,14 @@ class SocialManagerBase {
     if (modal) {
       modal.style.display = 'none';
       modal.style.opacity = '0';
-      const form = document.querySelector<HTMLFormElement>(
+      [
+        '#social-waitlist-form',
+        '#social-invite-form',
         '#social-register-form',
-      );
-      if (form) form.reset();
+      ].forEach((selector) => {
+        document.querySelector<HTMLFormElement>(selector)?.reset();
+      });
+      this.showRegistrationStep('waitlist');
     }
   }
 
@@ -1319,7 +1455,28 @@ class SocialManagerBase {
     const closeBtn = document.querySelector<HTMLElement>(
       '#social-register-close',
     );
-    const form = document.querySelector<HTMLElement>('#social-register-form');
+    const waitlistForm = document.querySelector<HTMLFormElement>(
+      '#social-waitlist-form',
+    );
+    const waitlistEmail = document.querySelector<HTMLInputElement>(
+      '#social-waitlist-email',
+    );
+    const haveCodeButton = document.querySelector<HTMLButtonElement>(
+      '#social-waitlist-have-code',
+    );
+    const inviteForm =
+      document.querySelector<HTMLFormElement>('#social-invite-form');
+    const inviteEmail = document.querySelector<HTMLInputElement>(
+      '#social-invite-email',
+    );
+    const inviteCode = document.querySelector<HTMLInputElement>(
+      '#social-invite-code',
+    );
+    const inviteBackButton = document.querySelector<HTMLButtonElement>(
+      '#social-invite-back',
+    );
+    const form =
+      document.querySelector<HTMLFormElement>('#social-register-form');
     const usernameInput = document.querySelector<HTMLInputElement>(
       '#social-register-username',
     );
@@ -1332,18 +1489,201 @@ class SocialManagerBase {
     const passwordConfirmInput = document.querySelector<HTMLInputElement>(
       '#social-register-password-confirm',
     );
+    const registerInviteCode = document.querySelector<HTMLInputElement>(
+      '#social-register-invite-code',
+    );
     const submitBtn = form
       ? form.querySelector<HTMLButtonElement>('button[type="submit"]')
       : null;
 
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.listenerAttached) {
       closeBtn.addEventListener('click', () => {
         this.hideRegisterModal();
       });
+      closeBtn.dataset.listenerAttached = 'true';
     }
 
-    if (modal) {
+    if (modal && !modal.dataset.backdropListenerAttached) {
       this.bindBackdropClose(modal, () => this.hideRegisterModal());
+      modal.dataset.backdropListenerAttached = 'true';
+    }
+
+    if (haveCodeButton && !haveCodeButton.dataset.listenerAttached) {
+      haveCodeButton.addEventListener('click', () => {
+        if (waitlistEmail?.value && inviteEmail && !inviteEmail.value) {
+          inviteEmail.value = waitlistEmail.value.trim();
+        }
+        this.showRegistrationStep('invite');
+      });
+      haveCodeButton.dataset.listenerAttached = 'true';
+    }
+
+    if (inviteBackButton && !inviteBackButton.dataset.listenerAttached) {
+      inviteBackButton.addEventListener('click', () => {
+        this.showRegistrationStep('waitlist');
+      });
+      inviteBackButton.dataset.listenerAttached = 'true';
+    }
+
+    if (
+      waitlistForm &&
+      waitlistEmail &&
+      !waitlistForm.dataset.listenerAttached
+    ) {
+      waitlistForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = waitlistEmail.value.trim();
+        const button =
+          waitlistForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+        const original = button?.innerHTML || '';
+        if (!email) return;
+
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = `<i class="bi bi-hourglass-split"></i> ${this.escapeHtml(
+            this.getSocialTranslation('social.sending', 'Sending...'),
+          )}`;
+        }
+        try {
+          const response = await fetch(`${this.API_URL}/waitlist/request`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          const data = await this.parseJsonResponse(response);
+          if (!response.ok || data.error) {
+            throw new Error(
+              typeof data.error === 'string'
+                ? data.error
+                : data.error?.message ||
+                    data.message ||
+                    'Failed to join the waitlist',
+            );
+          }
+
+          if (data.status === 'approved') {
+            if (inviteEmail) inviteEmail.value = email;
+            this.showRegistrationStep('invite');
+            window.toastManager?.info(
+              data.message ||
+                this.getSocialTranslation(
+                  'social.waitlistApproved',
+                  'Your request is approved. Enter your code.',
+                ),
+            );
+          } else if (data.status === 'account_exists') {
+            const loginEmail =
+              document.querySelector<HTMLInputElement>('#social-email');
+            if (loginEmail) loginEmail.value = email;
+            this.hideRegisterModal();
+            window.toastManager?.info(
+              data.message ||
+                this.getSocialTranslation(
+                  'social.accountAlreadyExists',
+                  'This email already has an account. Sign in.',
+                ),
+            );
+          } else if (data.status === 'rejected') {
+            window.toastManager?.error(
+              data.message ||
+                this.getSocialTranslation(
+                  'social.waitlistRejected',
+                  'This request was not approved.',
+                ),
+            );
+          } else {
+            window.toastManager?.success(
+              data.message ||
+                this.getSocialTranslation(
+                  'social.waitlistPending',
+                  'Your request is now pending review.',
+                ),
+            );
+          }
+        } catch (error) {
+          window.toastManager?.error(
+            error?.message ||
+              this.getSocialTranslation(
+                'social.failedToJoinWaitlist',
+                'Failed to join the waitlist.',
+              ),
+          );
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.innerHTML = original;
+          }
+        }
+      });
+      waitlistForm.dataset.listenerAttached = 'true';
+    }
+
+    if (
+      inviteForm &&
+      inviteEmail &&
+      inviteCode &&
+      !inviteForm.dataset.listenerAttached
+    ) {
+      inviteForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = inviteEmail.value.trim();
+        const code = inviteCode.value.trim().toUpperCase();
+        const button =
+          inviteForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+        const original = button?.innerHTML || '';
+        if (!email || !code) {
+          window.toastManager?.error('toasts.pleaseFillAllFields');
+          return;
+        }
+
+        if (button) {
+          button.disabled = true;
+          button.innerHTML = `<i class="bi bi-hourglass-split"></i> ${this.escapeHtml(
+            this.getSocialTranslation('social.verifying', 'Verifying...'),
+          )}`;
+        }
+        try {
+          const response = await fetch(`${this.API_URL}/waitlist/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, inviteCode: code }),
+          });
+          const data = await this.parseJsonResponse(response);
+          if (!response.ok || !data.valid) {
+            throw new Error(
+              typeof data.error === 'string'
+                ? data.error
+                : data.error?.message ||
+                    data.message ||
+                    'Invalid invitation',
+            );
+          }
+
+          if (emailInput) emailInput.value = email;
+          if (registerInviteCode) registerInviteCode.value = code;
+          this.showRegistrationStep('account');
+          window.toastManager?.success(
+            this.getSocialTranslation(
+              'social.inviteAccepted',
+              'Invitation accepted. Create your account.',
+            ),
+          );
+        } catch (error) {
+          window.toastManager?.error(
+            error?.message ||
+              this.getSocialTranslation(
+                'social.invalidInvitation',
+                'Invalid invitation.',
+              ),
+          );
+        } finally {
+          if (button) {
+            button.disabled = false;
+            button.innerHTML = original;
+          }
+        }
+      });
+      inviteForm.dataset.listenerAttached = 'true';
     }
 
     if (
@@ -1351,7 +1691,9 @@ class SocialManagerBase {
       usernameInput &&
       emailInput &&
       passwordInput &&
-      passwordConfirmInput
+      passwordConfirmInput &&
+      registerInviteCode &&
+      !form.dataset.listenerAttached
     ) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1359,8 +1701,15 @@ class SocialManagerBase {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         const passwordConfirm = passwordConfirmInput.value;
+        const invitationCode = registerInviteCode.value.trim();
 
-        if (!username || !email || !password || !passwordConfirm) {
+        if (
+          !username ||
+          !email ||
+          !password ||
+          !passwordConfirm ||
+          !invitationCode
+        ) {
           if (window.toastManager)
             window.toastManager.error('toasts.pleaseFillAllFields');
           return;
@@ -1380,15 +1729,24 @@ class SocialManagerBase {
 
         if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.innerHTML =
-            '<i class="bi bi-hourglass-split"></i> Creating account...';
+          submitBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> ${this.escapeHtml(
+            this.getSocialTranslation(
+              'social.creatingAccount',
+              'Creating account...',
+            ),
+          )}`;
         }
 
         try {
           const response = await fetch(`${this.API_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, username }),
+            body: JSON.stringify({
+              email,
+              password,
+              username,
+              inviteCode: invitationCode,
+            }),
           });
 
           const data = await response.json();
@@ -1448,11 +1806,16 @@ class SocialManagerBase {
         } finally {
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML =
-              '<i class="bi bi-person-plus"></i> Create Account';
+            submitBtn.innerHTML = `<i class="bi bi-person-plus"></i> ${this.escapeHtml(
+              this.getSocialTranslation(
+                'social.createAccount',
+                'Create Account',
+              ),
+            )}`;
           }
         }
       });
+      form.dataset.listenerAttached = 'true';
     }
   }
 
@@ -1485,6 +1848,7 @@ class SocialManagerBase {
       this.setupProfileButtons();
       this.setupGameBananaSearchEvents();
       this.setupNavigation();
+      this.switchSection('discover');
     }
   }
 
@@ -1492,7 +1856,10 @@ class SocialManagerBase {
     if (this.socialNavigationListenersBound) return;
     this.socialNavigationListenersBound = true;
 
-    const navItems = document.querySelectorAll<HTMLElement>('.social-nav-item');
+    const socialRoot =
+      document.querySelector<HTMLElement>('#tab-social') || document;
+    const navItems =
+      socialRoot.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
       item.addEventListener('click', () => {
         const section = item.getAttribute('data-section');
@@ -1502,7 +1869,9 @@ class SocialManagerBase {
   }
 
   switchSection(sectionName) {
-    const currentSections = document.querySelectorAll<HTMLElement>(
+    const socialRoot =
+      document.querySelector<HTMLElement>('#tab-social') || document;
+    const currentSections = socialRoot.querySelectorAll<HTMLElement>(
       '.social-section.active',
     );
     currentSections.forEach((section) => {
@@ -1511,7 +1880,8 @@ class SocialManagerBase {
       section.style.transform = 'translateX(-10px)';
     });
 
-    const navItems = document.querySelectorAll<HTMLElement>('.social-nav-item');
+    const navItems =
+      socialRoot.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
       if (item.getAttribute('data-section') === sectionName) {
         item.classList.add('active');
@@ -1522,7 +1892,7 @@ class SocialManagerBase {
 
     setTimeout(() => {
       const sections =
-        document.querySelectorAll<HTMLElement>('.social-section');
+        socialRoot.querySelectorAll<HTMLElement>('.social-section');
       sections.forEach((section) => {
         if (section.id === `social-section-${sectionName}`) {
           section.classList.add('active');
@@ -1573,18 +1943,36 @@ class SocialManagerBase {
       modal = document.createElement('div');
       modal.id = modalId;
       modal.className = 'social-modal';
+      const verifyEmailTitle = this.escapeHtml(
+        this.getSocialTranslation('social.verifyYourEmail', 'Verify Your Email'),
+      );
+      const confirmationSent = this.escapeHtml(
+        this.getSocialTranslation(
+          'social.confirmationEmailSentTo',
+          'A confirmation email has been sent to:',
+        ),
+      );
+      const confirmationInstructions = this.escapeHtml(
+        this.getSocialTranslation(
+          'social.confirmationEmailInstructions',
+          'Please check your inbox and click the confirmation link before signing in.',
+        ),
+      );
+      const gotIt = this.escapeHtml(
+        this.getSocialTranslation('social.gotIt', 'Got it!'),
+      );
       modal.innerHTML = `
         <div class="social-modal-content" style="max-width: 400px; text-align: center;">
           <div class="social-modal-header">
-            <h3>📧 Verify Your Email</h3>
+            <h3>📧 ${verifyEmailTitle}</h3>
             <button class="social-modal-close">&times;</button>
           </div>
           <div class="social-modal-body" style="padding: 20px;">
-            <p>A confirmation email has been sent to:</p>
-            <p style="font-weight: bold; margin: 10px 0;">${email}</p>
-            <p>Please check your inbox and click the confirmation link before signing in.</p>
+            <p>${confirmationSent}</p>
+            <p style="font-weight: bold; margin: 10px 0;">${this.escapeHtml(email)}</p>
+            <p>${confirmationInstructions}</p>
             <button class="social-btn social-btn-primary" id="email-confirm-ok" style="margin-top: 20px;">
-              Got it!
+              ${gotIt}
             </button>
           </div>
         </div>

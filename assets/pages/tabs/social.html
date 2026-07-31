@@ -1,0 +1,914 @@
+<!-- Social Tab Content -->
+<div class="social-tab">
+  <!-- Onboarding overlay (first time only) -->
+  <div id="social-onboarding" class="social-onboarding" style="display: none">
+    <div id="social-onboarding-lottie" class="social-onboarding-lottie"></div>
+    <div class="social-onboarding-overlay">
+      <div class="social-onboarding-text">
+        <h2 data-i18n="social.getStartedWith">Get started with FPT Social</h2>
+        <button id="social-get-started" class="social-btn social-btn-primary" data-i18n="social.getStarted">
+          Get Started
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login screen (shown after onboarding) -->
+  <div id="social-login-container" class="social-login-container" style="display: none">
+    <div id="social-lottie" class="social-lottie"></div>
+
+    <div class="social-login-card">
+      <h2 class="social-title" data-i18n="social.connectTitle">
+        Connect to FightPlanner
+      </h2>
+      <p class="social-subtitle" data-i18n="social.connectSubtitle">
+        Sign in to sync your mods, share and download
+      </p>
+      <form id="social-login-form" class="social-form">
+        <div class="social-form-group">
+          <label for="social-email" class="social-label" data-i18n="social.email">Email</label>
+          <input type="email" id="social-email" class="social-input" data-i18n="social.emailPlaceholder"
+            data-i18n-placeholder placeholder="your.email@example.com" required />
+        </div>
+        <div class="social-form-group">
+          <label for="social-password" class="social-label" data-i18n="social.password">Password</label>
+          <input type="password" id="social-password" class="social-input" data-i18n="social.passwordPlaceholder"
+            data-i18n-placeholder placeholder="Enter your password" required />
+        </div>
+        <div class="social-form-options">
+          <label class="social-checkbox-label">
+            <input type="checkbox" id="social-remember" class="social-checkbox" />
+            <span data-i18n="social.rememberMe">Remember me</span>
+          </label>
+          <a href="#" id="social-forgot" class="social-link" data-i18n="social.forgotPassword">Forgot password?</a>
+        </div>
+        <button type="submit" class="social-btn social-btn-primary">
+          <i class="bi bi-box-arrow-in-right"></i>
+          <span data-i18n="social.signIn">Sign In</span>
+        </button>
+        <button type="button" id="social-discover-only" class="social-btn social-btn-secondary">
+          <i class="bi bi-compass"></i>
+          <span data-i18n="social.accessDiscoverOnly">Access Discover only</span>
+        </button>
+        <p class="social-hint">
+          <span data-i18n="social.noAccount">Don't have an account?</span>
+          <a href="#" id="social-join-waitlist" class="social-link" data-i18n="social.joinWaitlist">Join the waitlist</a>
+        </p>
+        <p class="social-hint">
+          <span data-i18n="social.alreadyApproved">Already approved?</span>
+          <a href="#" id="social-use-invite" class="social-link" data-i18n="social.useInviteCode">Use your invite code</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="social-forgot-modal" class="social-modal" style="display: none">
+    <div class="social-modal-content">
+      <div class="social-modal-header">
+        <h2 class="social-modal-title" data-i18n="social.resetPassword">
+          Reset Password
+        </h2>
+        <button id="social-forgot-close" class="social-modal-close">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="social-modal-body">
+        <p class="social-modal-text" data-i18n="social.resetPasswordText">
+          Enter your email address and we'll send you a link to reset your
+          password.
+        </p>
+        <form id="social-forgot-form" class="social-form">
+          <div class="social-form-group">
+            <label for="social-forgot-email" class="social-label" data-i18n="social.email">Email</label>
+            <input type="email" id="social-forgot-email" class="social-input" data-i18n="social.emailPlaceholder"
+              data-i18n-placeholder placeholder="your.email@example.com" required />
+          </div>
+          <button type="submit" class="social-btn social-btn-primary" style="width: 100%">
+            <i class="bi bi-envelope"></i>
+            <span data-i18n="social.sendResetLink">Send Reset Link</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Friend Modal -->
+  <div id="social-remove-friend-modal" class="social-modal" style="display: none; opacity: 0">
+    <div class="social-modal-content">
+      <div class="social-modal-header">
+        <h2 class="social-modal-title" data-i18n="social.removeFriend">
+          Remove Friend
+        </h2>
+        <button id="social-remove-friend-close" class="social-modal-close">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="social-modal-body">
+        <p class="social-modal-text">
+          <span data-i18n="social.removeFriendConfirm">Are you sure you want to remove {{name}} from your friends
+            list?</span>
+        </p>
+        <div class="social-modal-actions">
+          <button id="social-remove-friend-cancel" class="social-btn social-btn-secondary">
+            <i class="bi bi-x"></i>
+            <span data-i18n="common.cancel">Cancel</span>
+          </button>
+          <button id="social-remove-friend-confirm" class="social-btn social-btn-danger">
+            <i class="bi bi-person-dash"></i>
+            <span data-i18n="common.remove">Remove</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Media Crop Modal -->
+  <div id="social-profile-media-crop-modal" class="social-modal" style="display: none">
+    <div class="social-modal-content social-crop-modal-content">
+      <div class="social-modal-header">
+        <h2 id="social-crop-title" class="social-modal-title" data-i18n="social.cropImage">Crop image</h2>
+        <button id="social-crop-close" class="social-modal-close">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="social-modal-body">
+        <div id="social-crop-upload-loading" class="social-crop-upload-loading" style="display: none">
+          <div id="social-crop-upload-lottie" class="social-crop-upload-lottie"></div>
+          <p data-i18n="social.uploading">Uploading...</p>
+        </div>
+        <div id="social-crop-frame" class="social-crop-frame">
+          <canvas id="social-crop-canvas" class="social-crop-canvas"></canvas>
+        </div>
+        <div class="social-crop-controls">
+          <label for="social-crop-zoom" class="social-setting-label" data-i18n="social.zoom">Zoom</label>
+          <input id="social-crop-zoom" class="social-crop-zoom" type="range" min="1" max="3" step="0.01" value="1" />
+        </div>
+        <div class="social-modal-actions">
+          <button id="social-crop-cancel" class="social-btn social-btn-secondary">
+            <i class="bi bi-x"></i>
+            <span data-i18n="common.cancel">Cancel</span>
+          </button>
+          <button id="social-crop-confirm" class="social-btn social-btn-primary">
+            <i class="bi bi-cloud-upload"></i>
+            <span data-i18n="social.upload">Upload</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Waitlist / invitation / account creation modal -->
+  <div id="social-register-modal" class="social-modal" style="display: none">
+    <div class="social-modal-content">
+      <div class="social-modal-header">
+        <h2 id="social-register-title" class="social-modal-title" data-i18n="social.joinWaitlist">
+          Join the waitlist
+        </h2>
+        <button id="social-register-close" class="social-modal-close">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="social-modal-body">
+        <form id="social-waitlist-form" class="social-form">
+          <p class="social-modal-text" data-i18n="social.waitlistDescription">
+            Enter your email. We will review your request before allowing account creation.
+          </p>
+          <div class="social-form-group">
+            <label for="social-waitlist-email" class="social-label" data-i18n="social.email">Email</label>
+            <input type="email" id="social-waitlist-email" class="social-input" data-i18n="social.emailPlaceholder"
+              data-i18n-placeholder placeholder="your.email@example.com" required />
+          </div>
+          <button type="submit" class="social-btn social-btn-primary" style="width: 100%">
+            <i class="bi bi-hourglass-split"></i>
+            <span data-i18n="social.requestAccess">Request access</span>
+          </button>
+          <button type="button" id="social-waitlist-have-code" class="social-btn social-btn-secondary"
+            style="width: 100%">
+            <i class="bi bi-key"></i>
+            <span data-i18n="social.iHaveInviteCode">I have an invite code</span>
+          </button>
+        </form>
+
+        <form id="social-invite-form" class="social-form" style="display: none">
+          <p class="social-modal-text" data-i18n="social.inviteDescription">
+            Enter the email used for the waitlist and your one-time invite code.
+          </p>
+          <div class="social-form-group">
+            <label for="social-invite-email" class="social-label" data-i18n="social.email">Email</label>
+            <input type="email" id="social-invite-email" class="social-input" data-i18n="social.emailPlaceholder"
+              data-i18n-placeholder placeholder="your.email@example.com" required />
+          </div>
+          <div class="social-form-group">
+            <label for="social-invite-code" class="social-label" data-i18n="social.inviteCode">Invite code</label>
+            <input type="text" id="social-invite-code" class="social-input" placeholder="XXXX-XXXX-XXXX"
+              autocomplete="one-time-code" required />
+          </div>
+          <button type="submit" class="social-btn social-btn-primary" style="width: 100%">
+            <i class="bi bi-unlock"></i>
+            <span data-i18n="social.verifyInvite">Verify invitation</span>
+          </button>
+          <button type="button" id="social-invite-back" class="social-btn social-btn-secondary" style="width: 100%">
+            <i class="bi bi-arrow-left"></i>
+            <span data-i18n="common.back">Back</span>
+          </button>
+        </form>
+
+        <form id="social-register-form" class="social-form" style="display: none">
+          <input type="hidden" id="social-register-invite-code" />
+          <div class="social-form-group">
+            <label for="social-register-username" class="social-label" data-i18n="social.username">Username</label>
+            <input type="text" id="social-register-username" class="social-input" data-i18n="social.usernamePlaceholder"
+              data-i18n-placeholder placeholder="Choose a username" required />
+          </div>
+          <div class="social-form-group">
+            <label for="social-register-email" class="social-label" data-i18n="social.email">Email</label>
+            <input type="email" id="social-register-email" class="social-input" data-i18n="social.emailPlaceholder"
+              data-i18n-placeholder placeholder="your.email@example.com" required readonly />
+          </div>
+          <div class="social-form-group">
+            <label for="social-register-password" class="social-label" data-i18n="social.password">Password</label>
+            <input type="password" id="social-register-password" class="social-input"
+              data-i18n="social.passwordPlaceholder" data-i18n-placeholder placeholder="Enter your password" required
+              minlength="6" />
+            <small class="social-hint" style="margin-top: 4px; display: block"
+              data-i18n="social.passwordMinLength">Password must be at least 6 characters</small>
+          </div>
+          <div class="social-form-group">
+            <label for="social-register-password-confirm" class="social-label"
+              data-i18n="social.confirmPassword">Confirm Password</label>
+            <input type="password" id="social-register-password-confirm" class="social-input"
+              data-i18n="social.confirmPasswordPlaceholder" data-i18n-placeholder placeholder="Confirm your password"
+              required />
+          </div>
+          <button type="submit" class="social-btn social-btn-primary" style="width: 100%">
+            <i class="bi bi-person-plus"></i>
+            <span data-i18n="social.createAccount">Create Account</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Profile Screen (shown after login) -->
+  <div id="social-profile-container" class="social-profile-container" style="display: none">
+    <!-- Navigation Menu -->
+    <div class="social-nav-menu">
+      <div class="social-nav-item active" data-section="discover">
+        <i class="bi bi-compass"></i>
+        <span data-i18n="social.discover">Discover</span>
+      </div>
+      <div class="social-nav-item" data-section="people-downloads">
+        <i class="bi bi-cloud-download"></i>
+        <span data-i18n="social.downloadByPeople">Download by People</span>
+      </div>
+      <div class="social-nav-item" data-section="my-mods">
+        <i class="bi bi-collection"></i>
+        <span data-i18n="social.myMods">My Mods</span>
+      </div>
+      <div class="social-nav-item" data-section="friends">
+        <i class="bi bi-people"></i>
+        <span data-i18n="social.friends">Friends</span>
+      </div>
+      <div class="social-nav-item" data-section="profile">
+        <i class="bi bi-person"></i>
+        <span data-i18n="social.profile">Profile</span>
+      </div>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="social-main-content">
+      <!-- Discover Section -->
+      <div id="social-section-discover" class="social-section active">
+        <div class="social-section-header">
+          <h2 class="social-section-title" data-i18n="social.discoverMods">
+            GameBanana Mods
+          </h2>
+          <p class="social-section-subtitle" data-i18n="social.exploreMods">
+            Search and download Super Smash Bros. Ultimate mods from GameBanana
+          </p>
+        </div>
+        <div id="social-discover-content" class="social-discover-content">
+          <div class="social-loading">
+            <i class="bi bi-hourglass-split"></i>
+            <p data-i18n="social.loadingMods">Loading mods...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Downloads by People Section -->
+      <div id="social-section-people-downloads" class="social-section">
+        <div class="social-section-header">
+          <h2 class="social-section-title" data-i18n="social.downloadByPeopleTitle">
+            Download by People
+          </h2>
+          <p class="social-section-subtitle" data-i18n="social.downloadByPeopleSubtitle">
+            See mods downloaded by the community
+          </p>
+        </div>
+        <div id="social-feed-content" class="social-feed-content">
+          <div class="social-loading">
+            <i class="bi bi-hourglass-split"></i>
+            <p data-i18n="social.loadingMods">Loading mods...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Mods Section -->
+      <div id="social-section-my-mods" class="social-section">
+        <div class="social-section-header">
+          <h2 class="social-section-title" data-i18n="social.myModsTitle">
+            My Mods
+          </h2>
+          <p class="social-section-subtitle" data-i18n="social.manageShared">
+            Manage your shared mods
+          </p>
+        </div>
+        <div id="social-my-mods-content" class="social-mods-content">
+          <div class="social-loading">
+            <i class="bi bi-hourglass-split"></i>
+            <p data-i18n="social.loadingYourMods">Loading your mods...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Friends Section -->
+      <div id="social-section-friends" class="social-section">
+        <div class="social-section-header">
+          <h2 class="social-section-title" data-i18n="social.friendsTitle">
+            Friends
+          </h2>
+          <p class="social-section-subtitle" data-i18n="social.manageFriends">
+            Manage your friends and requests
+          </p>
+        </div>
+        <div id="social-friends-content" class="social-friends-content">
+          <form id="social-add-friend-form" class="social-add-friend-form">
+            <label for="social-add-friend-username" class="social-add-friend-label"
+              data-i18n="social.addFriendByUsername">Add friend by username</label>
+            <div class="social-add-friend-controls">
+              <input id="social-add-friend-username" class="social-input" type="text"
+                data-i18n="social.usernamePlaceholder" data-i18n-placeholder placeholder="Choose a username"
+                autocomplete="off" />
+              <button id="social-add-friend-submit" class="social-btn social-btn-primary" type="submit">
+                <i class="bi bi-person-plus"></i>
+                <span data-i18n="social.addFriend">Add Friend</span>
+              </button>
+            </div>
+            <p id="social-add-friend-feedback" class="social-add-friend-feedback" aria-live="polite"></p>
+          </form>
+          <!-- Friend Requests -->
+          <div id="social-friend-requests-section" style="display: none">
+            <h3 class="social-friend-requests-title" data-i18n="social.friendRequests">
+              Friend Requests
+            </h3>
+            <div id="social-friend-requests-list" class="social-friends-list"></div>
+          </div>
+          <!-- Friends List -->
+          <div id="social-friends-list-section">
+            <h3 class="social-friend-requests-title" style="margin-top: 24px" data-i18n="social.yourFriends">
+              Your Friends
+            </h3>
+            <div id="social-friends-list-container" class="social-friends-list">
+              <div class="social-loading">
+                <i class="bi bi-hourglass-split"></i>
+                <p data-i18n="social.loadingFriends">Loading friends...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Profile View (other users) -->
+      <div id="social-section-user-profile" class="social-section">
+        <div class="social-section-header">
+          <button id="social-back-btn" class="social-back-button">
+            <i class="bi bi-arrow-left"></i>
+            <span data-i18n="social.back">Back</span>
+          </button>
+          <div class="social-user-profile-header">
+            <div class="social-user-profile-banner">
+              <img id="social-user-profile-banner" src="" alt="Profile banner" data-i18n="social.profileBannerAlt"
+                data-i18n-alt />
+            </div>
+            <div class="social-user-profile-avatar-container">
+              <img id="social-user-profile-avatar" class="social-user-profile-avatar" src="" alt="Profile"
+                data-i18n="social.profileAlt" data-i18n-alt />
+            </div>
+            <div class="social-user-profile-info">
+              <h2 id="social-user-profile-username" class="social-user-profile-username" data-i18n="common.loading">
+                Loading...
+              </h2>
+              <div id="social-user-profile-badges" class="social-profile-badges" aria-label="User badges"
+                data-i18n="social.userBadgesLabel" data-i18n-aria-label></div>
+              <div id="social-user-profile-ban-notice" class="social-user-profile-ban-notice" style="display: none">
+                <i class="bi bi-slash-circle"></i>
+                <span data-i18n="social.accountBanned">This account is banned.</span>
+              </div>
+              <div class="social-user-profile-stats">
+                <div class="social-stat-item">
+                  <span class="social-stat-value" id="social-user-stat-mods">0</span>
+                  <span class="social-stat-label" data-i18n="social.mods">Mods</span>
+                </div>
+              </div>
+              <div class="social-user-profile-actions">
+                <button id="social-add-friend-btn" class="social-btn social-btn-primary" style="display: none">
+                  <i class="bi bi-person-plus"></i>
+                  <span id="social-add-friend-text" data-i18n="social.addFriend">Add Friend</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="social-user-mods-content" class="social-user-mods-content">
+          <div class="social-loading">
+            <i class="bi bi-hourglass-split"></i>
+            <p data-i18n="social.loadingUserMods">Loading user mods...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div id="social-section-profile" class="social-section">
+        <div class="social-profile-modebar">
+          <div class="social-profile-modebar-copy">
+            <h2 data-i18n="social.yourPublicProfile">Your public profile</h2>
+            <p data-i18n="social.yourPublicProfileHint">This is how your identity appears across Social.</p>
+          </div>
+          <button id="social-open-customizer" class="social-compact-action-btn social-open-customizer-btn"
+            type="button" aria-controls="social-profile-customizer-panel" aria-expanded="false"
+            style="display: none">
+            <i class="bi bi-palette"></i>
+            <span data-i18n="social.customizeYourProfile">Customize your profile</span>
+          </button>
+        </div>
+
+        <div id="social-profile-studio" class="social-profile-studio">
+          <div class="social-profile-preview-stage">
+            <div class="social-profile-preview-label">
+              <i class="bi bi-eye"></i>
+              <span data-i18n="social.publicPreview">Public preview</span>
+            </div>
+            <div class="social-profile-header">
+          <div class="social-profile-banner">
+            <img id="social-profile-banner" src="" alt="Profile banner" data-i18n="social.profileBannerAlt"
+              data-i18n-alt />
+            <button id="social-profile-edit-banner" class="social-profile-edit-banner" title="Edit banner"
+              data-i18n="social.editBanner" data-i18n-title>
+              <i class="bi bi-image"></i>
+            </button>
+          </div>
+          <div class="social-profile-avatar-container">
+            <img id="social-profile-avatar" class="social-profile-avatar" src="" alt="Profile"
+              data-i18n="social.profileAlt" data-i18n-alt />
+            <button id="social-profile-edit-avatar" class="social-profile-edit-avatar" title="Edit avatar"
+              data-i18n="social.editAvatar" data-i18n-title>
+              <i class="bi bi-camera"></i>
+            </button>
+            <input id="social-profile-avatar-input" type="file" accept="image/*" hidden />
+            <input id="social-profile-banner-input" type="file" accept="image/*" hidden />
+          </div>
+          <div class="social-profile-info">
+            <h2 id="social-profile-username" class="social-profile-username">
+              Loading...
+            </h2>
+            <div id="social-profile-badges" class="social-profile-badges" aria-label="Your badges"
+              data-i18n="social.yourBadgesLabel" data-i18n-aria-label></div>
+            <p id="social-profile-email" class="social-profile-email">
+              Loading...
+            </p>
+            <div class="social-profile-stats">
+              <div class="social-stat-item">
+                <span class="social-stat-value" id="social-stat-mods">0</span>
+                <span class="social-stat-label" data-i18n="social.mods">Mods</span>
+              </div>
+              <div class="social-stat-item social-profile-private-stat">
+                <span class="social-stat-value" id="social-stat-friends">0</span>
+                <span class="social-stat-label" data-i18n="social.friends">Friends</span>
+              </div>
+            </div>
+          </div>
+        </div>
+          </div>
+
+          <aside id="social-profile-customizer-panel" class="social-profile-customizer-panel" aria-hidden="true"
+            aria-labelledby="social-profile-customizer-title">
+            <div class="social-profile-customizer-header">
+              <div>
+                <h3 id="social-profile-customizer-title" data-i18n="social.customizeYourProfile">
+                  Customize your profile
+                </h3>
+                <p data-i18n="social.customizerHint">Changes appear instantly in the public preview.</p>
+              </div>
+              <button id="social-close-customizer" class="social-profile-customizer-close" type="button"
+                title="Close customization" data-i18n="social.closeCustomizer" data-i18n-title>
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div id="social-profile-customizer-body" class="social-profile-customizer-body"></div>
+          </aside>
+        </div>
+
+        <section id="social-supporter-profile-promo" class="social-supporter-profile-promo" hidden
+          aria-labelledby="social-supporter-profile-promo-title">
+          <div class="social-supporter-profile-promo-icon" aria-hidden="true">
+            <i class="bi bi-stars"></i>
+          </div>
+          <div class="social-supporter-profile-promo-content">
+            <h3 id="social-supporter-profile-promo-title" data-i18n="social.supporterProfilePromoTitle">
+              Take your profile further
+            </h3>
+            <p data-i18n="social.supporterProfilePromoDescription">
+              The Supporter badge unlocks advanced profile customization visible to everyone on Social.
+            </p>
+            <ul class="social-supporter-profile-benefits">
+              <li>
+                <i class="bi bi-palette2" aria-hidden="true"></i>
+                <span data-i18n="social.supporterProfileBenefitColors">Custom colors and backgrounds</span>
+              </li>
+              <li>
+                <i class="bi bi-person-circle" aria-hidden="true"></i>
+                <span data-i18n="social.supporterProfileBenefitAvatar">Avatar shapes and rings</span>
+              </li>
+              <li>
+                <i class="bi bi-type" aria-hidden="true"></i>
+                <span data-i18n="social.supporterProfileBenefitUsername">Username effects</span>
+              </li>
+            </ul>
+            <p class="social-supporter-profile-promo-note" data-i18n="social.supporterProfilePromoNote">
+              The studio appears here as soon as the Supporter badge is linked to your account.
+            </p>
+          </div>
+          <button id="social-become-supporter-btn" class="social-btn social-btn-primary social-supporter-profile-cta"
+            type="button">
+            <i class="bi bi-heart-fill" aria-hidden="true"></i>
+            <span data-i18n="social.becomeSupporter">Become a Supporter</span>
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+          </button>
+        </section>
+
+        <div class="social-profile-content">
+          <div class="social-profile-section social-account-settings-panel">
+            <div class="social-account-settings-header">
+              <span class="social-account-settings-icon" aria-hidden="true">
+                <i class="bi bi-person-gear"></i>
+              </span>
+              <div>
+                <h3 class="social-profile-section-title" data-i18n="social.accountSettings">
+                  Account Settings
+                </h3>
+                <p data-i18n="social.accountSettingsHint">
+                  Manage your identity, sign-in details and privacy.
+                </p>
+              </div>
+            </div>
+            <div class="social-profile-settings">
+              <section class="social-account-settings-group">
+                <div class="social-account-group-heading">
+                  <i class="bi bi-person-badge" aria-hidden="true"></i>
+                  <div>
+                    <h4 class="social-setting-section-title" data-i18n="social.profileIdentity">
+                      Profile identity
+                    </h4>
+                    <p class="social-setting-description" data-i18n="social.profileIdentityHint">
+                      Choose the name displayed to the Social community.
+                    </p>
+                  </div>
+                </div>
+                <div class="social-settings-row">
+                  <div class="social-settings-row-copy">
+                    <label for="social-edit-username" class="social-setting-label"
+                      data-i18n="social.username">Username</label>
+                  </div>
+                  <div class="social-settings-row-control">
+                    <input type="text" id="social-edit-username" class="social-setting-input"
+                      data-i18n="social.usernamePlaceholder" data-i18n-placeholder placeholder="Username" />
+                    <button id="social-save-username" class="social-icon-action-btn" type="button"
+                      title="Save username" data-i18n-title data-i18n="social.saveUsername">
+                      <i class="bi bi-check"></i>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section class="social-setting-item social-account-settings-group social-account-security">
+                <div class="social-account-security-heading">
+                  <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                  <div>
+                    <h4 class="social-setting-section-title" data-i18n="social.accountSecurity">
+                      Account security
+                    </h4>
+                    <p class="social-setting-description" data-i18n="social.accountSecurityHint">
+                      Keep your sign-in details up to date.
+                    </p>
+                  </div>
+                </div>
+
+                <form id="social-change-email-form" class="social-security-form">
+                  <div class="social-settings-row">
+                    <div class="social-settings-row-copy">
+                      <label for="social-new-email" class="social-setting-label" data-i18n="social.changeEmail">
+                        Change email
+                      </label>
+                      <span id="social-current-email" class="social-setting-current-value"></span>
+                    </div>
+                    <div class="social-security-fields">
+                      <input type="email" id="social-new-email" class="social-setting-input"
+                        data-i18n="social.newEmailPlaceholder" data-i18n-placeholder placeholder="New email address"
+                        autocomplete="email" required />
+                      <input type="password" id="social-email-current-password" class="social-setting-input"
+                        data-i18n="social.currentPasswordPlaceholder" data-i18n-placeholder
+                        placeholder="Current password" autocomplete="current-password" required />
+                      <button id="social-save-email" class="social-compact-action-btn" type="submit">
+                        <i class="bi bi-envelope-check"></i>
+                        <span data-i18n="social.saveEmail">Update email</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p id="social-change-email-feedback" class="social-security-feedback" aria-live="polite"></p>
+                </form>
+
+                <div class="social-settings-row">
+                  <div class="social-settings-row-copy">
+                    <span class="social-setting-label" data-i18n="social.changePassword">Change password</span>
+                    <span class="social-setting-description" data-i18n="social.changePasswordHint">
+                      We will send a secure reset link to your account email.
+                    </span>
+                  </div>
+                  <div class="social-settings-row-control">
+                    <button id="social-send-password-reset" class="social-compact-action-btn" type="button">
+                      <i class="bi bi-key"></i>
+                      <span data-i18n="social.sendPasswordReset">Send reset link</span>
+                    </button>
+                  </div>
+                </div>
+                <p id="social-password-reset-feedback" class="social-security-feedback" aria-live="polite"></p>
+              </section>
+
+              <section class="social-setting-item social-account-settings-group">
+                <div class="social-account-group-heading">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                  <div>
+                    <h4 class="social-setting-section-title" data-i18n="social.privacySettings">
+                      Privacy Settings
+                    </h4>
+                    <p class="social-setting-description" data-i18n="social.privacySettingsHint">
+                      Control who can see and synchronize your shared mods.
+                    </p>
+                  </div>
+                </div>
+                <div class="social-privacy-settings">
+                  <div class="social-settings-row">
+                    <div class="social-settings-row-copy">
+                      <label for="social-privacy-visibility" class="social-setting-label"
+                        data-i18n="social.modsVisibility">Mods Visibility</label>
+                    </div>
+                    <div class="social-settings-row-control">
+                      <select id="social-privacy-visibility" class="social-setting-select">
+                        <option value="global" data-i18n="social.visibilityEveryone">Everyone</option>
+                        <option value="friends" data-i18n="social.visibilityFriends">Friends Only</option>
+                        <option value="private" data-i18n="social.visibilityOnlyMe">Only Me</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="social-settings-row">
+                    <div class="social-settings-row-copy">
+                      <span class="social-setting-label" data-i18n="social.allowSync">
+                        Allow friends to sync my mods
+                      </span>
+                    </div>
+                    <label class="settings-switch">
+                      <input type="checkbox" id="social-privacy-sync" />
+                      <span class="settings-switch-slider"></span>
+                    </label>
+                  </div>
+                  <div class="social-settings-actions">
+                    <button id="social-save-privacy" class="social-compact-action-btn" type="button">
+                      <i class="bi bi-shield-check"></i>
+                      <span data-i18n="social.savePrivacy">Save Privacy Settings</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <div class="social-setting-item" id="social-profile-customization" style="display: none">
+                <div class="social-customization-heading">
+                  <h4 class="social-setting-section-title">
+                    <i class="bi bi-stars"></i>
+                    <span data-i18n="social.profileCustomization">Profile Customization</span>
+                  </h4>
+                  <span id="social-supporter-studio-label" class="social-supporter-studio-label"
+                    style="display: none">
+                    <i class="bi bi-heart-fill"></i>
+                    <span data-i18n="social.supporterStudio">Supporter</span>
+                  </span>
+                </div>
+                <p class="social-customization-hint" data-i18n="social.profileCustomizationHint">
+                  Build a profile style that other Social users can see. Available to Supporters, Testers,
+                  FightPlanner Creators and Community Organizers.
+                </p>
+                <div class="social-privacy-settings">
+                  <div class="social-theme-section">
+                    <div class="social-theme-section-heading">
+                      <span class="social-setting-label" data-i18n="social.themePresets">Quick styles</span>
+                      <span class="social-theme-live-label">
+                        <i class="bi bi-eye"></i>
+                        <span data-i18n="social.livePreview">Live preview</span>
+                      </span>
+                    </div>
+                    <div class="social-theme-presets" role="group" aria-label="Profile theme presets"
+                      data-i18n="social.themePresetsAria" data-i18n-aria-label>
+                      <button class="social-theme-preset" type="button" data-theme-preset="midnight"
+                        aria-pressed="false">
+                        <span class="social-theme-preset-swatch preset-midnight" aria-hidden="true"></span>
+                        <span data-i18n="social.themePresetMidnight">Midnight</span>
+                      </button>
+                      <button class="social-theme-preset" type="button" data-theme-preset="ember"
+                        aria-pressed="false">
+                        <span class="social-theme-preset-swatch preset-ember" aria-hidden="true"></span>
+                        <span data-i18n="social.themePresetEmber">Ember</span>
+                      </button>
+                      <button class="social-theme-preset" type="button" data-theme-preset="ocean"
+                        aria-pressed="false">
+                        <span class="social-theme-preset-swatch preset-ocean" aria-hidden="true"></span>
+                        <span data-i18n="social.themePresetOcean">Ocean</span>
+                      </button>
+                      <button class="social-theme-preset" type="button" data-theme-preset="mono"
+                        aria-pressed="false">
+                        <span class="social-theme-preset-swatch preset-mono" aria-hidden="true"></span>
+                        <span data-i18n="social.themePresetMono">Mono</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="social-theme-section">
+                    <h5 class="social-theme-subtitle" data-i18n="social.themeBackgroundTitle">Profile background</h5>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-background-style" class="social-setting-label"
+                          data-i18n="social.themeBackgroundStyle">Style</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <select id="social-theme-background-style" class="social-setting-select">
+                          <option value="gradient" data-i18n="social.themeBackgroundGradient">Soft gradient</option>
+                          <option value="spotlight" data-i18n="social.themeBackgroundSpotlight">Spotlight</option>
+                          <option value="solid" data-i18n="social.themeBackgroundSolid">Solid</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-background-color-1" class="social-setting-label"
+                          data-i18n="social.themeBackgroundColors">Background colors</label>
+                      </div>
+                      <div class="social-settings-row-control social-theme-color-pair">
+                        <input type="color" id="social-theme-background-color-1" class="social-theme-color-input"
+                          value="#24213d" title="First profile background color"
+                          data-i18n="social.profileBackgroundColor1" data-i18n-title />
+                        <input type="color" id="social-theme-background-color-2" class="social-theme-color-input"
+                          value="#111116" title="Second profile background color"
+                          data-i18n="social.profileBackgroundColor2" data-i18n-title />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="social-theme-section">
+                    <h5 class="social-theme-subtitle" data-i18n="social.themeBannerTitle">Banner</h5>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-banner-style" class="social-setting-label"
+                          data-i18n="social.themeBannerStyle">Style</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <select id="social-theme-banner-style" class="social-setting-select">
+                          <option value="diagonal" data-i18n="social.themeBannerDiagonal">Diagonal</option>
+                          <option value="radial" data-i18n="social.themeBannerRadial">Spotlight</option>
+                          <option value="split" data-i18n="social.themeBannerSplit">Split</option>
+                          <option value="solid" data-i18n="social.themeBannerSolid">Solid</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-banner-color-1" class="social-setting-label"
+                          data-i18n="social.themeBannerColors">Banner colors</label>
+                      </div>
+                      <div class="social-settings-row-control social-theme-color-pair">
+                        <input type="color" id="social-theme-banner-color-1" class="social-theme-color-input"
+                          value="#7a5cff" title="Banner color 1" data-i18n="social.bannerColor1" data-i18n-title />
+                        <input type="color" id="social-theme-banner-color-2" class="social-theme-color-input"
+                          value="#1c1c24" title="Banner color 2" data-i18n="social.bannerColor2" data-i18n-title />
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-banner-angle" class="social-setting-label"
+                          data-i18n="social.themeBannerAngle">Gradient angle</label>
+                      </div>
+                      <div class="social-settings-row-control social-theme-range-control">
+                        <input id="social-theme-banner-angle" class="social-theme-range" type="range" min="0" max="360"
+                          step="5" value="135" />
+                        <output id="social-theme-banner-angle-value" for="social-theme-banner-angle">135°</output>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="social-theme-section">
+                    <h5 class="social-theme-subtitle" data-i18n="social.themeIdentityTitle">Identity</h5>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-accent-color" class="social-setting-label"
+                          data-i18n="social.themeAccentColor">Accent color (avatar ring)</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <input type="color" id="social-theme-accent-color" class="social-theme-color-input"
+                          value="#7a5cff" title="Accent color" data-i18n="social.accentColor" data-i18n-title />
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-avatar-shape" class="social-setting-label"
+                          data-i18n="social.themeAvatarShape">Avatar shape</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <select id="social-theme-avatar-shape" class="social-setting-select">
+                          <option value="circle" data-i18n="social.themeAvatarCircle">Circle</option>
+                          <option value="rounded" data-i18n="social.themeAvatarRounded">Rounded</option>
+                          <option value="square" data-i18n="social.themeAvatarSquare">Square</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-avatar-ring" class="social-setting-label"
+                          data-i18n="social.themeAvatarRing">Avatar ring</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <select id="social-theme-avatar-ring" class="social-setting-select">
+                          <option value="subtle" data-i18n="social.themeRingSubtle">Subtle</option>
+                          <option value="bold" data-i18n="social.themeRingBold">Bold</option>
+                          <option value="double" data-i18n="social.themeRingDouble">Double</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-username-color" class="social-setting-label"
+                          data-i18n="social.themeUsernameColor">Username color</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <input type="color" id="social-theme-username-color" class="social-theme-color-input"
+                          value="#ffffff" title="Username color" data-i18n="social.usernameColor" data-i18n-title />
+                      </div>
+                    </div>
+                    <div class="social-settings-row">
+                      <div class="social-settings-row-copy">
+                        <label for="social-theme-username-effect" class="social-setting-label"
+                          data-i18n="social.themeUsernameEffect">Username effect</label>
+                      </div>
+                      <div class="social-settings-row-control">
+                        <select id="social-theme-username-effect" class="social-setting-select">
+                          <option value="none" data-i18n="social.themeEffectNone">None</option>
+                          <option value="gradient" data-i18n="social.themeEffectGradient">Duo-tone</option>
+                          <option value="glow" data-i18n="social.themeEffectGlow">Glow</option>
+                          <option value="shadow" data-i18n="social.themeEffectShadow">Shadow</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="social-settings-actions">
+                    <button id="social-save-theme" class="social-compact-action-btn" type="button">
+                      <i class="bi bi-palette"></i>
+                      <span data-i18n="social.saveTheme">Save Theme</span>
+                    </button>
+                    <button id="social-reset-theme" class="social-compact-action-btn social-theme-reset-btn"
+                      type="button">
+                      <i class="bi bi-arrow-counterclockwise"></i>
+                      <span data-i18n="social.resetTheme">Reset</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="social-settings-hint">
+                <i class="bi bi-info-circle"></i>
+                <span data-i18n="social.lookingForSettings">Looking for more app settings?</span>
+                <button id="social-go-to-settings-btn" class="social-btn-link" type="button">
+                  <span data-i18n="social.goToSettings">Go to Settings</span>
+                  <i class="bi bi-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="social-profile-actions">
+            <button id="social-logout-btn" class="social-btn social-btn-danger">
+              <i class="bi bi-box-arrow-right"></i>
+              <span data-i18n="social.logout">Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

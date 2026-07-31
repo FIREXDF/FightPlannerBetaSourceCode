@@ -15,9 +15,10 @@ interface Download {
   subItems?: string[];
 }
 
-interface FtpTransferState {
+interface SwitchTransferState {
   id: string;
   status: string;
+  transferMethod: 'ftp' | 'drive' | 'mtp';
   currentMod: number;
   totalMods: number;
   transferredCount: number;
@@ -38,7 +39,7 @@ class DownloadManager {
   sendToSwitchBtn: HTMLButtonElement | null;
   initialized: boolean;
 
-  ftpTransfer: FtpTransferState | null;
+  switchTransfer: SwitchTransferState | null;
 
   constructor() {
     this.activeDownloads = new Map();
@@ -50,21 +51,23 @@ class DownloadManager {
     this.clearCompletedBtn = null;
     this.sendToSwitchBtn = null;
     this.initialized = false;
-    this.ftpTransfer = null;
-    this.setupFtpProgressListener();
+    this.switchTransfer = null;
+    this.setupSwitchTransferProgressListener();
   }
 
-  setupFtpProgressListener() {
-    if (!window.electronAPI?.onFtpTransferProgress) {
+  setupSwitchTransferProgressListener() {
+    if (!window.electronAPI?.onSwitchTransferProgress) {
       return;
     }
 
-    window.electronAPI.onFtpTransferProgress((data: any) => {
-      const currentState = this.ftpTransfer;
+    window.electronAPI.onSwitchTransferProgress((data: any) => {
+      const currentState = this.switchTransfer;
 
-      this.ftpTransfer = {
+      this.switchTransfer = {
         id: currentState?.id || Date.now().toString(),
         status: data.status || currentState?.status || 'uploading',
+        transferMethod:
+          data.transferMethod || currentState?.transferMethod || 'ftp',
         currentMod: data.currentMod ?? currentState?.currentMod ?? 0,
         totalMods: data.totalMods ?? currentState?.totalMods ?? 0,
         transferredCount:
@@ -883,7 +886,7 @@ ${subItemsHtml}
   }
 
   /**
-   * Send newly installed mods to Switch via FTP
+   * Send installed mods using the configured Switch transfer method.
    */
   async sendToSwitch() {
     if (!window.settingsManager || !window.settingsManager.hasSwitchConfig()) {
@@ -974,10 +977,11 @@ ${subItemsHtml}
       }
       window.appSoundManager?.play('loading', { volume: 0.55 });
 
-      // Update FTP transfer status
-      this.ftpTransfer = {
+      // Update Switch transfer status
+      this.switchTransfer = {
         id: Date.now().toString(),
         status: 'uploading',
+        transferMethod,
         currentMod: 0,
         totalMods: 0,
         transferredCount: 0,
@@ -990,7 +994,11 @@ ${subItemsHtml}
       }
 
       if (window.toastManager) {
-        window.toastManager.info('toasts.startingFtpTransfer');
+        window.toastManager.info(
+          transferMethod === 'drive'
+            ? 'toasts.startingDriveTransfer'
+            : 'toasts.startingFtpTransfer',
+        );
       }
 
       const result = await window.electronAPI.sendModsToSwitch({
@@ -1017,19 +1025,26 @@ ${subItemsHtml}
         )}`;
       }
 
-      // Clear FTP transfer status
-      this.ftpTransfer = null;
+      // Clear Switch transfer status
+      this.switchTransfer = null;
 
       if (result.success) {
         window.appSoundManager?.stop('loading');
         window.appSoundManager?.play('complete');
-        window.statusBarManager?.completeFtpTransfer?.(
+        window.statusBarManager?.completeSwitchTransfer?.(
           result.transferredCount || 0,
+          transferMethod,
         );
         if (window.toastManager) {
-          window.toastManager.success('toasts.modsSentToSwitch', 3000, {
-            count: result.transferredCount || 0,
-          });
+          window.toastManager.success(
+            transferMethod === 'drive'
+              ? 'toasts.modsCopiedToDrive'
+              : 'toasts.modsSentToSwitch',
+            3000,
+            {
+              count: result.transferredCount || 0,
+            },
+          );
         }
       } else {
         window.appSoundManager?.stop('loading');
@@ -1054,7 +1069,7 @@ ${subItemsHtml}
           'downloads.sendToSwitch',
         )}`;
       }
-      this.ftpTransfer = null;
+      this.switchTransfer = null;
       window.appSoundManager?.stop('loading');
       window.statusBarManager?.updateExtendedBar?.({ type: 'none' });
       window.statusBarManager?.refreshStandardStatus?.();
@@ -1067,7 +1082,7 @@ ${subItemsHtml}
       }
     }
 
-    if (window.statusBarManager && this.ftpTransfer) {
+    if (window.statusBarManager && this.switchTransfer) {
       window.statusBarManager.checkAndUpdateForDownloads();
     }
   }
@@ -1087,7 +1102,8 @@ ${subItemsHtml}
 
     if (
       !window.electronAPI?.prepareMtpTransfer ||
-      !window.electronAPI?.readMtpTransferFile
+      !window.electronAPI?.readMtpTransferFileChunk ||
+      !window.electronAPI?.releaseMtpTransfer
     ) {
       window.toastManager?.error('toasts.ftpNotAvailable');
       return;
@@ -1104,6 +1120,7 @@ ${subItemsHtml}
       '/ultimate/contents/01006A800016E000/romfs/skyline/plugins';
 
     let mtpClient: MTPTransferClient | null = null;
+    let mtpTransferId: string | null = null;
 
     try {
       if (this.sendToSwitchBtn) {
@@ -1117,6 +1134,17 @@ ${subItemsHtml}
 
       window.appSoundManager?.play('loading', { volume: 0.55 });
       window.toastManager?.info('toasts.startingMtpTransfer');
+      this.switchTransfer = {
+        id: Date.now().toString(),
+        status: 'uploading',
+        transferMethod: 'mtp',
+        currentMod: 0,
+        totalMods: 0,
+        transferredCount: 0,
+        totalFiles: 0,
+        progress: 0,
+      };
+      window.statusBarManager?.checkAndUpdateForDownloads();
 
       mtpClient = new MTPTransferClient();
       await mtpClient.connect();
@@ -1139,10 +1167,12 @@ ${subItemsHtml}
       if (!manifest.success) {
         throw new Error(manifest.error || 'Unable to prepare MTP transfer');
       }
+      mtpTransferId = manifest.transferId;
 
-      this.ftpTransfer = {
-        id: Date.now().toString(),
+      this.switchTransfer = {
+        id: this.switchTransfer?.id || Date.now().toString(),
         status: 'uploading',
+        transferMethod: 'mtp',
         currentMod: 0,
         totalMods: 0,
         transferredCount: 0,
@@ -1152,35 +1182,44 @@ ${subItemsHtml}
 
       const transferredCount = await mtpClient.uploadFiles(
         manifest.files,
-        async (fileId) => {
-          const result = await window.electronAPI.readMtpTransferFile(fileId);
+        async (fileId, offset, length) => {
+          const result = await window.electronAPI.readMtpTransferFileChunk(
+            manifest.transferId,
+            fileId,
+            offset,
+            length,
+          );
           if (!result.success) {
             throw new Error(
-              result.error || 'Unable to read file for MTP transfer',
+              result.error || 'Unable to read MTP file chunk',
             );
           }
           return new Uint8Array(result.bytes);
         },
         (progress) => {
-          this.ftpTransfer = {
-            id: this.ftpTransfer?.id || Date.now().toString(),
+          this.switchTransfer = {
+            id: this.switchTransfer?.id || Date.now().toString(),
             status: 'uploading',
+            transferMethod: 'mtp',
             ...progress,
           };
           window.statusBarManager?.checkAndUpdateForDownloads();
         },
       );
 
-      this.ftpTransfer = null;
+      this.switchTransfer = null;
       window.appSoundManager?.stop('loading');
       window.appSoundManager?.play('complete');
-      window.statusBarManager?.completeFtpTransfer?.(transferredCount);
+      window.statusBarManager?.completeSwitchTransfer?.(
+        transferredCount,
+        'mtp',
+      );
       window.toastManager?.success('toasts.modsSentToSwitch', 3000, {
         count: transferredCount,
       });
     } catch (error) {
       console.error('Error sending mods to Switch over MTP:', error);
-      this.ftpTransfer = null;
+      this.switchTransfer = null;
       window.appSoundManager?.stop('loading');
       window.appSoundManager?.play('error');
       window.statusBarManager?.updateExtendedBar?.({ type: 'none' });
@@ -1189,6 +1228,17 @@ ${subItemsHtml}
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
+      if (mtpTransferId) {
+        const releaseResult =
+          await window.electronAPI.releaseMtpTransfer(mtpTransferId);
+        if (!releaseResult.success) {
+          console.warn(
+            'Unable to release MTP transfer manifest:',
+            releaseResult.error,
+          );
+        }
+      }
+
       if (mtpClient) {
         await mtpClient.disconnect();
       }

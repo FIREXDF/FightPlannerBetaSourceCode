@@ -123,11 +123,11 @@ export default class ProtocolHandler {
           app.setAsDefaultProtocolClient('fightplanner', process.execPath, [
             path.resolve(process.argv[1]),
           ]);
-          console.log('✓ FightPlanner protocol registered (dev mode)');
+          console.log('FightPlanner protocol registered (dev mode)');
         }
       } else {
         app.setAsDefaultProtocolClient('fightplanner');
-        console.log('✓ FightPlanner protocol registered (production)');
+        console.log('FightPlanner protocol registered (production)');
       }
 
       this.registerProtocolInRegistry();
@@ -175,32 +175,26 @@ export default class ProtocolHandler {
           `[protocol][${process.platform}] before registration isDefault=${before}`,
         );
 
-        // HACK: As `electron.app.setAsDefaultProtocolClient` is based on `xdg-settings set default-url-scheme-handler`
-        // which is not supported on Xfce, we manually create new .desktop entry and use `xdg-mime`
-        // to make it default handler for protocol URLs.
+        const executable = process.env.APPIMAGE || process.execPath;
         let electronAppMainScriptPath: string | null = null;
         let execArgs: string[] = [];
 
         if (process.defaultApp && process.argv.length >= 2) {
-          // Development mode
           electronAppMainScriptPath = path.resolve(process.argv[1]);
           execArgs = [electronAppMainScriptPath];
         } else {
-          // Production mode - try to find the main script or use execPath only
           if (process.argv.length >= 2) {
             electronAppMainScriptPath = path.resolve(process.argv[1]);
             execArgs = [electronAppMainScriptPath];
           } else {
-            // No script path available, use execPath only
             execArgs = [];
           }
         }
 
-        // Always create .desktop file on Linux (both dev and prod)
         try {
           const hashInput = electronAppMainScriptPath
-            ? `${process.execPath}${electronAppMainScriptPath}`
-            : `${process.execPath}`;
+            ? `${executable}${electronAppMainScriptPath}`
+            : executable;
           const electronAppDesktopFileName = `fightplanner-protocol-${crypto.createHash('md5').update(hashInput).digest('hex')}.desktop`;
           const electronAppDesktopFilePath = path.resolve(
             app.getPath('home'),
@@ -217,11 +211,9 @@ export default class ProtocolHandler {
           const quoteDesktopExecArg = (arg: string) =>
             `"${arg.replace(/["\\`$]/g, '\\$&')}"`;
 
-          // Build Exec line. Paths can contain spaces on Linux, so every
-          // executable/script argument must be quoted for the .desktop spec.
-          let execLine = `${quoteDesktopExecArg(process.execPath)} %u`;
+          let execLine = `${quoteDesktopExecArg(executable)} %u`;
           if (electronAppMainScriptPath) {
-            execLine = `${quoteDesktopExecArg(process.execPath)} ${quoteDesktopExecArg(electronAppMainScriptPath)} %u`;
+            execLine = `${quoteDesktopExecArg(executable)} ${quoteDesktopExecArg(electronAppMainScriptPath)} %u`;
           }
 
           const desktopFileContent = [
@@ -242,6 +234,18 @@ export default class ProtocolHandler {
 
           try {
             execSync(
+              `update-desktop-database ${path.dirname(electronAppDesktopFilePath)}`,
+            );
+            console.log(`[protocol][linux] Updated desktop database`);
+          } catch (updateError) {
+            console.warn(
+              `[protocol][linux] Desktop database update failed:`,
+              updateError.message,
+            );
+          }
+
+          try {
+            execSync(
               `xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/fightplanner`,
             );
             console.log(`[protocol][linux] Registered with xdg-mime`);
@@ -250,18 +254,6 @@ export default class ProtocolHandler {
               `[protocol][linux] xdg-mime registration failed:`,
               xdgError.message,
             );
-            // Try alternative method
-            try {
-              execSync(
-                `update-desktop-database ${path.dirname(electronAppDesktopFilePath)}`,
-              );
-              console.log(`[protocol][linux] Updated desktop database`);
-            } catch (updateError) {
-              console.warn(
-                `[protocol][linux] Desktop database update failed:`,
-                updateError.message,
-              );
-            }
           }
         } catch (desktopError) {
           console.warn(
@@ -270,10 +262,10 @@ export default class ProtocolHandler {
           );
         }
 
-        // Also try the standard Electron method as fallback
+        // also try the electron method as fallback
         const ok = app.setAsDefaultProtocolClient(
           'fightplanner',
-          process.execPath,
+          executable,
           execArgs,
         );
         console.log(`[protocol][${process.platform}] register returned=${ok}`);
@@ -774,8 +766,19 @@ export default class ProtocolHandler {
           fileEntry?._sFileUrl ||
           fileEntry?._sFileURL;
 
-        if (typeof downloadUrl === 'string' && downloadUrl.startsWith('http')) {
-          return downloadUrl;
+        if (typeof downloadUrl === 'string') {
+          try {
+            const parsedDownloadUrl = new URL(downloadUrl);
+            const host = parsedDownloadUrl.hostname.toLowerCase();
+            if (
+              parsedDownloadUrl.protocol === 'https:' &&
+              (host === 'gamebanana.com' || host.endsWith('.gamebanana.com'))
+            ) {
+              return parsedDownloadUrl.toString();
+            }
+          } catch (_error) {
+            // Ignore malformed or non-GameBanana download URLs.
+          }
         }
       }
 
@@ -795,12 +798,17 @@ export default class ProtocolHandler {
         return `https://gamebanana.com/dl/${downloadId}`;
       }
 
-      if (url.includes('/dl/')) {
-        return url;
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname.toLowerCase();
+      if (
+        parsedUrl.protocol !== 'https:' ||
+        (host !== 'gamebanana.com' && !host.endsWith('.gamebanana.com'))
+      ) {
+        return null;
       }
-
-      if (/gamebanana\.com\/(?:mods|sounds)\/download\/\d+/i.test(url)) {
-        return url;
+      if (/^\/dl\/\d+\/?$/i.test(parsedUrl.pathname)) return parsedUrl.toString();
+      if (/^\/(?:mods|sounds)\/download\/\d+\/?$/i.test(parsedUrl.pathname)) {
+        return parsedUrl.toString();
       }
 
       return null;

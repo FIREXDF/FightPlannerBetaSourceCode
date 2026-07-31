@@ -1113,7 +1113,7 @@ export class StatusBarManager {
       return false;
     }
 
-    if (window.downloadManager.ftpTransfer) {
+    if (window.downloadManager.switchTransfer) {
       return true;
     }
 
@@ -1764,8 +1764,8 @@ export class StatusBarManager {
       }
 
       try {
-        if (window.downloadManager?.ftpTransfer) {
-          const ftp = window.downloadManager.ftpTransfer;
+        if (window.downloadManager?.switchTransfer) {
+          const transfer = window.downloadManager.switchTransfer;
           const dots = '.'.repeat(animationFrame % 4);
           animationFrame += 1;
           const details: string[] = [];
@@ -1774,40 +1774,32 @@ export class StatusBarManager {
             Math.min(
               100,
               Math.round(
-                ftp.progress ||
-                  (ftp.totalFiles > 0
-                    ? (ftp.transferredCount / ftp.totalFiles) * 100
+                transfer.progress ||
+                  (transfer.totalFiles > 0
+                    ? (transfer.transferredCount / transfer.totalFiles) * 100
                     : 0),
               ),
             ),
           );
 
-          let statusContent;
-          if (ftp.totalMods > 0) {
-            statusContent = this.t('statusBar.ftpSending', {
-              current: ftp.currentMod || 0,
-              total: ftp.totalMods || 0,
-            });
-          } else {
-            statusContent = this.t('statusBar.ftpSending', {
-              current: '',
-              total: '',
-            }).replace(` \u2022 / mods`, '');
-          }
+          const statusContent =
+            this.getSwitchTransferStatusContent(transfer);
 
-          if (ftp.totalFiles > 0) {
-            details.push(`${ftp.transferredCount}/${ftp.totalFiles} files`);
+          if (transfer.totalFiles > 0) {
+            details.push(
+              `${transfer.transferredCount}/${transfer.totalFiles} files`,
+            );
           }
 
           if (progress > 0) {
             details.push(`${progress}%`);
           }
 
-          if (ftp.currentFileName) {
+          if (transfer.currentFileName) {
             const shortFileName =
-              ftp.currentFileName.length > 26
-                ? `${ftp.currentFileName.substring(0, 23)}...`
-                : ftp.currentFileName;
+              transfer.currentFileName.length > 26
+                ? `${transfer.currentFileName.substring(0, 23)}...`
+                : transfer.currentFileName;
             details.push(shortFileName);
           }
 
@@ -1942,7 +1934,10 @@ export class StatusBarManager {
     }, 500);
   }
 
-  completeFtpTransfer(transferredCount = 0) {
+  completeSwitchTransfer(
+    transferredCount = 0,
+    transferMethod: 'ftp' | 'drive' | 'mtp' = 'ftp',
+  ) {
     this.clearUpdateLoop();
     this.hasActiveDownloads = false;
 
@@ -1951,22 +1946,38 @@ export class StatusBarManager {
       statusText.classList.remove('status-downloading');
     }
 
+    const completion =
+      transferMethod === 'drive'
+        ? {
+            label: 'Local drive copy completed',
+            plainKey: 'statusBar.driveCompleted',
+            filesKey: 'statusBar.driveCompletedWithFiles',
+          }
+        : transferMethod === 'mtp'
+          ? {
+              label: 'MTP / USB transfer completed',
+              plainKey: 'statusBar.mtpCompleted',
+              filesKey: 'statusBar.mtpCompletedWithFiles',
+            }
+          : {
+              label: 'FTP transfer completed',
+              plainKey: 'statusBar.ftpCompleted',
+              filesKey: 'statusBar.ftpCompletedWithFiles',
+            };
     const label =
       transferredCount > 0
-        ? `Switch transfer completed (${transferredCount} files)`
-        : 'Switch transfer completed';
+        ? `${completion.label} (${transferredCount} files)`
+        : completion.label;
     const completedStatus =
       transferredCount > 0
-        ? this.t('statusBar.ftpCompletedWithFiles', {
-            count: transferredCount,
-          })
-        : this.t('statusBar.ftpCompleted');
+        ? this.t(completion.filesKey, { count: transferredCount })
+        : this.t(completion.plainKey);
 
     this.showTemporaryStatus(completedStatus, { autoRestoreMs: 2600 });
 
     if (this.isEnhancedStatusBarEnabled()) {
       this.userDismissedExtendedBar = false;
-      this.lastExtendedBarData = `ftp-complete:${Date.now()}`;
+      this.lastExtendedBarData = `switch-complete:${Date.now()}`;
       this.updateExtendedBar({
         type: 'success',
         fileName: label,
@@ -2455,28 +2466,66 @@ export class StatusBarManager {
     }
   }
 
+  getSwitchTransferStatusContent(transfer: {
+    transferMethod?: string;
+    currentMod?: number;
+    totalMods?: number;
+  }) {
+    if (transfer.transferMethod === 'drive') {
+      if ((transfer.totalMods || 0) > 0) {
+        return this.t('statusBar.driveCopying', {
+          current: transfer.currentMod || 0,
+          total: transfer.totalMods || 0,
+        });
+      }
+      return this.t('statusBar.driveCopyingSimple');
+    }
+
+    if (transfer.transferMethod === 'mtp') {
+      if ((transfer.totalMods || 0) > 0) {
+        return this.t('statusBar.mtpSending', {
+          current: transfer.currentMod || 0,
+          total: transfer.totalMods || 0,
+        });
+      }
+      return this.t('statusBar.mtpSendingSimple');
+    }
+
+    if ((transfer.totalMods || 0) > 0) {
+      return this.t('statusBar.ftpSending', {
+        current: transfer.currentMod || 0,
+        total: transfer.totalMods || 0,
+      });
+    }
+
+    return this.t('statusBar.ftpSending', {
+      current: '',
+      total: '',
+    }).replace(` \u2022 / mods`, '');
+  }
+
   checkActiveDownloads() {
     try {
       if (!window.downloadManager) return false;
 
-      // Check for FTP transfer first
-      if (window.downloadManager.ftpTransfer) {
-        const ftp = window.downloadManager.ftpTransfer;
+      // Check for a Switch transfer first
+      if (window.downloadManager.switchTransfer) {
+        const transfer = window.downloadManager.switchTransfer;
         const progress = Math.max(
           0,
           Math.min(
             100,
             Math.round(
-              ftp.progress ||
-                (ftp.totalFiles > 0
-                  ? (ftp.transferredCount / ftp.totalFiles) * 100
+              transfer.progress ||
+                (transfer.totalFiles > 0
+                  ? (transfer.transferredCount / transfer.totalFiles) * 100
                   : 0),
             ),
           ),
         );
-        const currentMod = ftp.currentMod || 0;
-        const totalMods = ftp.totalMods || 0;
-        const transferKey = `ftp:${ftp.id}`;
+        const currentMod = transfer.currentMod || 0;
+        const totalMods = transfer.totalMods || 0;
+        const transferKey = `switch:${transfer.transferMethod}:${transfer.id}`;
 
         this.hasActiveDownloads = true;
 
@@ -2486,27 +2535,40 @@ export class StatusBarManager {
         }
 
         if (!this.userDismissedExtendedBar) {
+          const isDriveTransfer = transfer.transferMethod === 'drive';
+          const isMtpTransfer = transfer.transferMethod === 'mtp';
+          const fallbackLabel = isDriveTransfer
+            ? this.t('statusBar.copyingToLocalDrive')
+            : isMtpTransfer
+              ? this.t('statusBar.transferringOverMtp')
+              : 'Sending to Switch';
           const metaParts: string[] = [];
           if (totalMods > 0) {
             metaParts.push(`Mod ${currentMod}/${totalMods}`);
           }
-          if (ftp.totalFiles > 0) {
-            metaParts.push(`${ftp.transferredCount}/${ftp.totalFiles} files`);
+          if (transfer.totalFiles > 0) {
+            metaParts.push(
+              `${transfer.transferredCount}/${transfer.totalFiles} files`,
+            );
           }
 
           this.updateExtendedBar({
             type: 'download',
             downloads: [
               {
-                id: ftp.id,
+                id: transfer.id,
                 fileName:
-                  ftp.currentFileName ||
-                  ftp.currentModName ||
-                  'Sending to Switch...',
+                  transfer.currentFileName ||
+                  transfer.currentModName ||
+                  fallbackLabel,
                 progress,
                 speedText: metaParts.join(' • '),
-                phaseLabel: 'Sending to Switch',
-                iconClass: 'bi-cloud-arrow-up-fill',
+                phaseLabel: fallbackLabel,
+                iconClass: isDriveTransfer
+                  ? 'bi-device-hdd'
+                  : isMtpTransfer
+                    ? 'bi-usb-drive'
+                    : 'bi-cloud-arrow-up-fill',
               },
             ],
           });
@@ -2778,24 +2840,14 @@ export class StatusBarManager {
       }
 
       try {
-        // Check for FTP transfer first
-        if (window.downloadManager && window.downloadManager.ftpTransfer) {
-          const ftp = window.downloadManager.ftpTransfer;
+        // Check for a Switch transfer first
+        if (window.downloadManager && window.downloadManager.switchTransfer) {
+          const transfer = window.downloadManager.switchTransfer;
           const dots = '.'.repeat(animationFrame % 4);
           animationFrame++;
 
-          let statusContent;
-          if (ftp.totalMods > 0) {
-            statusContent = this.t('statusBar.ftpSending', {
-              current: ftp.currentMod || 0,
-              total: ftp.totalMods || 0,
-            });
-          } else {
-            statusContent = this.t('statusBar.ftpSending', {
-              current: '',
-              total: '',
-            }).replace(' • / mods', '');
-          }
+          let statusContent =
+            this.getSwitchTransferStatusContent(transfer);
           statusContent += dots;
 
           if (this.setStatusText(statusContent, true)) {
@@ -2984,8 +3036,8 @@ export class StatusBarManager {
     this.updateInterval = setInterval(() => {
       const hasActiveDownloads = this.checkActiveDownloads();
       if (hasActiveDownloads) {
-        // Only update status if there's no ongoing FTP with its own loop
-        if (!window.downloadManager || !window.downloadManager.ftpTransfer) {
+        // Only update status if there is no active Switch transfer loop.
+        if (!window.downloadManager || !window.downloadManager.switchTransfer) {
           updateStatus();
         }
       } else {

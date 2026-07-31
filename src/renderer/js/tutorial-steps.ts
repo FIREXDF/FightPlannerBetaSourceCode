@@ -3579,6 +3579,14 @@ document.addEventListener('DOMContentLoaded', () => {
       '.tutorial-container',
     );
 
+    if (nextBtn) {
+      nextBtn.style.opacity = '1';
+      nextBtn.style.pointerEvents = 'auto';
+      nextBtn.style.cursor = 'pointer';
+      nextBtn.removeAttribute('disabled');
+      nextBtn.setAttribute('aria-disabled', 'false');
+    }
+
     if (renderTimeout) {
       clearTimeout(renderTimeout);
       renderTimeout = null;

@@ -4,7 +4,7 @@ const tabConfigs = {
   characters: 'tabs/characters.html',
   stages: 'tabs/stages.html',
   downloads: 'tabs/downloads.html',
-  marketplace: 'tabs/marketplace.html',
+  social: 'tabs/social.html',
   settings: 'tabs/settings.html',
   fightplanner: 'tabs/fightplanner.html',
 };
@@ -560,8 +560,9 @@ function initializeTabFeatures(tabName) {
     }
   }
 
-  if (tabName === 'marketplace') {
-    window.marketplaceDiscover?.initialize();
+  if (tabName === 'social') {
+    void window.socialManager?.initialize();
+    window.i18n?.updateDOM();
   }
 
   if (tabName === 'stages') {

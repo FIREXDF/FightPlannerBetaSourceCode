@@ -24,7 +24,7 @@ class MarketplaceDiscover extends SocialGameBananaManager {
   }
 
   private loadSocialBackground() {
-    const container = document.querySelector<HTMLElement>('#social-lottie');
+    const container = document.querySelector<HTMLElement>('#marketplace-lottie');
     if (!container || !window.lottie || this.socialBackgroundAnimation) return;
 
     container.innerHTML = '';
@@ -42,7 +42,7 @@ class MarketplaceDiscover extends SocialGameBananaManager {
       '#marketplace-coming-soon',
     );
     const discover = document.querySelector<HTMLElement>(
-      '#social-profile-container',
+      '#marketplace-discover-container',
     );
 
     if (comingSoon) comingSoon.style.display = 'none';
@@ -61,7 +61,6 @@ class MarketplaceDiscover extends SocialGameBananaManager {
 
 if (typeof window !== 'undefined') {
   window.marketplaceDiscover = new MarketplaceDiscover();
-  window.socialManager = window.marketplaceDiscover;
 }
 
 export { MarketplaceDiscover };

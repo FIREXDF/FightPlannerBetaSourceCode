@@ -614,7 +614,7 @@ class StagesManager {
       console.error('[StagesManager] Failed to load layout:', error);
       if (this.grid) {
         const message = error.message || this.t('stages.loadFailed', 'Failed to load stage layout');
-        if (message.includes('ui_stage_db.xml')) {
+        if (message.includes('ui_stage_db.prc')) {
           this.hasStageSourceMissing = true;
           this.renderStageSourceRequired(message);
           return;
@@ -638,12 +638,12 @@ class StagesManager {
 
     this.grid.innerHTML = `
 <div class="stages-empty-state">
-  <i class="bi bi-filetype-xml"></i>
+  <i class="bi bi-file-earmark-binary"></i>
   <h3>${this.escapeHtml(this.t('stages.sourceRequiredTitle', 'Stage source required'))}</h3>
-  <p>${this.escapeHtml(this.t('stages.sourceRequiredMessage', 'Choose your own ui_stage_db.xml before editing the stage layout.'))}</p>
+  <p>${this.escapeHtml(this.t('stages.sourceRequiredMessage', 'Choose your own ui_stage_db.prc before editing the stage layout.'))}</p>
   <button type="button" class="input-btn" id="stages-import-source-btn">
     <i class="bi bi-folder2-open"></i>
-    <span>${this.escapeHtml(this.t('stages.importSource', 'Import ui_stage_db.xml'))}</span>
+    <span>${this.escapeHtml(this.t('stages.importSource', 'Import ui_stage_db.prc'))}</span>
   </button>
 </div>
 `;
@@ -663,7 +663,7 @@ class StagesManager {
     try {
       const result = await window.electronAPI.importStageLayoutSource();
       if (!result.success) {
-        throw new Error(result.error || 'Failed to import ui_stage_db.xml');
+        throw new Error(result.error || 'Failed to import ui_stage_db.prc');
       }
 
       this.prefetchedLayout = null;
@@ -1614,7 +1614,6 @@ if (typeof window !== 'undefined') {
 }
 
 export { StagesManager };
-
 
 
 

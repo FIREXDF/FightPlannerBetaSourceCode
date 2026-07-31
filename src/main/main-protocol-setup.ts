@@ -71,7 +71,7 @@ ProtocolHandler.registerProtocol().catch((err) => {
 
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  console.log('🔗 Received protocol URL (open-url):', url);
+  console.log('Received protocol URL (open-url):', url);
 
   const protocolUrl = extractProtocolUrl([url]);
   if (protocolUrl) {

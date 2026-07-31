@@ -8,7 +8,7 @@ import { registerSystemHandlers } from './handlers/system-handlers';
 import { registerProtocolHandlers } from './handlers/protocol-handlers';
 import { registerTutorialHandlers } from './handlers/tutorial-handlers';
 import { registerMigrationHandlers } from './handlers/migration-handlers';
-import { registerFtpHandlers } from './handlers/ftp-handlers';
+import { registerSwitchTransferHandlers } from './handlers/switch-transfer';
 import { registerDiscordHandlers } from './handlers/discord-handlers';
 import { registerAppHandlers } from './handlers/app-handlers';
 import { registerUpdateHandlers } from './handlers/update-handlers';
@@ -39,7 +39,7 @@ export function registerAllHandlers(
   registerProtocolHandlers(ipcMain);
   registerTutorialHandlers(ipcMain);
   registerMigrationHandlers(ipcMain);
-  registerFtpHandlers(ipcMain);
+  registerSwitchTransferHandlers(ipcMain);
   registerDiscordHandlers(ipcMain, discordRPC);
   registerAppHandlers(ipcMain);
   registerUpdateHandlers(ipcMain);

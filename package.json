@@ -1,6 +1,6 @@
 {
   "name": "fightplanner",
-  "version": "4.0.0",
+  "version": "4.0.0-beta.7",
   "description": "FightPlanner 4.0 - Your Ultimate Mod Manager",
   "main": "out/main/main.js",
   "author": {
@@ -17,6 +17,7 @@
     "build:win": "npm run ts:build && electron-builder --win --config",
     "build:linux": "npm run ts:build && electron-builder --linux --config",
     "build:appimage": "npm run ts:build && electron-builder --linux AppImage --config",
+    "build:rpm": "npm run ts:build && electron-builder --linux rpm --config",
     "build:all": "npm run ts:build && electron-builder -wml --config",
     "dist": "npm run ts:build && electron-builder",
     "i18n:upload": "crowdin upload sources",
@@ -26,7 +27,7 @@
   },
   "dependencies": {
     "@types/archiver": "^7.0.0",
-    "archiver": "^7.0.1",
+    "archiver": "^8.0.0",
     "basic-ftp": "^5.3.1",
     "core-util-is": "^1.0.3",
     "discord-rpc": "^4.0.1",
@@ -39,13 +40,16 @@
   },
   "devDependencies": {
     "@types/node-7z": "^2.1.11",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.4",
     "electron": "^41.1.0",
-    "electron-builder": "^26.7.0",
+    "electron-builder": "^26.15.3",
     "gsap": "3.12.5",
     "lottie-web": "5.12.2",
     "prettier": "^3.8.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.9"
   },
   "build": {
     "appId": "com.shatteredchaos.fightplanner",
@@ -161,7 +165,8 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "icon": "assets/app-icons/icon.png",
       "category": "Utility",

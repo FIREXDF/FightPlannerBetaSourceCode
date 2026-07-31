@@ -10,6 +10,7 @@ const BASE_STAGE_XML_FILE = path.join('ParamXML', 'ui_stage_db.xml');
 const PERSISTED_STAGE_XML_FILE = 'ui_stage_layout.xml';
 const STAGE_PRESET_MANIFEST_FILE = 'stage-layout-presets.json';
 const TEMP_STAGE_XML_FILE = 'ui_stage_db_modified.xml';
+const TEMP_STAGE_SOURCE_XML_FILE = 'ui_stage_db_source.xml';
 const GENERATED_PRC_FILE = 'ui_stage_db.prc';
 const TEMP_FILE_SUFFIX = '_modified';
 
@@ -439,7 +440,7 @@ function buildStageXml(layoutState: StageLayoutOrderState | string[]) {
   const baseXmlPath = getSourceStageXmlPath();
   if (!fs.existsSync(baseXmlPath)) {
     throw new Error(
-      'Stage layout requires your ui_stage_db.xml first. Import it from the Stages tab.',
+      'Stage layout requires your ui_stage_db.prc first. Import it from the Stages tab.',
     );
   }
 
@@ -590,6 +591,55 @@ function runParamXml(inputXmlPath: string): Promise<ParamXmlExecutionResult> {
   });
 }
 
+function runParamXmlDisassemble(
+  inputPrcPath: string,
+  outputXmlPath: string,
+): Promise<ParamXmlExecutionResult> {
+  const executablePath = resolveParamXmlExecutable();
+
+  if (fs.existsSync(outputXmlPath)) {
+    fs.unlinkSync(outputXmlPath);
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      executablePath,
+      ['-d', inputPrcPath, '-o', outputXmlPath],
+      {
+        cwd: path.dirname(inputPrcPath),
+        windowsHide: true,
+      },
+    );
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('error', reject);
+    child.on('close', (exitCode) => {
+      if (exitCode !== 0) {
+        reject(
+          new Error(
+            `ParamXML exited with code ${exitCode}.${stderr ? ` ${stderr.trim()}` : ''}`,
+          ),
+        );
+        return;
+      }
+      if (!fs.existsSync(outputXmlPath)) {
+        reject(new Error('ParamXML completed but did not generate XML output'));
+        return;
+      }
+
+      resolve({ stdout, stderr, outputPath: outputXmlPath });
+    });
+  });
+}
+
 function ensureStageModMetadata(modRootPath: string) {
   const infoTomlPath = path.join(modRootPath, 'info.toml');
   if (fs.existsSync(infoTomlPath)) {
@@ -638,7 +688,7 @@ export function getStageLayoutData(): StageLayoutData {
   if (source === 'canonical') {
     if (!fs.existsSync(persistedLayoutPath)) {
       throw new Error(
-        'Stage layout requires your ui_stage_db.xml first. Import it from the Stages tab.',
+        'Stage layout requires your ui_stage_db.prc first. Import it from the Stages tab.',
       );
     }
     const persistedXml = fs.readFileSync(persistedLayoutPath, 'utf8');
@@ -678,18 +728,20 @@ export function getStageLayoutData(): StageLayoutData {
   };
 }
 
-export function importStageLayoutSource(filePath: string) {
-  if (!filePath || path.basename(filePath) !== 'ui_stage_db.xml') {
-    throw new Error('Select ui_stage_db.xml');
+export async function importStageLayoutSource(filePath: string) {
+  if (!filePath || path.basename(filePath) !== GENERATED_PRC_FILE) {
+    throw new Error(`Select ${GENERATED_PRC_FILE}`);
   }
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Stage XML not found: ${filePath}`);
+    throw new Error(`Stage PRC not found: ${filePath}`);
   }
 
-  const xml = fs.readFileSync(filePath, 'utf8');
+  const sourceXmlPath = path.join(getTempStageDir(), TEMP_STAGE_SOURCE_XML_FILE);
+  await runParamXmlDisassemble(filePath, sourceXmlPath);
+  const xml = fs.readFileSync(sourceXmlPath, 'utf8');
   const stageOrders = parseStageOrdersFromXml(xml);
   if (stageOrders.size === 0) {
-    throw new Error('Selected ui_stage_db.xml does not contain stage order data');
+    throw new Error(`Selected ${GENERATED_PRC_FILE} does not contain stage order data`);
   }
 
   fs.writeFileSync(getPersistedLayoutPath(), xml, 'utf8');
