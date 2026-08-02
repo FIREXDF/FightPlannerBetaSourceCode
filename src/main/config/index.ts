@@ -3,6 +3,7 @@ import { app } from 'electron';
 
 export const CONFLICT_WHITELIST_PATTERNS = [
   '\\.prcxml$',
+  '\\.toml$',
   'info.toml',
   'preview.webp',
   'msg_name.xmsbt',

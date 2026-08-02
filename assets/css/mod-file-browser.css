@@ -1,0 +1,398 @@
+.mod-file-browser {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(920px, calc(100vw - 48px));
+  height: min(640px, calc(100vh - 72px));
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  color: var(--text-primary);
+  background: var(--bg-modal);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  box-sizing: border-box;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9) translateY(20px);
+  filter: blur(4px);
+}
+
+.mod-file-browser[open] {
+  animation: modFileBrowserSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.mod-file-browser.closing {
+  animation: modFileBrowserSlideOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+.mod-file-browser::backdrop {
+  background: var(--bg-modal-overlay);
+  opacity: 0;
+  backdrop-filter: blur(0);
+}
+
+.mod-file-browser[open]::backdrop {
+  animation: modFileBrowserBackdropIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)
+    forwards;
+}
+
+.mod-file-browser.closing::backdrop {
+  animation: modFileBrowserBackdropOut 0.25s cubic-bezier(0.4, 0, 0.2, 1)
+    forwards;
+}
+
+@keyframes modFileBrowserSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9) translateY(30px);
+    filter: blur(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes modFileBrowserSlideOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+    filter: blur(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95) translateY(-20px);
+    filter: blur(4px);
+  }
+}
+
+@keyframes modFileBrowserBackdropIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes modFileBrowserBackdropOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+}
+
+.mod-file-browser-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mod-file-browser-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mod-file-browser-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.mod-file-browser-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.mod-file-browser-heading p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-file-browser-action,
+.mod-file-browser-close {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.mod-file-browser-close {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  font-size: 1.05rem;
+  pointer-events: auto;
+}
+
+.mod-file-browser-action:hover,
+.mod-file-browser-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.mod-file-browser-action:focus-visible,
+.mod-file-browser-close:focus-visible,
+.mod-tree-row:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.mod-file-browser-body {
+  display: grid;
+  grid-template-columns: minmax(270px, 0.42fr) minmax(0, 0.58fr);
+  min-height: 0;
+  flex: 1;
+}
+
+.mod-file-browser-pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.mod-file-browser-pane + .mod-file-browser-pane {
+  border-left: 1px solid var(--border-color);
+}
+
+.mod-file-browser-pane-title {
+  margin: 0;
+  padding: 11px 14px;
+  color: var(--text-secondary);
+  background: var(--bg-transparent-03);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mod-file-tree,
+.mod-file-preview {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.mod-file-tree {
+  padding: 8px;
+}
+
+.mod-tree-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mod-tree-children {
+  margin-left: 13px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color);
+}
+
+.mod-tree-row {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mod-tree-row:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.mod-tree-row.is-selected {
+  color: var(--text-primary);
+  background: var(--bg-accent-subtle);
+}
+
+.mod-tree-chevron {
+  width: 10px;
+  flex: 0 0 10px;
+  font-size: 0.65rem;
+  transition: transform 160ms ease;
+}
+
+.mod-tree-row[aria-expanded='true'] .mod-tree-chevron {
+  transform: rotate(90deg);
+}
+
+.mod-tree-row .bi-folder-fill,
+.mod-tree-row .bi-folder2-open {
+  color: var(--accent-color);
+}
+
+.mod-tree-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-tree-size {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.mod-file-preview {
+  padding: 14px;
+}
+
+.mod-file-preview-empty,
+.mod-tree-message {
+  display: flex;
+  height: 100%;
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.mod-file-preview-empty i {
+  font-size: 1.45rem;
+}
+
+.mod-file-preview-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.mod-file-preview-path {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.mod-file-preview pre {
+  min-height: calc(100% - 32px);
+  margin: 0;
+  padding: 12px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-family: Consolas, 'Cascadia Code', monospace;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mod-file-preview-note {
+  margin: 9px 0 0;
+  color: var(--warning-color);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 700px) {
+  .mod-file-browser {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 48px);
+  }
+
+  .mod-file-browser-action span {
+    display: none;
+  }
+
+  .mod-file-browser-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(210px, 0.48fr) minmax(220px, 0.52fr);
+  }
+
+  .mod-file-browser-pane + .mod-file-browser-pane {
+    border-top: 1px solid var(--border-color);
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mod-file-browser[open],
+  .mod-file-browser.closing,
+  .mod-file-browser[open]::backdrop,
+  .mod-file-browser.closing::backdrop {
+    animation-duration: 0.15s;
+    filter: none;
+  }
+
+  .mod-file-browser-action,
+  .mod-file-browser-close,
+  .mod-tree-chevron {
+    transition: none;
+  }
+}
+
+body.no-animations .mod-file-browser[open],
+body.no-animations .mod-file-browser.closing {
+  animation: none;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  filter: none;
+}
+
+body.no-animations .mod-file-browser[open]::backdrop,
+body.no-animations .mod-file-browser.closing::backdrop {
+  animation: none;
+  opacity: 1;
+  backdrop-filter: none;
+}

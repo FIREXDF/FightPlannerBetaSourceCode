@@ -2283,6 +2283,19 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
     );
   }
 
+  isManagedEchoCharacter(character: CharacterCssEntry) {
+    if (character.fighterType !== 'fighter_type_opened') {
+      return false;
+    }
+
+    return this.getAllCssCharacters().some(
+      (candidate) =>
+        candidate.id === character.altCharaId &&
+        candidate.fighterType === 'fighter_type_both' &&
+        candidate.altCharaId === character.id,
+    );
+  }
+
   getAllCssCharacters() {
     return [
       ...this.cssVisibleCharacters,
@@ -2791,7 +2804,7 @@ Duplicate
       return;
     }
 
-    const isEcho = character.fighterType === 'fighter_type_opened';
+    const isEcho = this.isManagedEchoCharacter(character);
 
     this.cssSaving = true;
     this.renderCssEditor();
@@ -2883,7 +2896,7 @@ ${character.imageUrl ? `<img src="${character.imageUrl}" alt="${this.escapeHtml(
 </div>
 </div>
 <p>${
-        character.fighterType === 'fighter_type_opened'
+        this.isManagedEchoCharacter(character)
           ? 'This removes the Echo and automatically restores its detected mod files, slots, config, and UI names.'
           : 'This removes the entry from the generated Character CSS data. Apply Layout after removing to rebuild the mod.'
       }</p>
@@ -3333,7 +3346,18 @@ Unhide
           const row = button.closest<HTMLElement>('.character-css-hidden-row');
           if (!row?.dataset.characterId) return;
           this.unhideCssCharacter(row.dataset.characterId);
-          close();
+          row.remove();
+
+          const hiddenList = modal.querySelector<HTMLElement>(
+            '.character-css-hidden-list',
+          );
+          if (
+            hiddenList &&
+            !hiddenList.querySelector('.character-css-hidden-row')
+          ) {
+            hiddenList.innerHTML =
+              '<div class="characters-empty-state">No hidden characters</div>';
+          }
         });
       });
   }
@@ -3627,7 +3651,7 @@ ${image}
       this.cssRenamedCharacters.clear();
       this.cssCharacterUpdates.clear();
       this.cssCreatedGroups.clear();
-      window.toastManager?.success?.('Character CSS Layout saved.', 3500);
+      window.toastManager?.success?.('Character CSS Layout saved as .prc.', 3500);
       if (result.stderr?.includes('MSBT changes')) {
         window.toastManager?.warning?.(
           'Layout saved, but MSBT names need dotnet to be regenerated.',

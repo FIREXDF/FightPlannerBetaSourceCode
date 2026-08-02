@@ -6,6 +6,9 @@ interface Download {
   progress: number;
   receivedBytes: number;
   totalBytes: number;
+  speedBytesPerSecond: number;
+  lastSpeedSampleBytes: number;
+  lastSpeedSampleTime: number;
   startTime: number;
   endTime?: number;
   modName?: string;
@@ -191,6 +194,9 @@ class DownloadManager {
       progress: 0,
       receivedBytes: 0,
       totalBytes: 0,
+      speedBytesPerSecond: 0,
+      lastSpeedSampleBytes: 0,
+      lastSpeedSampleTime: Date.now(),
       startTime: Date.now(),
       statusText: statusText,
       subItems: subItems,
@@ -222,6 +228,23 @@ class DownloadManager {
       return;
     }
 
+    const now = Date.now();
+    const elapsedSeconds = (now - download.lastSpeedSampleTime) / 1000;
+    const receivedDelta = receivedBytes - download.lastSpeedSampleBytes;
+
+    if (
+      download.status === 'downloading' &&
+      elapsedSeconds > 0 &&
+      receivedDelta >= 0
+    ) {
+      const currentSpeed = receivedDelta / elapsedSeconds;
+      download.speedBytesPerSecond = download.speedBytesPerSecond
+        ? download.speedBytesPerSecond * 0.7 + currentSpeed * 0.3
+        : currentSpeed;
+      download.lastSpeedSampleBytes = receivedBytes;
+      download.lastSpeedSampleTime = now;
+    }
+
     download.progress = progress;
     download.receivedBytes = receivedBytes;
     download.totalBytes = totalBytes;
@@ -247,6 +270,16 @@ class DownloadManager {
       const progressText = element.querySelector<HTMLElement>(
         '.download-progress-text',
       );
+      const speedText = element.querySelector<HTMLElement>(
+        '.download-progress-speed',
+      );
+
+      if (speedText) {
+        speedText.textContent =
+          download.status === 'downloading' && download.speedBytesPerSecond > 0
+            ? `${this.formatBytes(download.speedBytesPerSecond)}/s`
+            : '';
+      }
 
       if (progressBar) {
         const isExtracting = download.statusText?.toLowerCase().includes('extract');
@@ -352,6 +385,7 @@ class DownloadManager {
     download.progress = 0;
     download.receivedBytes = 0;
     download.totalBytes = 0;
+    download.speedBytesPerSecond = 0;
     console.log('[extract-progress][download-manager] markExtracting', {
       downloadId,
     });
@@ -370,6 +404,9 @@ class DownloadManager {
       const progressText = element.querySelector<HTMLElement>(
         '.download-progress-text',
       );
+      const speedText = element.querySelector<HTMLElement>(
+        '.download-progress-speed',
+      );
 
       if (progressBar) {
         progressBar.classList.add('download-progress-indeterminate');
@@ -378,6 +415,7 @@ class DownloadManager {
       if (statusText)
         statusText.innerHTML = '<i class="bi bi-file-zip"></i> Extracting mod...';
       if (progressText) progressText.textContent = 'Extracting...';
+      if (speedText) speedText.textContent = '';
     }
 
     if (window.statusBarManager) {
@@ -501,6 +539,7 @@ class DownloadManager {
     download.receivedBytes = receivedBytes || download.receivedBytes;
     download.totalBytes = totalBytes || download.totalBytes;
     download.statusText = 'Paused';
+    download.speedBytesPerSecond = 0;
     window.appSoundManager?.stop('downloading');
 
     const element = document.querySelector<HTMLElement>(
@@ -515,6 +554,10 @@ class DownloadManager {
         statusText.innerHTML = '<i class="bi bi-pause-circle"></i> Paused';
         statusText.style.color = '#f59e0b';
       }
+      const speedText = element.querySelector<HTMLElement>(
+        '.download-progress-speed',
+      );
+      if (speedText) speedText.textContent = '';
       this.updateActiveDownloadActions(element, download);
     }
 
@@ -536,6 +579,8 @@ class DownloadManager {
 
     download.status = 'downloading';
     download.statusText = 'Downloading...';
+    download.lastSpeedSampleBytes = download.receivedBytes;
+    download.lastSpeedSampleTime = Date.now();
     window.appSoundManager?.play('downloading');
 
     const element = document.querySelector<HTMLElement>(
@@ -604,7 +649,18 @@ ${subItemsHtml}
 <div class="download-progress-bar">
 <div class="download-progress-fill" style="width: ${download.progress}%"></div>
 </div>
-<div class="download-progress-text">0%</div>
+<div class="download-progress-details">
+  <div class="download-progress-text">${download.progress}%${
+    download.totalBytes
+      ? ` (${this.formatBytes(download.receivedBytes)} / ${this.formatBytes(download.totalBytes)})`
+      : ''
+  }</div>
+  <div class="download-progress-speed">${
+    download.status === 'downloading' && download.speedBytesPerSecond > 0
+      ? `${this.formatBytes(download.speedBytesPerSecond)}/s`
+      : ''
+  }</div>
+</div>
 </div>
 <div class="download-status-text">${download.statusText || 'Downloading...'}</div>
 </div>

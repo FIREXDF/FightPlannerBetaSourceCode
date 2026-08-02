@@ -14,7 +14,7 @@ export interface CustomModalButton {
   onClick?: (
     e: MouseEvent,
     modal: HTMLElement,
-  ) => void | boolean | Promise<void>;
+  ) => void | boolean | Promise<void | boolean>;
   closeOnClick?: boolean;
 }
 

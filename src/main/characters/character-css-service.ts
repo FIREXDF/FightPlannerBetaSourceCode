@@ -20,10 +20,9 @@ const TEMP_LAYOUT_JSON_FILE = 'ui_layout_db.json';
 const TEMP_CHARA_XML_FILE = 'ui_chara_db.xml';
 const TEMP_LAYOUT_XML_FILE = 'ui_layout_db.xml';
 const TEMP_MSG_NAME_JSON_FILE = 'msg_name.json';
-const GENERATED_CHARA_PRC_FILE = 'ui_chara_db.prc';
-const GENERATED_LAYOUT_PRC_FILE = 'ui_layout_db.prc';
+const SOURCE_CHARA_PRC_FILE = 'ui_chara_db.prc';
+const SOURCE_LAYOUT_PRC_FILE = 'ui_layout_db.prc';
 const GENERATED_MSG_NAME_FILE = 'msg_name.msbt';
-const TEMP_FILE_SUFFIX = '_modified';
 const MIN_PARAM_XML_SBYTE = -128;
 const MAX_PARAM_XML_SBYTE = 127;
 let paramLabelMapCache: Map<string, string> | null = null;
@@ -1637,20 +1636,6 @@ function applyLayoutToCharaJson(
   return charaJson;
 }
 
-function getParamXmlOutputCandidates(inputXmlPath: string) {
-  const workingDirectory = path.dirname(inputXmlPath);
-  const baseName = path.basename(inputXmlPath, path.extname(inputXmlPath));
-  const candidates = [`${baseName}.prc`];
-
-  if (baseName.endsWith(TEMP_FILE_SUFFIX)) {
-    candidates.push(`${baseName.slice(0, -TEMP_FILE_SUFFIX.length)}.prc`);
-  }
-
-  return [...new Set(candidates)].map((fileName) =>
-    path.join(workingDirectory, fileName),
-  );
-}
-
 function resolveParamXmlExecutable() {
   let relativeExecutablePath: string;
 
@@ -1681,13 +1666,14 @@ function resolveParamXmlExecutable() {
 function runParamXml(inputXmlPath: string) {
   const executablePath = resolveParamXmlExecutable();
   const workingDirectory = path.dirname(inputXmlPath);
-  const outputCandidates = getParamXmlOutputCandidates(inputXmlPath);
+  const outputPath = path.join(
+    workingDirectory,
+    `${path.basename(inputXmlPath, path.extname(inputXmlPath))}.prc`,
+  );
 
-  outputCandidates.forEach((outputPath) => {
-    if (fs.existsSync(outputPath)) {
-      fs.unlinkSync(outputPath);
-    }
-  });
+  if (fs.existsSync(outputPath)) {
+    fs.unlinkSync(outputPath);
+  }
 
   return new Promise<ToolExecutionResult & { outputPath: string }>(
     (resolve, reject) => {
@@ -1702,11 +1688,9 @@ function runParamXml(inputXmlPath: string) {
       child.stdout.on('data', (chunk) => {
         stdout += String(chunk);
       });
-
       child.stderr.on('data', (chunk) => {
         stderr += String(chunk);
       });
-
       child.on('error', reject);
       child.on('close', (exitCode) => {
         if (exitCode !== 0) {
@@ -1717,23 +1701,14 @@ function runParamXml(inputXmlPath: string) {
           );
           return;
         }
-
-        const outputPath = outputCandidates.find((candidate) =>
-          fs.existsSync(candidate),
-        );
-        if (!outputPath) {
-          const output = [stderr.trim(), stdout.trim()]
-            .filter(Boolean)
-            .join(' ');
-          const details = output ? ` ${output}` : '';
+        if (!fs.existsSync(outputPath)) {
           reject(
             new Error(
-              `ParamXML completed but did not generate ${outputCandidates.map((candidate) => path.basename(candidate)).join(' or ')}.${details}`,
+              `ParamXML completed but did not generate ${path.basename(outputPath)}`,
             ),
           );
           return;
         }
-
         resolve({ stdout, stderr, outputPath });
       });
     },
@@ -1951,14 +1926,14 @@ export async function importCharacterCssSourceFiles(
   const layoutPrcPath = payload.layoutPrcPath?.trim();
   const msgNamePath = payload.msgNamePath?.trim();
 
-  if (!prcPath || path.basename(prcPath) !== GENERATED_CHARA_PRC_FILE) {
-    throw new Error(`Select ${GENERATED_CHARA_PRC_FILE}`);
+  if (!prcPath || path.basename(prcPath) !== SOURCE_CHARA_PRC_FILE) {
+    throw new Error(`Select ${SOURCE_CHARA_PRC_FILE}`);
   }
   if (
     !layoutPrcPath ||
-    path.basename(layoutPrcPath) !== GENERATED_LAYOUT_PRC_FILE
+    path.basename(layoutPrcPath) !== SOURCE_LAYOUT_PRC_FILE
   ) {
-    throw new Error(`Select ${GENERATED_LAYOUT_PRC_FILE}`);
+    throw new Error(`Select ${SOURCE_LAYOUT_PRC_FILE}`);
   }
   if (!msgNamePath || path.basename(msgNamePath) !== GENERATED_MSG_NAME_FILE) {
     throw new Error(`Select ${GENERATED_MSG_NAME_FILE}`);
@@ -2194,6 +2169,18 @@ export function duplicateCharacterCssEntry(
   const duplicatedEntry = clone(sourceEntry);
   duplicatedEntry['@index'] = String(structs.length);
   setHashText(duplicatedEntry, 'hash40', 'ui_chara_id', newUiCharaId);
+  setHashText(
+    duplicatedEntry,
+    'hash40',
+    'fighter_type',
+    'fighter_type_normal',
+  );
+  setHashText(
+    duplicatedEntry,
+    'hash40',
+    'alt_chara_id',
+    '0x02302d482a',
+  );
   duplicatedEntry.string['#text'] = newNameId;
   const duplicatedOrder = getCharacterCssSbyteOrder(structs.length);
   setHashTextIfPresent(
@@ -2483,11 +2470,31 @@ export async function removeEchoSlot(payload: RemoveEchoSlotPayload) {
     throw new Error('Selected character is not a secondary Echo');
   }
 
-  const baseId = getHashText(echo, 'hash40', 'alt_chara_id', '');
-  const base = structs.find(
-    (entry) => getHashText(entry, 'hash40', 'ui_chara_id', '') === baseId,
+  const altBaseId = getHashText(echo, 'hash40', 'alt_chara_id', '');
+  const originalBaseId = getHashText(
+    echo,
+    'hash40',
+    'original_ui_chara_hash',
+    '',
   );
-  if (!base) throw new Error(`Base fighter not found: ${baseId}`);
+  const baseIds = [altBaseId, originalBaseId].filter(
+    (baseId) => baseId && baseId !== '0x02302d482a',
+  );
+  const base =
+    structs.find((entry) =>
+      baseIds.includes(getHashText(entry, 'hash40', 'ui_chara_id', '')),
+    ) ||
+    structs.find(
+      (entry) =>
+        getHashText(entry, 'hash40', 'alt_chara_id', '') === characterId &&
+        getHashText(entry, 'hash40', 'fighter_type', '') ===
+          'fighter_type_both',
+    );
+  if (!base) {
+    throw new Error(
+      `Base fighter not found for ${characterId} (alt: ${altBaseId || 'missing'}, original: ${originalBaseId || 'missing'})`,
+    );
+  }
 
   const echoNameId = String(echo?.string?.['#text'] || '');
   const baseNameId = String(base?.string?.['#text'] || '');
@@ -2625,6 +2632,18 @@ export function removeCharacterCssEntry(payload: RemoveCharacterCssPayload) {
     charaJson.struct.list['@size'] = String(nextStructs.length);
   }
 
+  layoutJson.struct.list.struct = getStructList(layoutJson)
+    .filter(
+      (entry) =>
+        getHashText(entry, 'hash40', 'ui_chara_id', '') !== characterId,
+    )
+    .map((entry, index) => ({ ...entry, '@index': String(index) }));
+  if (layoutJson.struct.list['@size']) {
+    layoutJson.struct.list['@size'] = String(
+      layoutJson.struct.list.struct.length,
+    );
+  }
+
   writePersistedCharacterCssData(charaJson, msgNameJson, layoutJson);
   return getCharacterCssLayoutData();
 }
@@ -2667,9 +2686,9 @@ export async function saveCharacterCssLayout(
   fs.writeFileSync(tempLayoutXmlPath, charaJsonToParamXml(layoutJson), 'utf8');
   fs.writeFileSync(tempMsgNameJsonPath, JSON.stringify(msgNameJson), 'utf8');
 
-  const prcResult = await runParamXml(tempCharaXmlPath);
-  const generatedCharaPrcPath = prcResult.outputPath;
+  const charaPrcResult = await runParamXml(tempCharaXmlPath);
   const layoutPrcResult = await runParamXml(tempLayoutXmlPath);
+  const generatedCharaPrcPath = charaPrcResult.outputPath;
   const generatedLayoutPrcPath = layoutPrcResult.outputPath;
 
   const hasMsbtChanges =
@@ -2712,9 +2731,17 @@ export async function saveCharacterCssLayout(
   ensureDirectory(messageDir);
   ensureCharacterModMetadata(modRoot);
 
-  const targetCharaPrcPath = path.join(databaseDir, GENERATED_CHARA_PRC_FILE);
-  const targetLayoutPrcPath = path.join(databaseDir, GENERATED_LAYOUT_PRC_FILE);
+  const targetCharaPrcPath = path.join(databaseDir, SOURCE_CHARA_PRC_FILE);
+  const targetLayoutPrcPath = path.join(databaseDir, SOURCE_LAYOUT_PRC_FILE);
   const targetMsgNamePath = path.join(messageDir, GENERATED_MSG_NAME_FILE);
+  ['ui_chara_db.prcxml', 'ui_layout_db.prcxml'].forEach(
+    (obsoleteFileName) => {
+      const obsoletePath = path.join(databaseDir, obsoleteFileName);
+      if (fs.existsSync(obsoletePath)) {
+        fs.unlinkSync(obsoletePath);
+      }
+    },
+  );
   fs.copyFileSync(generatedCharaPrcPath, targetCharaPrcPath);
   fs.copyFileSync(generatedLayoutPrcPath, targetLayoutPrcPath);
   fs.copyFileSync(generatedMsgNamePath, targetMsgNamePath);
@@ -2731,10 +2758,18 @@ export async function saveCharacterCssLayout(
     modCharaPrcPath: targetCharaPrcPath,
     modLayoutPrcPath: targetLayoutPrcPath,
     modMsgNamePath: targetMsgNamePath,
-    stdout: [prcResult.stdout, layoutPrcResult.stdout, msbtResult.stdout]
+    stdout: [
+      charaPrcResult.stdout,
+      layoutPrcResult.stdout,
+      msbtResult.stdout,
+    ]
       .filter(Boolean)
       .join('\n'),
-    stderr: [prcResult.stderr, layoutPrcResult.stderr, msbtResult.stderr]
+    stderr: [
+      charaPrcResult.stderr,
+      layoutPrcResult.stderr,
+      msbtResult.stderr,
+    ]
       .filter(Boolean)
       .join('\n'),
   };

@@ -363,10 +363,76 @@
   color: var(--text-muted);
 }
 
+#unnamed-mod-name-modal {
+  display: flex !important;
+  width: min(560px, 90vw);
+}
+
+#unnamed-mod-name-modal .modal-footer {
+  flex-wrap: wrap;
+}
+
+.unnamed-mod-name-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unnamed-mod-name-body .modal-hint,
+.unnamed-mod-name-body .modal-label {
+  margin: 0;
+}
+
+.unnamed-mod-current-name {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 6px 9px;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+.unnamed-mod-gamebanana-suggestion {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.unnamed-mod-name-error {
+  margin: 0;
+  color: var(--danger-color);
+  font-size: 13px;
+}
+
+#unnamed-mod-name-modal[aria-busy='true'] .modal-btn,
+#unnamed-mod-name-modal[aria-busy='true'] .modal-input {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .conflict-delete-confirm-body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+#conflict-delete-file-confirm-modal {
+  display: flex !important;
+  max-height: min(80vh, 720px);
+}
+
+#conflict-delete-file-confirm-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#conflict-delete-file-confirm-modal .modal-footer {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-tertiary);
 }
 
 .conflict-delete-confirm-body .modal-warning,

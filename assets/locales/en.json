@@ -853,6 +853,18 @@
       "label": "New mod name:",
       "placeholder": "Enter new name"
     },
+    "unnamedMod": {
+      "title": "Name this mod",
+      "description": "FightPlanner could not find a usable name. Its temporary name is {{name}}.",
+      "label": "Choose a mod name",
+      "placeholder": "Enter a custom name",
+      "gameBananaSuggestion": "GameBanana name: {{name}}",
+      "useGameBanana": "Use GameBanana name",
+      "useCustomName": "Use custom name",
+      "nameRequired": "Enter a name.",
+      "invalidName": "This name contains invalid characters or is too long.",
+      "renameFailed": "Unable to rename the mod: {{error}}"
+    },
     "editInfo": {
       "title": "Edit Info.toml",
       "displayName": "Display Name",
@@ -1003,8 +1015,22 @@
     "enableSelected": "Enable Selected ({{count}})",
     "disableSelected": "Disable Selected ({{count}})",
     "openFolder": "Open Folder",
+    "browseFiles": "Browse Files",
     "uninstall": "Uninstall",
     "uninstallSelected": "Uninstall Selected ({{count}})"
+  },
+  "modFileBrowser": {
+    "title": "Mod files",
+    "folderTree": "File tree",
+    "preview": "Preview",
+    "selectFile": "Select a file to preview it.",
+    "binaryFile": "Preview is not available for this file type.",
+    "emptyFolder": "This folder is empty.",
+    "loadError": "Unable to load this folder.",
+    "previewError": "Unable to preview this file.",
+    "truncated": "Preview limited to the first 256 KB.",
+    "openFolder": "Open in file manager",
+    "close": "Close"
   },
   "common": {
     "yes": "Yes",
@@ -1157,6 +1183,7 @@
     "failedToSelectFile": "Failed to select file",
     "stageSourceImported": "Stage source imported",
     "characterCssSourceImported": "Character CSS source imported",
+    "failedToLoadCharacters": "Failed to load characters: {{error}}",
     "modsFolderNotConfigured": "Mods folder not configured. Please set it in Settings.",
     "installingMod": "Installing mod...",
     "modInstalledSuccessfully": "Mod{{plural}} \"{{name}}\" installed successfully!",

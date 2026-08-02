@@ -79,6 +79,31 @@ interface BatchModMove {
 
 export default class ModUtils {
   private static readonly batchDuplicateMarker = '.fpp-batch-duplicate-';
+  private static readonly arcropolisRootDirectoryNames = new Set([
+    'append',
+    'assist',
+    'boss',
+    'camera',
+    'campaign',
+    'common',
+    'effect',
+    'enemy',
+    'fighter',
+    'finalsmash',
+    'item',
+    'miihat',
+    'param',
+    'pokemon',
+    'prebuilt;',
+    'render',
+    'snapshot',
+    'sound',
+    'spirits',
+    'stage',
+    'standard',
+    'stream;',
+    'ui',
+  ]);
 
   private static isArchiveMetadataName(name: string): boolean {
     return (
@@ -231,13 +256,21 @@ export default class ModUtils {
     }
 
     const checkIfModDir = (dir: string): boolean => {
-      return (
-        fs.existsSync(path.join(dir, 'config.json')) ||
-        fs.existsSync(path.join(dir, 'ui')) ||
-        fs.existsSync(path.join(dir, 'stage')) ||
-        fs.existsSync(path.join(dir, 'sound')) ||
-        fs.existsSync(path.join(dir, 'fighter'))
-      );
+      if (fs.existsSync(path.join(dir, 'config.json'))) {
+        return true;
+      }
+
+      try {
+        return fs
+          .readdirSync(dir, { withFileTypes: true })
+          .some(
+            (entry) =>
+              entry.isDirectory() &&
+              this.arcropolisRootDirectoryNames.has(entry.name.toLowerCase()),
+          );
+      } catch {
+        return false;
+      }
     };
 
     const modDirs: string[] = [];
@@ -712,7 +745,7 @@ export default class ModUtils {
 
       if (
         allWhitelistPatterns.some((pattern) => {
-          const regex = new RegExp(pattern);
+          const regex = new RegExp(pattern, 'i');
           return regex.test(normalizedFilePath);
         })
       ) {

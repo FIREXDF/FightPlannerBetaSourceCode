@@ -279,11 +279,24 @@
   }
 }
 
-.download-progress-text {
+.download-progress-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.download-progress-text,
+.download-progress-speed {
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
   font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.download-progress-speed {
+  color: var(--accent-color);
+  white-space: nowrap;
 }
 
 .download-status-text {

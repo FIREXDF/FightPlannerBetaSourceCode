@@ -25,6 +25,175 @@ import { SlotChanger } from '../../mod-utils/slot-changer';
 export type ModHandlers = typeof ModHandlers;
 
 const ModHandlers = {
+  ['read-mod-directory']: async (
+    common: BaseHandlerArg,
+    modPath: string,
+    relativePath = '',
+  ): HandlerResponse<{
+    entries: Array<{
+      name: string;
+      relativePath: string;
+      type: 'directory' | 'file';
+      size: number;
+    }>;
+  }> => {
+    try {
+      const modRoot = fs.realpathSync(path.resolve(resolveVirtualPath(modPath)));
+      const requestedPath = path.resolve(modRoot, relativePath);
+      const relativeTarget = path.relative(modRoot, requestedPath);
+
+      if (
+        relativeTarget === '..' ||
+        relativeTarget.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativeTarget) ||
+        !fs.existsSync(requestedPath) ||
+        !fs.statSync(requestedPath).isDirectory()
+      ) {
+        return createErrorResponse(
+          ErrorCodes.MOD_READ_ERROR,
+          'Invalid folder path',
+        );
+      }
+
+      const realRequestedPath = fs.realpathSync(requestedPath);
+      const realRelativeTarget = path.relative(modRoot, realRequestedPath);
+      if (
+        realRelativeTarget === '..' ||
+        realRelativeTarget.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelativeTarget)
+      ) {
+        return createErrorResponse(
+          ErrorCodes.MOD_READ_ERROR,
+          'Folder path is outside the mod',
+        );
+      }
+
+      const dirEntries = await fs.promises.readdir(realRequestedPath, {
+        withFileTypes: true,
+      });
+      const entries = await Promise.all(
+        dirEntries
+          .filter((entry) => !entry.isSymbolicLink())
+          .map(async (entry) => {
+            const entryRelativePath = path.join(relativeTarget, entry.name);
+            const entryPath = path.join(realRequestedPath, entry.name);
+            const isDirectory = entry.isDirectory();
+            let size = 0;
+
+            if (!isDirectory) {
+              try {
+                size = (await fs.promises.stat(entryPath)).size;
+              } catch {
+                // The entry can disappear while the folder is being read.
+              }
+            }
+
+            return {
+              name: entry.name,
+              relativePath: entryRelativePath,
+              type: isDirectory ? ('directory' as const) : ('file' as const),
+              size,
+            };
+          }),
+      );
+
+      entries.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+        return a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      });
+
+      return { success: true, entries };
+    } catch (error) {
+      handleError(error, 'read-mod-directory');
+      return createErrorResponse(ErrorCodes.MOD_READ_ERROR, error.message);
+    }
+  },
+
+  ['read-mod-file-preview']: async (
+    common: BaseHandlerArg,
+    modPath: string,
+    relativePath: string,
+  ): HandlerResponse<{
+    content: string | null;
+    size: number;
+    previewable: boolean;
+    truncated: boolean;
+  }> => {
+    try {
+      const modRoot = fs.realpathSync(path.resolve(resolveVirtualPath(modPath)));
+      const requestedPath = path.resolve(modRoot, relativePath);
+      const relativeTarget = path.relative(modRoot, requestedPath);
+
+      if (
+        !relativePath ||
+        relativeTarget === '..' ||
+        relativeTarget.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativeTarget) ||
+        !fs.existsSync(requestedPath) ||
+        !fs.statSync(requestedPath).isFile()
+      ) {
+        return createErrorResponse(ErrorCodes.MOD_READ_ERROR, 'Invalid file path');
+      }
+
+      const realRequestedPath = fs.realpathSync(requestedPath);
+      const realRelativeTarget = path.relative(modRoot, realRequestedPath);
+      if (
+        realRelativeTarget === '..' ||
+        realRelativeTarget.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(realRelativeTarget)
+      ) {
+        return createErrorResponse(
+          ErrorCodes.MOD_READ_ERROR,
+          'File path is outside the mod',
+        );
+      }
+
+      const stat = await fs.promises.stat(realRequestedPath);
+      const previewableExtensions = new Set([
+        '.txt', '.md', '.json', '.toml', '.ini', '.cfg', '.xml', '.prcxml',
+        '.csv', '.yaml', '.yml', '.lua', '.nut', '.py', '.js', '.ts', '.css',
+        '.html', '.rs', '.c', '.h', '.cpp', '.hpp', '.sh', '.log',
+      ]);
+      const extension = path.extname(realRequestedPath).toLowerCase();
+      const previewable = previewableExtensions.has(extension);
+
+      if (!previewable) {
+        return {
+          success: true,
+          content: null,
+          size: stat.size,
+          previewable: false,
+          truncated: false,
+        };
+      }
+
+      const maxPreviewBytes = 256 * 1024;
+      const length = Math.min(stat.size, maxPreviewBytes);
+      const handle = await fs.promises.open(realRequestedPath, 'r');
+      const buffer = Buffer.alloc(length);
+
+      try {
+        await handle.read(buffer, 0, length, 0);
+      } finally {
+        await handle.close();
+      }
+
+      return {
+        success: true,
+        content: buffer.toString('utf8'),
+        size: stat.size,
+        previewable: true,
+        truncated: stat.size > maxPreviewBytes,
+      };
+    } catch (error) {
+      handleError(error, 'read-mod-file-preview');
+      return createErrorResponse(ErrorCodes.MOD_READ_ERROR, error.message);
+    }
+  },
+
   ['read-mods-folder']: async (
     common: BaseHandlerArg,
     modsPath: string,

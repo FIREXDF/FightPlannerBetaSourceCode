@@ -105,6 +105,8 @@ const electronAPI = {
   selectFolder: invokeFileHandler('select-folder'),
   selectEmulatorFile: invokeFileHandler('select-emulator-file'),
   readModsFolder: invokeModHandler('read-mods-folder'),
+  readModDirectory: invokeModHandler('read-mod-directory'),
+  readModFilePreview: invokeModHandler('read-mod-file-preview'),
   getPreviewImage: invokeModHandler('get-preview-image'),
   saveModPreview: invokeModHandler('save-mod-preview'),
   getModInfo: invokeModHandler('get-mod-info'),

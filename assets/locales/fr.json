@@ -852,6 +852,18 @@
       "label": "Nouveau nom du mod :",
       "placeholder": "Entrez un nouveau nom"
     },
+    "unnamedMod": {
+      "title": "Nommer ce mod",
+      "description": "FightPlanner n’a pas trouvé de nom utilisable. Son nom temporaire est {{name}}.",
+      "label": "Choisissez un nom pour le mod",
+      "placeholder": "Entrez un nom personnalisé",
+      "gameBananaSuggestion": "Nom GameBanana : {{name}}",
+      "useGameBanana": "Utiliser le nom GameBanana",
+      "useCustomName": "Utiliser ce nom",
+      "nameRequired": "Entrez un nom.",
+      "invalidName": "Ce nom contient des caractères invalides ou est trop long.",
+      "renameFailed": "Impossible de renommer le mod : {{error}}"
+    },
     "uninstall": {
       "title": "Désinstaller le Mod",
       "warning": "Êtes-vous sûr de vouloir désinstaller",
@@ -1002,9 +1014,23 @@
     "disable": "Désactiver",
     "enableSelected": "Activer la selection ({{count}})",
     "disableSelected": "Desactiver la selection ({{count}})",
-    "openFolder": "Ouvrir le Dossier",
+    "openFolder": "Ouvrir le dossier",
+    "browseFiles": "Parcourir les fichiers",
     "uninstall": "Désinstaller",
     "uninstallSelected": "Desinstaller la selection ({{count}})"
+  },
+  "modFileBrowser": {
+    "title": "Fichiers du mod",
+    "folderTree": "Arborescence",
+    "preview": "Aperçu",
+    "selectFile": "Sélectionnez un fichier pour afficher son aperçu.",
+    "binaryFile": "L’aperçu n’est pas disponible pour ce type de fichier.",
+    "emptyFolder": "Ce dossier est vide.",
+    "loadError": "Impossible de charger ce dossier.",
+    "previewError": "Impossible d’afficher l’aperçu de ce fichier.",
+    "truncated": "Aperçu limité aux 256 premiers Ko.",
+    "openFolder": "Ouvrir dans le gestionnaire de fichiers",
+    "close": "Fermer"
   },
   "common": {
     "yes": "Oui",
@@ -1157,6 +1183,7 @@
     "failedToSelectFile": "Échec de la sélection du fichier",
     "stageSourceImported": "Fichier stage importé",
     "characterCssSourceImported": "Fichiers CSS importés",
+    "failedToLoadCharacters": "Impossible de charger les personnages : {{error}}",
     "modsFolderNotConfigured": "Dossier mods non configuré. Veuillez le définir dans les Paramètres.",
     "installingMod": "Installation du mod...",
     "modInstalledSuccessfully": "Mod{{plural}} \"{{name}}\" installé avec succès !",
