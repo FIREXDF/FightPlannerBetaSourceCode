@@ -651,8 +651,6 @@ class SocialManagerBase {
   }
 
   startOnboarding() {
-    this.hideChrome();
-
     const onboarding =
       document.querySelector<HTMLElement>('#social-onboarding');
     if (onboarding) {
@@ -774,8 +772,6 @@ class SocialManagerBase {
 
     this.markOnboardingDone();
 
-    this.showChrome();
-
     this.showLoginScreen();
   }
 
@@ -817,34 +813,6 @@ class SocialManagerBase {
       }
 
       this.setupButtons();
-    }
-  }
-
-  hideChrome() {
-    const sidebar = document.querySelector<HTMLElement>('.sidebar');
-    if (sidebar) {
-      sidebar.style.transform = 'translateX(-100%)';
-      sidebar.style.transition = 'transform 0.5s ease-out';
-    }
-
-    const bottomBar = document.querySelector<HTMLElement>('.bottom-bar');
-    if (bottomBar) {
-      bottomBar.style.transform = 'translateY(100%)';
-      bottomBar.style.transition = 'transform 0.5s ease-out';
-    }
-  }
-
-  showChrome() {
-    const sidebar = document.querySelector<HTMLElement>('.sidebar');
-    if (sidebar) {
-      sidebar.style.transform = 'translateX(0)';
-      sidebar.style.transition = 'transform 0.5s ease-out';
-    }
-
-    const bottomBar = document.querySelector<HTMLElement>('.bottom-bar');
-    if (bottomBar) {
-      bottomBar.style.transform = 'translateY(0)';
-      bottomBar.style.transition = 'transform 0.5s ease-out';
     }
   }
 
