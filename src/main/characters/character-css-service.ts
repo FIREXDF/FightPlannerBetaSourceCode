@@ -302,33 +302,36 @@ function prepareExecutableTool(executablePath: string) {
   const isAppImageMount =
     Boolean(process.env.APPIMAGE) ||
     executablePath.includes(`${path.sep}.mount_`);
-  let preparedPath = executablePath;
 
-  if (isAppImageMount) {
-    const sourceDirectory = path.dirname(executablePath);
-    const cacheDirectory = path.join(
-      app.getPath('temp'),
-      'fightplanner-tools',
-      app.getVersion(),
-      path.basename(sourceDirectory),
-    );
+  if (!isAppImageMount) {
+    try {
+      fs.accessSync(executablePath, fs.constants.X_OK);
+      return executablePath;
+    } catch {
+      // Packaged resources can be read-only and lose executable permissions.
+    }
+  }
 
+  const sourceDirectory = path.dirname(executablePath);
+  const cacheDirectory = path.join(
+    app.getPath('temp'),
+    'fightplanner-tools',
+    app.getVersion(),
+    path.basename(sourceDirectory),
+  );
+  const preparedPath = path.join(
+    cacheDirectory,
+    path.basename(executablePath),
+  );
+
+  if (!fs.existsSync(preparedPath)) {
     fs.cpSync(sourceDirectory, cacheDirectory, {
       recursive: true,
       force: true,
     });
-
-    preparedPath = path.join(cacheDirectory, path.basename(executablePath));
   }
 
-  try {
-    fs.chmodSync(preparedPath, 0o755);
-  } catch (error) {
-    if (!isAppImageMount) {
-      throw error;
-    }
-  }
-
+  fs.chmodSync(preparedPath, 0o755);
   return preparedPath;
 }
 
@@ -1900,8 +1903,8 @@ async function runMsbtToJson(inputMsbtPath: string, outputJsonPath: string) {
     fs.unlinkSync(outputJsonPath);
   }
 
-  const msbtToolPath = resolveToolsPath('MSBTEditorCLI', 'MSBTEditorCli.dll');
-  return runDotnetTool(msbtToolPath, [inputMsbtPath, outputJsonPath]);
+  const msbtToolPath = resolveMsbtEditorExecutable();
+  return runNativeTool(msbtToolPath, [inputMsbtPath, outputJsonPath]);
 }
 
 async function runPrcToJson(inputPrcPath: string, outputJsonPath: string) {
@@ -2698,8 +2701,8 @@ export async function saveCharacterCssLayout(
   let msbtResult: ToolExecutionResult = { stdout: '', stderr: '' };
 
   if (hasMsbtChanges) {
-    const msbtToolPath = resolveToolsPath('MSBTEditorCLI', 'MSBTEditorCli.dll');
-    msbtResult = await runDotnetTool(msbtToolPath, [
+    const msbtToolPath = resolveMsbtEditorExecutable();
+    msbtResult = await runNativeTool(msbtToolPath, [
       tempMsgNameJsonPath,
       generatedMsgNamePath,
     ]);

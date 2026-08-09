@@ -168,15 +168,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   }, 100);
 
   setTimeout(async () => {
-    if (window.pluginManager && window.settingsManager) {
-      // Handles startup plugin update checks when enabled.
-      window.pluginManager.checkForUpdatesOnStartup();
-    }
-  }, 2000); // Reduced delay slightly as checkForUpdatesOnStartup has its own delays if needed
+    await window.remoteAnnouncementManager?.checkOnStartup?.();
 
-  setTimeout(() => {
-    window.remoteAnnouncementManager?.checkOnStartup();
-  }, 900);
+    if (window.pluginManager && window.settingsManager) {
+      await window.pluginManager.checkForUpdatesOnStartup();
+    }
+  }, 5000);
 });
 
 document.addEventListener('keydown', async (e) => {

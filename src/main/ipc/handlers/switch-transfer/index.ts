@@ -165,7 +165,7 @@ const SwitchTransferHandlers = {
       );
       const remotePluginsPath = _normalizeRemotePath(
         config.switchFtpPluginsPath,
-        '/ultimate/contents/01006A800016E000/romfs/skyline/plugins',
+        '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins',
       );
       const [modItems, pluginItems] = await Promise.all([
         collectModDirectories(config.modsPath),
@@ -356,7 +356,7 @@ const MtpHandlers = {
       );
       const remotePluginsPath = _normalizeRemotePath(
         config.switchFtpPluginsPath,
-        '/ultimate/contents/01006A800016E000/romfs/skyline/plugins',
+        '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins',
       );
       const [modItems, pluginItems] = await Promise.all([
         collectModDirectories(config.modsPath),

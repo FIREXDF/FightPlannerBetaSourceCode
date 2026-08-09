@@ -3361,6 +3361,20 @@ export class StatusBarManager {
       });
 
       statusRight.appendChild(conflictText);
+      return;
+    }
+
+    if (this.lastExtendedBarData?.startsWith('conflict:')) {
+      this.lastExtendedBarData = null;
+      this.userDismissedExtendedBar = false;
+    }
+
+    const bottomBar = document.getElementById('main-status-bar');
+    if (
+      !this.hasActiveDownloads &&
+      bottomBar?.classList.contains('conflict-mode')
+    ) {
+      this.updateExtendedBar({ type: 'none' });
     }
   }
 

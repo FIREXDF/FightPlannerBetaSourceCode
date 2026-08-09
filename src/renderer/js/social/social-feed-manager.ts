@@ -16,6 +16,7 @@ class SocialFeedManager extends SocialGameBananaManager {
         `${this.API_URL}/list/links`,
         {},
         'links',
+        true,
       );
 
       // Handle both array and paginated response

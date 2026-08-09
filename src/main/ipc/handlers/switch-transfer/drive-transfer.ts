@@ -32,6 +32,36 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
+function resolveDriveDestinationPath(
+  drivePath: string,
+  configuredPath: string | null | undefined,
+  defaultPath: string,
+): string {
+  const normalized = (configuredPath || defaultPath)
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+  const segments = normalized.split('/').filter(Boolean);
+
+  if (
+    segments.length === 0 ||
+    segments.some((segment) => segment === '.' || segment === '..')
+  ) {
+    throw new Error(`Invalid Switch destination path: ${configuredPath}`);
+  }
+
+  const destinationPath = path.resolve(drivePath, ...segments);
+  const relativePath = path.relative(path.resolve(drivePath), destinationPath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error(
+      `Switch destination escapes selected drive: ${configuredPath}`,
+    );
+  }
+
+  return destinationPath;
+}
+
 async function filesMatch(src: string, dest: string): Promise<boolean> {
   let srcStats;
   let destStats;
@@ -184,15 +214,15 @@ export async function sendModsToDrive(
       );
     }
 
-    const targetModsPath = path.join(drivePath, 'ultimate', 'mods');
-    const targetPluginsPath = path.join(
+    const targetModsPath = resolveDriveDestinationPath(
       drivePath,
-      'ultimate',
-      'contents',
-      '01006A800016E000',
-      'romfs',
-      'skyline',
-      'plugins',
+      config.switchFtpModsPath || config.switchFtpPath,
+      '/ultimate/mods',
+    );
+    const targetPluginsPath = resolveDriveDestinationPath(
+      drivePath,
+      config.switchFtpPluginsPath,
+      '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins',
     );
 
     await fs.mkdir(targetModsPath, { recursive: true });

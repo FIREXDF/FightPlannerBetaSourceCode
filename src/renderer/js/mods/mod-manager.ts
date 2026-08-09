@@ -1892,11 +1892,7 @@ class ModManager {
             modsWithConflicts.size,
           );
         } else {
-          const statusRight =
-            document.querySelector<HTMLElement>('.bottom-text-right');
-          if (statusRight) {
-            statusRight.innerHTML = '';
-          }
+          window.statusBarManager.updateConflictStatus(0, 0);
         }
         if (!window.statusBarManager.checkActiveDownloads()) {
           if (window.statusBarManager.currentTab) {

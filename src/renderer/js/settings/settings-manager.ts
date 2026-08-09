@@ -2788,6 +2788,9 @@ class SettingsManager {
     const driveSettings = document.querySelector<HTMLElement>(
       '#switch-drive-settings',
     );
+    const destinationSettings = document.querySelector<HTMLElement>(
+      '#switch-destination-settings',
+    );
 
     if (transferMethodSelect) {
       const selectedValue =
@@ -2821,6 +2824,10 @@ class SettingsManager {
     if (driveSettings) {
       driveSettings.style.display =
         transferMethod === 'drive' ? 'block' : 'none';
+    }
+    if (destinationSettings) {
+      destinationSettings.style.display =
+        transferMethod === 'none' ? 'none' : 'block';
     }
 
     if (transferMethod === 'drive') {

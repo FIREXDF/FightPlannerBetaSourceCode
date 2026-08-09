@@ -993,7 +993,7 @@ ${subItemsHtml}
       '/ultimate/mods';
     const switchFtpPluginsPath =
       window.settingsManager.getSwitchFtpPluginsPath?.() ||
-      '/ultimate/contents/01006A800016E000/romfs/skyline/plugins';
+      '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins';
     const switchDriveLetter = window.settingsManager.getSwitchDriveLetter();
 
     if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
@@ -1173,7 +1173,7 @@ ${subItemsHtml}
       '/ultimate/mods';
     const switchFtpPluginsPath =
       window.settingsManager.getSwitchFtpPluginsPath?.() ||
-      '/ultimate/contents/01006A800016E000/romfs/skyline/plugins';
+      '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins';
 
     let mtpClient: MTPTransferClient | null = null;
     let mtpTransferId: string | null = null;

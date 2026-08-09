@@ -3824,8 +3824,12 @@ class SocialGameBananaManager extends SocialManagerBase {
   async fetchSocialLinksWithRefresh() {
     if (!this.authToken) return [];
 
+    const url = `${this.API_URL}/list/links?_=${Date.now()}`;
     const response = await this.fetchWithAuth(
-      `${this.API_URL}/list/links`,
+      url,
+      {
+        cache: 'no-store',
+      },
     );
 
     if (!response.ok) return [];
@@ -3854,10 +3858,15 @@ class SocialGameBananaManager extends SocialManagerBase {
     return response.ok;
   }
 
-  async saveInstalledGameBananaDownloadToSocial(downloadUrl: string) {
+  async saveInstalledGameBananaDownloadToSocial(
+    downloadUrl: string,
+    eventDownloadId = '',
+  ) {
     if (!this.authToken || !this.userData) return;
 
-    const downloadId = this.getDownloadIdFromGameBananaUrl(downloadUrl);
+    const downloadId =
+      String(eventDownloadId || '') ||
+      this.getDownloadIdFromGameBananaUrl(downloadUrl);
     if (!downloadId) return;
 
     const pending = this.pendingGameBananaSocialDownloads.get(downloadId);

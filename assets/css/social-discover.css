@@ -304,6 +304,42 @@
   padding: 28px 32px;
 }
 
+.social-supporter-nav-button {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 14px 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #ff86ac;
+  cursor: pointer;
+  font-size: 18px;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.social-supporter-nav-button:hover {
+  background: color-mix(in srgb, #ff6f9c 14%, transparent);
+  color: #ffabc4;
+  transform: translateY(-1px);
+}
+
+.social-supporter-nav-button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.social-supporter-nav-button:focus-visible {
+  outline: 2px solid #ff86ac;
+  outline-offset: 2px;
+}
+
 .social-nav-menu {
   width: 100%;
   background: var(--bg-tertiary);
@@ -1974,6 +2010,78 @@
   gap: 14px;
   color: var(--text-secondary);
   line-height: 1.55;
+}
+
+.social-supporter-benefits-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.social-supporter-benefits-intro {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.social-supporter-benefits-intro p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.social-supporter-benefits-heart {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #ff6f9c 17%, var(--bg-card));
+  color: #ff86ac;
+  font-size: 18px;
+}
+
+.social-supporter-benefits-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.social-supporter-benefits-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--bg-transparent-05);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.social-supporter-benefits-list i {
+  flex: 0 0 auto;
+  color: #ff9ab9;
+  font-size: 17px;
+}
+
+@media (max-width: 620px) {
+  .social-supporter-benefits-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-supporter-nav-button {
+    transition: none;
+  }
 }
 
 .social-supporter-checkout-modal-copy p {

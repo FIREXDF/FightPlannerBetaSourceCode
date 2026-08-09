@@ -559,13 +559,16 @@ class SocialSettingsManager extends SocialProfileManager {
       console.log('[Social] Mod installed successfully:', data);
 
       if (data.url) {
-        this.updateModInstalledStatus(data.url);
-        this.saveInstalledGameBananaDownloadToSocial(data.url);
+        this.updateModInstalledStatus(data.url, data.downloadId);
+        this.saveInstalledGameBananaDownloadToSocial(
+          data.url,
+          data.downloadId,
+        );
       }
     });
   }
 
-  async updateModInstalledStatus(downloadUrl) {
+  async updateModInstalledStatus(downloadUrl, eventDownloadId = '') {
     if (!this.authToken || !this.userData) {
       console.log('[Social] No auth token, cannot update mod status');
       return;
@@ -620,14 +623,12 @@ class SocialSettingsManager extends SocialProfileManager {
 
         const link = mod.link ? mod.link.trim() : '';
 
-        const downloadIdMatch = downloadUrl.match(/\/dl\/(\d+)/);
-        const linkIdMatch = link.match(/mmdl\/(\d+)/);
+        const downloadId =
+          String(eventDownloadId || '') ||
+          this.getDownloadIdFromGameBananaUrl(downloadUrl);
+        const linkDownloadId = this.getDownloadIdFromGameBananaUrl(link);
 
-        if (
-          downloadIdMatch &&
-          linkIdMatch &&
-          downloadIdMatch[1] === linkIdMatch[1]
-        ) {
+        if (downloadId && downloadId === linkDownloadId) {
           console.log(
             `[Social] Updating modInstalled for mod: ${mod.id || mod.mod_name}`,
           );

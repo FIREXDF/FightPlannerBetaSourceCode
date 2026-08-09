@@ -503,22 +503,33 @@ class SocialManagerBase {
     url: string,
     options: RequestInit = {},
     cacheKey: string | null = null,
+    forceRefresh = false,
   ) {
     // Vérifier le cache d'abord
-    if (cacheKey && this.isCacheValid(cacheKey)) {
+    if (!forceRefresh && cacheKey && this.isCacheValid(cacheKey)) {
       console.log('[Social] Using cached data for:', cacheKey);
       return this.getCached(cacheKey);
     }
 
+    const requestUrl = forceRefresh
+      ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`
+      : url;
+    const requestOptions: RequestInit = forceRefresh
+      ? {
+          ...options,
+          cache: 'no-store',
+        }
+      : options;
+
     // Éviter les requêtes simultanées identiques
-    if (this.pendingRequests.has(url)) {
+    if (this.pendingRequests.has(requestUrl)) {
       console.log('[Social] Request already pending, waiting...');
-      return await this.pendingRequests.get(url);
+      return await this.pendingRequests.get(requestUrl);
     }
 
     // Créer la promesse
     const requestPromise = (async () => {
-      let response = await this.fetchWithAuth(url, options);
+      let response = await this.fetchWithAuth(requestUrl, requestOptions);
       let data = await this.parseJsonResponse(response);
 
       if (
@@ -526,7 +537,7 @@ class SocialManagerBase {
         this.isAuthErrorPayload(data) &&
         (await this.refreshAuthToken())
       ) {
-        response = await this.fetchWithAuth(url, options);
+        response = await this.fetchWithAuth(requestUrl, requestOptions);
         data = await this.parseJsonResponse(response);
       }
 
@@ -545,11 +556,11 @@ class SocialManagerBase {
       return data;
     })().finally(() => {
       // Nettoyer la requête en attente
-      this.pendingRequests.delete(url);
+      this.pendingRequests.delete(requestUrl);
     });
 
     // Stocker la promesse
-    this.pendingRequests.set(url, requestPromise);
+    this.pendingRequests.set(requestUrl, requestPromise);
 
     return requestPromise;
   }
@@ -1834,6 +1845,9 @@ class SocialManagerBase {
         this.switchSection(section);
       });
     });
+    socialRoot
+      .querySelector<HTMLButtonElement>('#social-supporter-nav-button')
+      ?.addEventListener('click', () => this.showSupporterBenefitsModal());
   }
 
   switchSection(sectionName) {

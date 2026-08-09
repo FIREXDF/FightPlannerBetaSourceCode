@@ -51,6 +51,7 @@ class SocialProfileManager extends SocialFeedManager {
     'supporter',
     'tester',
     'testers',
+    'fp_creator',
     'fightplanner_creator',
     'community_organizer',
   ]);
@@ -666,6 +667,84 @@ class SocialProfileManager extends SocialFeedManager {
   async startSupporterCheckout() {
     await window.electronAPI?.openUrl?.('https://ko-fi.com/firexdf');
     void this.pollForSupporterActivation();
+  }
+
+  showSupporterBenefitsModal() {
+    if (!window.modalManager?.showCustomModal) {
+      this.showSupporterCheckoutModal();
+      return;
+    }
+
+    const benefit = (key: string, fallback: string) =>
+      this.escapeHtml(this.getSocialTranslation(key, fallback));
+
+    window.modalManager.showCustomModal({
+      id: 'social-supporter-benefits-modal',
+      title: this.getSocialTranslation(
+        'social.supporterBenefitsModalTitle',
+        'Become a Supporter',
+      ),
+      body: `<div class="social-supporter-benefits-modal">
+        <div class="social-supporter-benefits-intro">
+          <span class="social-supporter-benefits-heart" aria-hidden="true">
+            <i class="bi bi-heart-fill"></i>
+          </span>
+          <p>${benefit(
+            'social.supporterBenefitsModalIntro',
+            'Support FightPlanner and unlock extra benefits for your profile and projects.',
+          )}</p>
+        </div>
+        <ul class="social-supporter-benefits-list">
+          <li>
+            <i class="bi bi-palette2" aria-hidden="true"></i>
+            <span>${benefit(
+              'social.supporterProfileBenefitColors',
+              'Custom colors and backgrounds',
+            )}</span>
+          </li>
+          <li>
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
+            <span>${benefit(
+              'social.supporterProfileBenefitAvatar',
+              'Avatar shapes and rings',
+            )}</span>
+          </li>
+          <li>
+            <i class="bi bi-type" aria-hidden="true"></i>
+            <span>${benefit(
+              'social.supporterProfileBenefitUsername',
+              'Username effects',
+            )}</span>
+          </li>
+          <li>
+            <i class="bi bi-key" aria-hidden="true"></i>
+            <span>${benefit(
+              'social.supporterBenefitApiKey',
+              'A permissive API key for your integrations and projects',
+            )}</span>
+          </li>
+        </ul>
+      </div>`,
+      buttons: [
+        {
+          text: this.getSocialTranslation(
+            'social.becomeSupporter',
+            'Become a Supporter',
+          ),
+          type: 'primary',
+          onClick: () => {
+            const delay = document.body.classList.contains('no-animations')
+              ? 0
+              : 320;
+            window.setTimeout(() => this.showSupporterCheckoutModal(), delay);
+          },
+        },
+        {
+          text: this.getSocialTranslation('common.cancel', 'Cancel'),
+          type: 'secondary',
+        },
+      ],
+    });
   }
 
   showSupporterCheckoutModal() {

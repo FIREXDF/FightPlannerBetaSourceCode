@@ -1270,6 +1270,9 @@ document.addEventListener('DOMContentLoaded', () => {
           return (
             normalized.endsWith('/ultimate/mods') ||
             normalized.endsWith(
+              '/atmosphere/contents/01006a800016e000/romfs/skyline/plugins',
+            ) ||
+            normalized.endsWith(
               '/ultimate/contents/01006a800016e000/romfs/skyline/plugins',
             )
           );
@@ -1517,7 +1520,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const pluginsPathResult = await window.tutorialAPI.joinPath(
               sdDrive,
-              'ultimate',
+              'atmosphere',
               'contents',
               '01006A800016E000',
               'romfs',

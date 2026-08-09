@@ -1533,16 +1533,12 @@ Add to CSS
       console.error('[CharactersManager] Failed to load CSS layout:', error);
       if (grid) {
         const message = error.message || 'Failed to load CSS layout';
-        if (
-          message.includes('ui_chara_db.json') ||
-          message.includes('msg_name')
-        ) {
-          grid.innerHTML = '';
-          this.renderCharacterCssSourceImport();
-          return;
-        } else {
-          grid.innerHTML = `<div class="characters-empty-state is-error">${this.escapeHtml(message)}</div>`;
-        }
+        grid.innerHTML = '';
+        this.renderCharacterCssSourceImport();
+        window.toastManager?.error('toasts.failedToLoadCharacters', 4000, {
+          error: message,
+        });
+        return;
       }
       window.toastManager?.error('toasts.failedToLoadCharacters', 4000, {
         error: error.message || 'Unknown error',

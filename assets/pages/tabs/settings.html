@@ -1462,7 +1462,10 @@
           <p class="settings-hint" data-i18n="settings.switchFtpCredentials">
             Optional FTP username and password (defaults to ftp / ftp)
           </p>
+        </div>
 
+        <!-- Switch destination paths (shared by FTP, MTP, and local drive) -->
+        <div id="switch-destination-settings" style="margin-top: 12px; display: none">
           <div class="settings-input-group" style="margin-top: 12px">
             <input
               type="text"
@@ -1473,8 +1476,8 @@
               placeholder="/ultimate/mods"
             />
           </div>
-          <p class="settings-hint" data-i18n="settings.switchFtpPath">
-            Remote mods folder on the Switch SD card
+          <p class="settings-hint" data-i18n="settings.switchModsDestinationPath">
+            Mods destination folder on the Switch SD card
           </p>
 
           <div class="settings-input-group" style="margin-top: 12px">
@@ -1484,11 +1487,11 @@
               class="settings-input"
               data-i18n="settings.switchFtpPluginsPathPlaceholder"
               data-i18n-placeholder
-              placeholder="/ultimate/contents/01006A800016E000/romfs/skyline/plugins"
+              placeholder="/atmosphere/contents/01006A800016E000/romfs/skyline/plugins"
             />
           </div>
-          <p class="settings-hint" data-i18n="settings.switchFtpPluginsPath">
-            Remote plugins folder on the Switch SD card
+          <p class="settings-hint" data-i18n="settings.switchPluginsDestinationPath">
+            Plugins destination folder on the Switch SD card
           </p>
         </div>
 
