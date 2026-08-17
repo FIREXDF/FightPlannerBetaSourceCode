@@ -2,7 +2,7 @@ import * as path from 'path';
 import { app } from 'electron';
 
 export const CONFLICT_WHITELIST_PATTERNS = [
-  '\\.prcxml$',
+  '\\.txt$',
   '\\.toml$',
   'info.toml',
   'preview.webp',

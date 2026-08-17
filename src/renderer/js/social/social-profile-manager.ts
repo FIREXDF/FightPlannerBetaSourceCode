@@ -405,11 +405,159 @@ class SocialProfileManager extends SocialFeedManager {
     if (supporterLabel) {
       supporterLabel.style.display = isSupporter ? 'inline-flex' : 'none';
     }
+    this.updateSupporterNavStatus(isSupporter);
     if (canCustomize) {
       this.populateProfileThemeInputs(theme);
     } else {
       this.closeProfileCustomizer(false);
     }
+  }
+
+  getSupporterExpiration(status?: any): Date | null {
+    const rawExpiration =
+      status?.expiresAt ??
+      status?.expires_at ??
+      status?.expirationDate ??
+      status?.expiration_date ??
+      status?.currentPeriodEnd ??
+      status?.current_period_end;
+    if (!rawExpiration) return null;
+
+    const parsedValue = this.parseFirestoreFieldValue(rawExpiration);
+    const numericValue = Number(parsedValue);
+    const date = Number.isFinite(numericValue)
+      ? new Date(numericValue < 10_000_000_000 ? numericValue * 1000 : numericValue)
+      : new Date(String(parsedValue));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  async refreshSupporterNavStatus(fallbackActive: boolean) {
+    if (!this.authToken) return;
+    try {
+      const response = await this.fetchWithAuth(
+        `${this.API_URL}/supporter/status`,
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      const status =
+        data?.supporter && typeof data.supporter === 'object'
+          ? { ...data, ...data.supporter }
+          : data;
+      const isActive =
+        typeof status?.active === 'boolean'
+          ? status.active
+          : typeof data?.supporter === 'boolean'
+            ? data.supporter
+            : fallbackActive;
+      this.updateSupporterNavStatus(isActive, status);
+    } catch (error) {
+      console.warn('[Social] Supporter status refresh failed:', error);
+    }
+  }
+
+  updateSupporterNavStatus(isSupporter: boolean, supporterStatus?: any) {
+    const button = document.querySelector<HTMLButtonElement>(
+      '#social-supporter-nav-button',
+    );
+    if (!button) return;
+
+    this.currentSupporterActive = isSupporter;
+    this.currentSupporterStatus = supporterStatus || null;
+    const normalizedState = String(
+      supporterStatus?.status || supporterStatus?.state || '',
+    ).toLowerCase();
+    const expiration = this.getSupporterExpiration(supporterStatus);
+    const isPending = ['pending', 'processing', 'activating'].includes(
+      normalizedState,
+    );
+    const isExpired = Boolean(
+      normalizedState === 'expired' ||
+        (!isSupporter && expiration && expiration.getTime() <= Date.now()),
+    );
+    const isLifetime = Boolean(
+      supporterStatus?.lifetime === true ||
+        supporterStatus?.isLifetime === true ||
+        normalizedState === 'lifetime',
+    );
+    const isExpiring = Boolean(
+      isSupporter &&
+        expiration &&
+        expiration.getTime() > Date.now() &&
+        expiration.getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000,
+    );
+    const hasExpiration = Boolean(
+      isSupporter && expiration && expiration.getTime() > Date.now(),
+    );
+
+    let translationKey = 'social.supporterNavLabel';
+    let shortTranslationKey = '';
+    let fallback = 'View Supporter benefits';
+    let shortFallback = '';
+    const params: Record<string, string> = {};
+
+    if (isPending) {
+      translationKey = 'social.supporterNavPendingLabel';
+      shortTranslationKey = 'social.supporterPendingShort';
+      fallback = 'Supporter status: activation pending';
+      shortFallback = 'Activation pending';
+    } else if (isExpired) {
+      translationKey = 'social.supporterNavExpiredLabel';
+      shortTranslationKey = 'social.supporterExpiredShort';
+      fallback = 'Supporter status: expired';
+      shortFallback = 'Supporter expired';
+    } else if (isLifetime) {
+      translationKey = 'social.supporterNavLifetimeLabel';
+      shortTranslationKey = 'social.supporterLifetimeShort';
+      fallback = 'Supporter status: lifetime access';
+      shortFallback = 'Supporter lifetime';
+    } else if (hasExpiration && expiration) {
+      const locale = window.i18n?.currentLocale || document.documentElement.lang;
+      params.date = new Intl.DateTimeFormat(locale || undefined, {
+        dateStyle: 'medium',
+      }).format(expiration);
+      translationKey = 'social.supporterNavExpiresLabel';
+      shortTranslationKey = 'social.supporterExpiresShort';
+      fallback = `Supporter status: expires on ${params.date}`;
+      shortFallback = `Expires ${params.date}`;
+    } else if (isSupporter) {
+      translationKey = 'social.supporterNavActiveLabel';
+      shortTranslationKey = 'social.supporterActiveShort';
+      fallback = 'Supporter status: active';
+      shortFallback = 'Supporter active';
+    }
+
+    const label = this.getSocialTranslation(translationKey, fallback, params);
+    const hasVisibleStatus = Boolean(shortTranslationKey);
+    const visualState = isExpiring
+      ? 'is-expiring'
+      : isPending
+        ? 'is-pending'
+        : isExpired
+          ? 'is-expired'
+          : 'is-active';
+
+    button.classList.toggle('is-active', isSupporter);
+    button.classList.toggle('is-expiring', isExpiring);
+    button.classList.toggle('is-pending', isPending);
+    button.classList.toggle('is-expired', isExpired);
+    button.dataset.i18n = translationKey;
+    if (params.date) button.dataset.i18nParamDate = params.date;
+    else delete button.dataset.i18nParamDate;
+    button.setAttribute('aria-label', label);
+    this.currentSupporterPresentation = {
+      hasStatus: hasVisibleStatus,
+      isActive: isSupporter,
+      isPending,
+      visualState,
+      label,
+      shortLabel: hasVisibleStatus
+        ? this.getSocialTranslation(
+            shortTranslationKey,
+            shortFallback,
+            params,
+          )
+        : '',
+    };
   }
 
   static readonly PROFILE_THEME_PRESETS: Record<string, ProfileTheme> = {
@@ -677,14 +825,45 @@ class SocialProfileManager extends SocialFeedManager {
 
     const benefit = (key: string, fallback: string) =>
       this.escapeHtml(this.getSocialTranslation(key, fallback));
+    const presentation = this.currentSupporterPresentation;
+    const hasStatus = Boolean(presentation?.hasStatus);
+    const statusMarkup = hasStatus
+      ? `<div class="social-supporter-modal-status ${presentation.visualState}">
+          <i class="bi bi-heart-fill" aria-hidden="true"></i>
+          <span>${this.escapeHtml(presentation.shortLabel)}</span>
+        </div>`
+      : '';
+    const checkoutButton = {
+      text: this.getSocialTranslation(
+        'social.becomeSupporter',
+        'Become a Supporter',
+      ),
+      type: 'primary',
+      onClick: () => {
+        const delay = document.body.classList.contains('no-animations')
+          ? 0
+          : 320;
+        window.setTimeout(() => this.showSupporterCheckoutModal(), delay);
+      },
+    };
+    const closeButton = {
+      text: this.getSocialTranslation(
+        'social.supporterModalClose',
+        'Close',
+      ),
+      type: 'secondary',
+    };
 
     window.modalManager.showCustomModal({
       id: 'social-supporter-benefits-modal',
       title: this.getSocialTranslation(
-        'social.supporterBenefitsModalTitle',
-        'Become a Supporter',
+        hasStatus
+          ? 'social.supporterStatusModalTitle'
+          : 'social.supporterBenefitsModalTitle',
+        hasStatus ? 'Supporter status' : 'Become a Supporter',
       ),
       body: `<div class="social-supporter-benefits-modal">
+        ${statusMarkup}
         <div class="social-supporter-benefits-intro">
           <span class="social-supporter-benefits-heart" aria-hidden="true">
             <i class="bi bi-heart-fill"></i>
@@ -725,25 +904,10 @@ class SocialProfileManager extends SocialFeedManager {
           </li>
         </ul>
       </div>`,
-      buttons: [
-        {
-          text: this.getSocialTranslation(
-            'social.becomeSupporter',
-            'Become a Supporter',
-          ),
-          type: 'primary',
-          onClick: () => {
-            const delay = document.body.classList.contains('no-animations')
-              ? 0
-              : 320;
-            window.setTimeout(() => this.showSupporterCheckoutModal(), delay);
-          },
-        },
-        {
-          text: this.getSocialTranslation('common.cancel', 'Cancel'),
-          type: 'secondary',
-        },
-      ],
+      buttons:
+        presentation?.isActive || presentation?.isPending
+          ? [closeButton]
+          : [checkoutButton, closeButton],
     });
   }
 
@@ -1547,6 +1711,10 @@ ${this.renderProfileBadgeVisual(meta)}
         const privacySync = document.querySelector<HTMLInputElement>(
           '#social-privacy-sync',
         );
+        const shareInstallsOnProfile =
+          document.querySelector<HTMLInputElement>(
+            '#social-share-installs-on-profile',
+          );
 
         if (usernameEl) usernameEl.textContent = userFields.username || 'User';
         this.applyProfileBadges('#social-profile-badges', userFields.badges);
@@ -1559,6 +1727,9 @@ ${this.renderProfileBadgeVisual(meta)}
           canCustomize,
           profileTheme,
           userFields.badges,
+        );
+        void this.refreshSupporterNavStatus(
+          Boolean(this.currentSupporterActive),
         );
         if (emailEl) emailEl.textContent = this.userData.email || '';
         if (currentEmailEl) {
@@ -1595,6 +1766,13 @@ ${this.renderProfileBadgeVisual(meta)}
         } else {
           if (privacyVisibility) privacyVisibility.value = 'global';
           if (privacySync) privacySync.checked = true;
+        }
+
+        if (shareInstallsOnProfile && window.electronAPI?.store) {
+          const shareInstallsSetting = await window.electronAPI.store.get(
+            'social.shareInstallsOnProfile',
+          );
+          shareInstallsOnProfile.checked = shareInstallsSetting !== false;
         }
 
         await this.loadAutoDownloadSettingsToUI();
@@ -1760,6 +1938,29 @@ ${this.renderProfileBadgeVisual(meta)}
         event.preventDefault();
         await this.addFriendByUsername();
       });
+    }
+
+    const profileSearchForm = document.querySelector<HTMLFormElement>(
+      '#social-profile-search-form',
+    );
+    if (profileSearchForm) {
+      profileSearchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await this.searchProfileByUsername();
+      });
+      profileSearchForm
+        .querySelector<HTMLInputElement>('#social-profile-search-input')
+        ?.addEventListener('input', (event) => {
+          (event.currentTarget as HTMLInputElement).setAttribute(
+            'aria-invalid',
+            'false',
+          );
+          this.profileSearchRequestId =
+            (this.profileSearchRequestId || 0) + 1;
+          this.setProfileSearchLoading(false);
+          this.setProfileSearchFeedback('');
+          this.renderProfileSearchState('empty');
+        });
     }
 
     this.setupProfileMediaButtons();
@@ -2179,7 +2380,7 @@ ${this.renderProfileBadgeVisual(meta)}
       }
 
       if (clickedElement.closest('#social-back-btn')) {
-        this.switchSection('people-downloads');
+        this.switchSection(this.userProfileReturnSection || 'people-downloads');
       }
 
       if (clickedElement.closest('#social-add-friend-btn')) {
@@ -2577,6 +2778,168 @@ ${this.renderProfileBadgeVisual(meta)}
     }
 
     return data.user || null;
+  }
+
+  setProfileSearchFeedback(message: string, isError = false) {
+    const feedback = document.querySelector<HTMLElement>(
+      '#social-profile-search-feedback',
+    );
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.toggle('is-error', isError);
+  }
+
+  setProfileSearchLoading(isLoading: boolean) {
+    const submit = document.querySelector<HTMLButtonElement>(
+      '#social-profile-search-submit',
+    );
+    const submitText = submit?.querySelector<HTMLElement>('span');
+    if (submit) submit.disabled = isLoading;
+    if (submitText) {
+      submitText.textContent = this.getSocialTranslation(
+        isLoading ? 'social.searchingUser' : 'social.searchProfileAction',
+        isLoading ? 'Searching...' : 'Search',
+      );
+    }
+  }
+
+  renderProfileSearchState(state: 'empty' | 'loading' | 'not-found') {
+    const results = document.querySelector<HTMLElement>(
+      '#social-profile-search-results',
+    );
+    if (!results) return;
+
+    const isLoading = state === 'loading';
+    const icon = isLoading
+      ? 'bi-hourglass-split'
+      : state === 'not-found'
+        ? 'bi-person-x'
+        : 'bi-person-bounding-box';
+    const message = isLoading
+      ? this.getSocialTranslation('social.searchingUser', 'Searching...')
+      : state === 'not-found'
+        ? this.getSocialTranslation(
+            'social.profileSearchNoResult',
+            'No profile matches this username.',
+          )
+        : this.getSocialTranslation(
+            'social.profileSearchEmpty',
+            'Enter a username to find a profile.',
+          );
+
+    results.innerHTML = `<div class="${isLoading ? 'social-profile-search-loading' : 'social-profile-search-empty'}">
+      <i class="bi ${icon}" aria-hidden="true"></i>
+      <p>${this.escapeHtml(message)}</p>
+    </div>`;
+  }
+
+  renderProfileSearchResult(user: {
+    id: string;
+    username: string;
+    photoURL?: string | null;
+  }) {
+    const results = document.querySelector<HTMLElement>(
+      '#social-profile-search-results',
+    );
+    if (!results) return;
+
+    const username = user.username || '';
+    const avatar = user.photoURL || 'https://files.catbox.moe/xry0hs.png';
+    const ownProfile = user.id === this.userData?.localId;
+    const secondaryLabel = ownProfile
+      ? this.getSocialTranslation('social.yourProfile', 'Your profile')
+      : this.getSocialTranslation(
+          'social.communityProfile',
+          'Community profile',
+        );
+    const actionLabel = ownProfile
+      ? this.getSocialTranslation('social.openYourProfile', 'Open my profile')
+      : this.getSocialTranslation('social.viewProfile', 'View Profile');
+
+    results.innerHTML = `<button type="button" class="social-profile-search-result">
+      <img class="social-profile-search-avatar" src="${this.escapeHtml(avatar)}" alt="" />
+      <span class="social-profile-search-copy">
+        <span class="social-profile-search-name">${this.escapeHtml(username)}</span>
+        <span class="social-profile-search-hint">${this.escapeHtml(secondaryLabel)}</span>
+      </span>
+      <span class="social-profile-search-open">${this.escapeHtml(actionLabel)} <i class="bi bi-arrow-right" aria-hidden="true"></i></span>
+    </button>`;
+
+    results
+      .querySelector<HTMLButtonElement>('.social-profile-search-result')
+      ?.addEventListener('click', () => {
+        if (ownProfile) {
+          this.switchSection('profile');
+          return;
+        }
+        void this.showUserProfile(username, user.id);
+      });
+  }
+
+  async searchProfileByUsername() {
+    if (!this.authToken || !this.userData) return;
+
+    const input = document.querySelector<HTMLInputElement>(
+      '#social-profile-search-input',
+    );
+    const username = input?.value.trim() || '';
+    if (!username) {
+      input?.setAttribute('aria-invalid', 'true');
+      this.setProfileSearchFeedback(
+        this.getSocialTranslation(
+          'social.enterProfileUsername',
+          'Enter a username to start the search.',
+        ),
+        true,
+      );
+      this.renderProfileSearchState('empty');
+      input?.focus();
+      return;
+    }
+
+    input?.setAttribute('aria-invalid', 'false');
+    const requestId = (this.profileSearchRequestId || 0) + 1;
+    this.profileSearchRequestId = requestId;
+    this.setProfileSearchFeedback('');
+    this.setProfileSearchLoading(true);
+    this.renderProfileSearchState('loading');
+
+    try {
+      const user = await this.findUserByUsername(username);
+      if (requestId !== this.profileSearchRequestId) return;
+      if (!user?.id || !user.username) {
+        this.renderProfileSearchState('not-found');
+        this.setProfileSearchFeedback(
+          this.getSocialTranslation(
+            'social.profileSearchNoResult',
+            'No profile matches this username.',
+          ),
+        );
+        return;
+      }
+      this.renderProfileSearchResult(user);
+      this.setProfileSearchFeedback(
+        this.getSocialTranslation(
+          'social.profileSearchFound',
+          'Profile found. Open it to see public details.',
+        ),
+      );
+    } catch (error) {
+      if (requestId !== this.profileSearchRequestId) return;
+      console.error('[Social] Profile search failed:', error);
+      this.renderProfileSearchState('empty');
+      this.setProfileSearchFeedback(
+        this.getSocialTranslation(
+          'social.profileSearchFailed',
+          'Search is unavailable. Check your connection and try again.',
+        ),
+        true,
+      );
+    } finally {
+      if (requestId === this.profileSearchRequestId) {
+        this.setProfileSearchLoading(false);
+      }
+    }
   }
 
   async getFriendRelationWithUser(targetUserId) {
@@ -3097,6 +3460,22 @@ ${this.renderProfileBadgeVisual(meta)}
   }
 
   async showUserProfile(username: string, userId: string | null = null) {
+    const socialRoot =
+      document.querySelector<HTMLElement>('#tab-social') || document;
+    const activeSection = socialRoot.querySelector<HTMLElement>(
+      '.social-section.active',
+    );
+    const activeSectionName = activeSection?.id.replace(
+      'social-section-',
+      '',
+    );
+    this.userProfileReturnSection = [
+      'people-downloads',
+      'friends',
+      'profile-search',
+    ].includes(activeSectionName || '')
+      ? activeSectionName
+      : 'people-downloads';
     this.viewedUserId = userId;
     this.viewedUsername = username;
 
@@ -3154,6 +3533,7 @@ ${this.renderProfileBadgeVisual(meta)}
     const navItems = document.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
       item.classList.remove('active');
+      item.setAttribute('aria-pressed', 'false');
     });
 
     this.updateAddFriendButton(username, userId);

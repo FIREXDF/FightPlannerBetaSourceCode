@@ -8,6 +8,7 @@ export interface SwitchTransferConfig {
   switchFtpPluginsPath?: string | null;
   switchDriveLetter: string;
   switchTransferMethod: 'ftp' | 'drive' | 'mtp';
+  switchSyncMode?: 'quick' | 'full';
   modsPath: string;
   pluginsPath?: string | null;
   recentDownloads: Array<{

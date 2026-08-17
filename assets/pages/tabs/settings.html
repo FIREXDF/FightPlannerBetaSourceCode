@@ -159,6 +159,26 @@
         </p>
       </div>
 
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.socialFeatures">
+          Social features
+        </label>
+        <div class="settings-input-group">
+          <label class="settings-switch">
+            <input type="checkbox" id="social-features-enabled" />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span
+            style="margin-left: 12px; color: var(--text-secondary)"
+            data-i18n="settings.enableSocialFeatures"
+            >Enable account, friends, profiles and community features</span
+          >
+        </div>
+        <p class="settings-hint" data-i18n="settings.socialFeaturesHint">
+          When disabled, the Social tab opens directly on Discover.
+        </p>
+      </div>
+
       <div class="settings-section" id="hardware-library-mode-section">
         <label class="settings-label" data-i18n="settings.hardwareLibraryMode"
           >Real Hardware Library</label
@@ -786,7 +806,9 @@
           >
           <div class="custom-select" id="update-channel-select" style="flex: 1">
             <div class="custom-select-trigger">
-              <span class="selected-value" data-i18n="settings.channelPublicBeta"
+              <span
+                class="selected-value"
+                data-i18n="settings.channelPublicBeta"
                 >Public Beta</span
               >
               <i class="bi bi-chevron-down"></i>
@@ -981,7 +1003,11 @@
         >
         <div class="settings-input-group">
           <label class="settings-switch">
-            <input type="checkbox" id="library-path-validation-enabled" checked />
+            <input
+              type="checkbox"
+              id="library-path-validation-enabled"
+              checked
+            />
             <span class="settings-switch-slider"></span>
           </label>
           <span
@@ -1036,6 +1062,48 @@
         >
           When enabled, all active mods will be automatically disabled when a
           mod download starts
+        </p>
+        <div class="settings-input-group" style="margin-top: 12px">
+          <label class="settings-switch">
+            <input type="checkbox" id="auto-use-gamebanana-mod-name-enabled" />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span
+            style="margin-left: 12px; color: var(--text-secondary)"
+            data-i18n="settings.autoUseGameBananaModName"
+            >Use GameBanana names automatically</span
+          >
+        </div>
+        <p
+          class="settings-hint"
+          data-i18n="settings.autoUseGameBananaModNameHint"
+        >
+          Automatically rename an unnamed downloaded mod using its GameBanana
+          name.
+        </p>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.slotChanges"
+          >Slot Changes</label
+        >
+        <div class="settings-input-group">
+          <label class="settings-switch">
+            <input
+              type="checkbox"
+              id="review-slot-changes-enabled"
+              checked
+            />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span
+            style="margin-left: 12px; color: var(--text-secondary)"
+            data-i18n="settings.reviewSlotChanges"
+            >Review slot changes before applying</span
+          >
+        </div>
+        <p class="settings-hint" data-i18n="settings.reviewSlotChangesHint">
+          Show a summary of moved and deleted slots before changing mod files.
         </p>
       </div>
 
@@ -1415,6 +1483,69 @@
           Choose how to send mods to Switch: via FTP or directly to SD card
         </p>
 
+        <div
+          class="settings-input-group"
+          style="margin-top: 16px; margin-bottom: 12px"
+        >
+          <label
+            class="settings-label"
+            style="margin-right: 12px; min-width: 150px"
+            data-i18n="settings.switchSyncMode"
+            >Sync Mode:</label
+          >
+          <div
+            class="custom-select"
+            id="switch-sync-mode-select"
+            style="flex: 1"
+          >
+            <div class="custom-select-trigger">
+              <span class="switch-sync-mode-trigger-copy">
+                <span
+                  class="selected-value"
+                  data-i18n="settings.switchSyncModeQuick"
+                  >Quick Sync</span
+                >
+                <span
+                  class="selected-description"
+                  data-i18n="settings.switchSyncModeQuickDescription"
+                  >Newly downloaded mods only</span
+                >
+              </span>
+              <i class="bi bi-chevron-down"></i>
+            </div>
+            <div class="custom-select-dropdown">
+              <div class="custom-select-option" data-value="quick">
+                <span class="switch-sync-mode-option-copy">
+                  <strong
+                    data-sync-mode-label
+                    data-i18n="settings.switchSyncModeQuick"
+                    >Quick Sync</strong
+                  >
+                  <small
+                    data-sync-mode-description
+                    data-i18n="settings.switchSyncModeQuickDescription"
+                    >Newly downloaded mods only</small
+                  >
+                </span>
+              </div>
+              <div class="custom-select-option" data-value="full">
+                <span class="switch-sync-mode-option-copy">
+                  <strong
+                    data-sync-mode-label
+                    data-i18n="settings.switchSyncModeFull"
+                    >Full Sync</strong
+                  >
+                  <small
+                    data-sync-mode-description
+                    data-i18n="settings.switchSyncModeFullDescription"
+                    >Verifies all mods and plugins (slower)</small
+                  >
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- FTP Settings -->
         <div id="switch-ftp-settings" style="margin-top: 12px">
           <div class="settings-input-group">
@@ -1465,7 +1596,10 @@
         </div>
 
         <!-- Switch destination paths (shared by FTP, MTP, and local drive) -->
-        <div id="switch-destination-settings" style="margin-top: 12px; display: none">
+        <div
+          id="switch-destination-settings"
+          style="margin-top: 12px; display: none"
+        >
           <div class="settings-input-group" style="margin-top: 12px">
             <input
               type="text"
@@ -1476,7 +1610,10 @@
               placeholder="/ultimate/mods"
             />
           </div>
-          <p class="settings-hint" data-i18n="settings.switchModsDestinationPath">
+          <p
+            class="settings-hint"
+            data-i18n="settings.switchModsDestinationPath"
+          >
             Mods destination folder on the Switch SD card
           </p>
 
@@ -1490,7 +1627,10 @@
               placeholder="/atmosphere/contents/01006A800016E000/romfs/skyline/plugins"
             />
           </div>
-          <p class="settings-hint" data-i18n="settings.switchPluginsDestinationPath">
+          <p
+            class="settings-hint"
+            data-i18n="settings.switchPluginsDestinationPath"
+          >
             Plugins destination folder on the Switch SD card
           </p>
         </div>
@@ -1680,7 +1820,8 @@
             <span
               class="settings-btn-action-desc"
               data-i18n="settings.exportConfigBackupDesc"
-              >Save settings, stage layout, Character CSS layout, presets, and custom CSS/JS files</span
+              >Save settings, stage layout, Character CSS layout, presets, and
+              custom CSS/JS files</span
             >
           </div>
           <i class="bi bi-arrow-right"></i>
@@ -1699,7 +1840,8 @@
             <span
               class="settings-btn-action-desc"
               data-i18n="settings.restoreConfigBackupDesc"
-              >Replace the current configuration from a FightPlanner backup file</span
+              >Replace the current configuration from a FightPlanner backup
+              file</span
             >
           </div>
           <i class="bi bi-arrow-right"></i>
@@ -1935,17 +2077,29 @@
       </h2>
 
       <div class="settings-section">
-        <label class="settings-label" data-i18n="settings.discoverDependencyCheck">
+        <label
+          class="settings-label"
+          data-i18n="settings.discoverDependencyCheck"
+        >
           Discover Dependency Check
         </label>
         <div class="settings-input-group">
           <label class="settings-switch">
-            <input type="checkbox" id="check-dependencies-on-discover-download-enabled" checked />
+            <input
+              type="checkbox"
+              id="check-dependencies-on-discover-download-enabled"
+              checked
+            />
             <span class="settings-switch-slider"></span>
           </label>
-          <span data-i18n="settings.enableDiscoverDependencyCheck">Check dependencies before downloading</span>
+          <span data-i18n="settings.enableDiscoverDependencyCheck"
+            >Check dependencies before downloading</span
+          >
         </div>
-        <p class="settings-hint" data-i18n="settings.discoverDependencyCheckHint">
+        <p
+          class="settings-hint"
+          data-i18n="settings.discoverDependencyCheckHint"
+        >
           Warn before installing a mod with missing or disabled requirements.
         </p>
       </div>
@@ -1959,7 +2113,9 @@
             <input type="checkbox" id="hide-nsfw-discover-mods-enabled" />
             <span class="settings-switch-slider"></span>
           </label>
-          <span data-i18n="settings.hideNsfwDiscoverMods">Hide NSFW mods from Discover</span>
+          <span data-i18n="settings.hideNsfwDiscoverMods"
+            >Hide NSFW mods from Discover</span
+          >
         </div>
         <p class="settings-hint" data-i18n="settings.hideNsfwDiscoverModsHint">
           Hide NSFW mods from Featured, search results, and Discover pages.
@@ -1969,9 +2125,14 @@
             <input type="checkbox" id="show-nsfw-discover-previews-enabled" />
             <span class="settings-switch-slider"></span>
           </label>
-          <span data-i18n="settings.showNsfwDiscoverPreviews">Show NSFW previews without blur</span>
+          <span data-i18n="settings.showNsfwDiscoverPreviews"
+            >Show NSFW previews without blur</span
+          >
         </div>
-        <p class="settings-hint" data-i18n="settings.showNsfwDiscoverPreviewsHint">
+        <p
+          class="settings-hint"
+          data-i18n="settings.showNsfwDiscoverPreviewsHint"
+        >
           Show NSFW previews directly when NSFW mods are visible.
         </p>
       </div>
@@ -2305,7 +2466,8 @@
           <i class="bi bi-arrow-right"></i>
         </button>
         <p class="settings-hint" data-i18n="settings.tutorialHint">
-          Opens the setup tutorial window. The in-app guide appears after it closes.
+          Opens the setup tutorial window. The in-app guide appears after it
+          closes.
         </p>
       </div>
 

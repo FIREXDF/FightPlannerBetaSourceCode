@@ -136,6 +136,12 @@ const SwitchTransferHandlers = {
     transferredCount: number;
   }> => {
     const transferMethod = config.switchTransferMethod || 'ftp';
+    const quickSync = config.switchSyncMode === 'quick';
+    const selectedModPaths = quickSync
+      ? (config.recentDownloads || [])
+          .map((download) => download.folderPath)
+          .filter((folderPath): folderPath is string => !!folderPath)
+      : undefined;
     const sendProgress = (payload: SwitchTransferProgressPayload) => {
       common.event.sender.send('switch-transfer-progress', {
         transferMethod,
@@ -168,8 +174,10 @@ const SwitchTransferHandlers = {
         '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins',
       );
       const [modItems, pluginItems] = await Promise.all([
-        collectModDirectories(config.modsPath),
-        collectPluginFiles(config.pluginsPath),
+        collectModDirectories(config.modsPath, selectedModPaths),
+        quickSync
+          ? Promise.resolve([])
+          : collectPluginFiles(config.pluginsPath),
       ]);
       const transferItems = [
         ...modItems.map((item) => ({
@@ -258,6 +266,7 @@ const SwitchTransferHandlers = {
             });
           };
           const uploadOptions = {
+            skipExistingCheck: quickSync,
             onFileStarted: (file) => {
               emitProgress(file.currentFileName);
             },
@@ -345,6 +354,7 @@ const MtpHandlers = {
     files: Omit<MtpTransferFile, 'localPath'>[];
     totalFiles: number;
     transferId: string;
+    skipExistingCheck: boolean;
   }> => {
     const transferId = randomUUID();
     const sessionFiles = new Map<string, { localPath: string; size: number }>();
@@ -358,9 +368,17 @@ const MtpHandlers = {
         config.switchFtpPluginsPath,
         '/atmosphere/contents/01006A800016E000/romfs/skyline/plugins',
       );
+      const quickSync = config.switchSyncMode === 'quick';
+      const selectedModPaths = quickSync
+        ? (config.recentDownloads || [])
+            .map((download) => download.folderPath)
+            .filter((folderPath): folderPath is string => !!folderPath)
+        : undefined;
       const [modItems, pluginItems] = await Promise.all([
-        collectModDirectories(config.modsPath),
-        collectPluginFiles(config.pluginsPath),
+        collectModDirectories(config.modsPath, selectedModPaths),
+        quickSync
+          ? Promise.resolve([])
+          : collectPluginFiles(config.pluginsPath),
       ]);
       const transferItems = [
         ...modItems.map((item) => ({
@@ -388,6 +406,7 @@ const MtpHandlers = {
         files,
         totalFiles: files.length,
         transferId,
+        skipExistingCheck: quickSync,
       };
     } catch (error) {
       releaseMtpTransferSession(transferId);

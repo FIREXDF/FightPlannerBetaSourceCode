@@ -29,6 +29,12 @@ export interface CustomModalOptions {
   clickOverlayToClose?: boolean;
 }
 
+interface TextFileNoticeEntry {
+  modName: string;
+  modPath: string;
+  relativePath: string;
+}
+
 class ModalManager {
   currentMod: any | null;
   renameCallback: ((newName: string) => void) | null;
@@ -174,6 +180,98 @@ class ModalManager {
   showAlert(_type, _title?, _message?, _params?) {}
   closeAlertModal() {}
 
+  showTextFileNotice(textFiles: TextFileNoticeEntry[]) {
+    if (!textFiles.length) return;
+
+    const t = (key: string, params: Record<string, string> = {}) =>
+      window.i18n?.t?.(key, params) || key;
+    const body = document.createElement('div');
+    const message = document.createElement('p');
+    message.textContent = t('modals.textFileNotice.message', {
+      count: String(textFiles.length),
+    });
+    body.appendChild(message);
+
+    const fileList = document.createElement('ul');
+    fileList.className = 'text-file-notice-list';
+    textFiles.forEach((textFile) => {
+      const item = document.createElement('li');
+      const openButton = document.createElement('button');
+      openButton.type = 'button';
+      openButton.className = 'text-file-notice-file';
+      openButton.textContent = `${textFile.modName}/${textFile.relativePath}`;
+      openButton.title = t('modals.textFileNotice.openFile');
+      openButton.addEventListener('click', async () => {
+        openButton.disabled = true;
+        const originalText = openButton.textContent;
+        openButton.textContent = t('modals.textFileNotice.loading');
+
+        try {
+          const result = await window.electronAPI.readModFilePreview(
+            textFile.modPath,
+            textFile.relativePath,
+          );
+          const readerBody = document.createElement('div');
+
+          if (!result.success || !result.previewable) {
+            const error = document.createElement('p');
+            error.textContent = t('modals.textFileNotice.readError');
+            readerBody.appendChild(error);
+          } else {
+            const content = document.createElement('pre');
+            content.className = 'text-file-notice-content';
+            content.textContent = result.content || '';
+            readerBody.appendChild(content);
+
+            if (result.truncated) {
+              const truncated = document.createElement('p');
+              truncated.className = 'modal-hint';
+              truncated.textContent = t('modals.textFileNotice.truncated');
+              readerBody.appendChild(truncated);
+            }
+          }
+
+          this.showCustomModal({
+            title: `${textFile.modName} — ${textFile.relativePath}`,
+            body: readerBody,
+            size: 'large',
+            buttons: [
+              {
+                text: t('modals.textFileNotice.back'),
+                type: 'primary',
+              },
+            ],
+          });
+        } catch (error) {
+          const readerBody = document.createElement('p');
+          readerBody.textContent = t('modals.textFileNotice.readError');
+          this.showCustomModal({
+            title: textFile.relativePath,
+            body: readerBody,
+          });
+        } finally {
+          openButton.disabled = false;
+          openButton.textContent = originalText;
+        }
+      });
+      item.appendChild(openButton);
+      fileList.appendChild(item);
+    });
+    body.appendChild(fileList);
+
+    this.showCustomModal({
+      title: t('modals.textFileNotice.title'),
+      body,
+      size: 'large',
+      buttons: [
+        {
+          text: t('common.close'),
+          type: 'primary',
+        },
+      ],
+    });
+  }
+
   openDeletePluginModal(_plugin, _callback) {}
   closeDeletePluginModal() {}
   confirmDeletePlugin() {}
@@ -181,6 +279,7 @@ class ModalManager {
   openChangeSlotModal(_mod, _modData, _callback) {}
   closeChangeSlotModal() {}
   confirmChangeSlots() {}
+  isApplyingSlotChanges = false;
 
   openEditInfoModal(_modPath, _currentInfo, _callback) {}
   closeEditInfoModal() {}
@@ -217,10 +316,20 @@ class ModalManager {
       existingModal.remove();
     }
 
+    const hasVisibleModalBehind = Array.from(
+      document.querySelectorAll<HTMLElement>('.modal'),
+    ).some(
+      (candidate) =>
+        (candidate.style.display === 'block' ||
+          candidate.style.display === 'flex') &&
+        !candidate.classList.contains('closing'),
+    );
+
     const modal = document.createElement('div');
     const sizeClass =
       options.size && options.size !== 'normal' ? `modal-${options.size}` : '';
     modal.className = `modal ${sizeClass}`.trim();
+    modal.classList.toggle('modal-stacked', hasVisibleModalBehind);
     modal.id = modalId;
     if (options.clickOverlayToClose === false) {
       modal.dataset.blocking = 'true';
@@ -405,6 +514,17 @@ if (typeof window !== 'undefined') {
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        const blockingModal = document.querySelector<HTMLElement>(
+          '.modal[data-blocking="true"]',
+        );
+        if (
+          blockingModal &&
+          blockingModal.style.display !== 'none' &&
+          !blockingModal.classList.contains('closing')
+        ) {
+          return;
+        }
+
         modalManager.closeRenameModal();
         modalManager.closeUninstallModal();
         modalManager.closeAlertModal();

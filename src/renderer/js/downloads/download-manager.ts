@@ -41,6 +41,8 @@ class DownloadManager {
   clearCompletedBtn: HTMLButtonElement | null;
   sendToSwitchBtn: HTMLButtonElement | null;
   initialized: boolean;
+  pendingSwitchSyncPaths: Set<string>;
+  pendingSwitchSyncReady: Promise<void>;
 
   switchTransfer: SwitchTransferState | null;
 
@@ -54,8 +56,73 @@ class DownloadManager {
     this.clearCompletedBtn = null;
     this.sendToSwitchBtn = null;
     this.initialized = false;
+    this.pendingSwitchSyncPaths = new Set();
+    this.pendingSwitchSyncReady = this.loadPendingSwitchSyncPaths();
     this.switchTransfer = null;
     this.setupSwitchTransferProgressListener();
+  }
+
+  async loadPendingSwitchSyncPaths() {
+    try {
+      const storedPaths = await window.electronAPI?.store?.get(
+        'pendingSwitchSyncPaths',
+      );
+      if (Array.isArray(storedPaths)) {
+        const validStoredPaths = storedPaths.filter(
+          (folderPath): folderPath is string =>
+            typeof folderPath === 'string' && folderPath.length > 0,
+        );
+        this.pendingSwitchSyncPaths = new Set([
+          ...validStoredPaths,
+          ...this.pendingSwitchSyncPaths,
+        ]);
+      }
+    } catch (error) {
+      console.warn('Unable to load pending Switch sync paths:', error);
+    }
+  }
+
+  async persistPendingSwitchSyncPaths() {
+    try {
+      await window.electronAPI?.store?.set(
+        'pendingSwitchSyncPaths',
+        Array.from(this.pendingSwitchSyncPaths),
+      );
+    } catch (error) {
+      console.warn('Unable to save pending Switch sync paths:', error);
+    }
+  }
+
+  async queuePendingSwitchSyncPath(folderPath: string) {
+    await this.pendingSwitchSyncReady;
+    this.pendingSwitchSyncPaths.add(folderPath);
+    await this.persistPendingSwitchSyncPaths();
+  }
+
+  async getPendingSwitchDownloads() {
+    await this.pendingSwitchSyncReady;
+    return Array.from(this.pendingSwitchSyncPaths).map((folderPath, index) => ({
+      id: `pending-switch-sync-${index}`,
+      modName: folderPath.split(/[\\/]/).filter(Boolean).pop() || folderPath,
+      folderPath,
+    }));
+  }
+
+  async completePendingSwitchSync(
+    syncMode: 'quick' | 'full',
+    sentDownloads: Array<{ folderPath: string | null }>,
+  ) {
+    await this.pendingSwitchSyncReady;
+    if (syncMode === 'full') {
+      this.pendingSwitchSyncPaths.clear();
+    } else {
+      sentDownloads.forEach((download) => {
+        if (download.folderPath) {
+          this.pendingSwitchSyncPaths.delete(download.folderPath);
+        }
+      });
+    }
+    await this.persistPendingSwitchSyncPaths();
   }
 
   setupSwitchTransferProgressListener() {
@@ -160,7 +227,12 @@ class DownloadManager {
   /**
    * Start a new download
    */
-  startDownload(url: string, forcedId: string, statusText?: string, subItems?: string[]) {
+  startDownload(
+    url: string,
+    forcedId: string,
+    statusText?: string,
+    subItems?: string[],
+  ) {
     const downloadId = forcedId || Date.now().toString();
     const existingDownload = this.activeDownloads.get(downloadId);
 
@@ -175,7 +247,11 @@ class DownloadManager {
       if (element) {
         element.classList.remove('download-failed');
         this.updateActiveDownloadActions(element, existingDownload);
-        this.updateStatus(downloadId, existingDownload.statusText, existingDownload.subItems);
+        this.updateStatus(
+          downloadId,
+          existingDownload.statusText,
+          existingDownload.subItems,
+        );
       } else if (this.initialized) {
         this.renderActiveDownload(existingDownload);
       }
@@ -248,7 +324,9 @@ class DownloadManager {
     download.progress = progress;
     download.receivedBytes = receivedBytes;
     download.totalBytes = totalBytes;
-    const isExtractProgress = download.statusText?.toLowerCase().includes('extract');
+    const isExtractProgress = download.statusText
+      ?.toLowerCase()
+      .includes('extract');
     if (isExtractProgress) {
       console.log('[extract-progress][download-manager] updateProgress', {
         downloadId,
@@ -282,13 +360,18 @@ class DownloadManager {
       }
 
       if (progressBar) {
-        const isExtracting = download.statusText?.toLowerCase().includes('extract');
+        const isExtracting = download.statusText
+          ?.toLowerCase()
+          .includes('extract');
         if (isExtracting && progress <= 0) {
           progressBar.classList.add('download-progress-indeterminate');
           progressBar.style.width = '';
-          console.log('[extract-progress][download-manager] using indeterminate bar', {
-            downloadId,
-          });
+          console.log(
+            '[extract-progress][download-manager] using indeterminate bar',
+            {
+              downloadId,
+            },
+          );
         } else {
           progressBar.classList.remove('download-progress-indeterminate');
           progressBar.style.width = `${progress}%`;
@@ -305,7 +388,8 @@ class DownloadManager {
         if (download.statusText) {
           const lowerStatus = download.statusText.toLowerCase();
           if (lowerStatus.includes('extract')) {
-            progressText.textContent = progress > 0 ? `${Math.round(progress)}%` : 'Extracting...';
+            progressText.textContent =
+              progress > 0 ? `${Math.round(progress)}%` : 'Extracting...';
             return;
           } else if (lowerStatus.includes('verif')) {
             progressText.textContent = 'Verifying...';
@@ -339,19 +423,26 @@ class DownloadManager {
 
     if (element) {
       // Update status text
-      const statusTextEl = element.querySelector<HTMLElement>('.download-status-text');
+      const statusTextEl = element.querySelector<HTMLElement>(
+        '.download-status-text',
+      );
       if (statusTextEl && download.statusText) {
         statusTextEl.textContent = download.statusText;
       }
 
       // Update subitems
-      const infoContainer = element.querySelector<HTMLElement>('.download-info');
-      let subItemsContainer = element.querySelector<HTMLElement>('.download-subitems');
+      const infoContainer =
+        element.querySelector<HTMLElement>('.download-info');
+      let subItemsContainer =
+        element.querySelector<HTMLElement>('.download-subitems');
 
       if (download.subItems && download.subItems.length > 0) {
-        const subItemsHtml = download.subItems.map(item =>
-          `<span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: var(--text-light); text-transform: uppercase;">${item}</span>`
-        ).join('');
+        const subItemsHtml = download.subItems
+          .map(
+            (item) =>
+              `<span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: var(--text-light); text-transform: uppercase;">${item}</span>`,
+          )
+          .join('');
 
         if (subItemsContainer) {
           subItemsContainer.innerHTML = subItemsHtml;
@@ -359,11 +450,14 @@ class DownloadManager {
           // Find the URL element to insert after
           const urlEl = infoContainer.querySelector('.download-url');
           if (urlEl) {
-            urlEl.insertAdjacentHTML('afterend', `
+            urlEl.insertAdjacentHTML(
+              'afterend',
+              `
               <div class="download-subitems" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;">
                  ${subItemsHtml}
               </div>
-            `);
+            `,
+            );
           }
         }
       } else if (subItemsContainer) {
@@ -413,9 +507,11 @@ class DownloadManager {
         progressBar.style.width = '';
       }
       if (statusText)
-        statusText.innerHTML = '<i class="bi bi-file-zip"></i> Extracting mod...';
+        statusText.innerHTML =
+          '<i class="bi bi-file-zip"></i> Extracting mod...';
       if (progressText) progressText.textContent = 'Extracting...';
       if (speedText) speedText.textContent = '';
+      this.updateActiveDownloadActions(element, download);
     }
 
     if (window.statusBarManager) {
@@ -454,6 +550,10 @@ class DownloadManager {
       download.modName = mod.modName;
       download.folderPath = mod.modPath;
       download.endTime = Date.now();
+
+      if (mod.modPath) {
+        void this.queuePendingSwitchSyncPath(mod.modPath);
+      }
 
       this.completedDownloads.unshift(download);
 
@@ -572,7 +672,10 @@ class DownloadManager {
     if (window.electronAPI?.resumeDownload) {
       const result = await window.electronAPI.resumeDownload(downloadId);
       if (!result?.success) {
-        this.failDownload(downloadId, result?.error || 'Unable to resume download');
+        this.failDownload(
+          downloadId,
+          result?.error || 'Unable to resume download',
+        );
         return;
       }
     }
@@ -599,23 +702,55 @@ class DownloadManager {
     }
   }
 
+  async requestPauseDownload(downloadId: string) {
+    const download = this.activeDownloads.get(downloadId);
+    if (!download || download.status !== 'downloading') return;
+
+    const result = await window.electronAPI?.pauseDownload?.(downloadId);
+    if (!result?.success) {
+      window.toastManager?.error(
+        result?.error || 'Unable to pause download',
+      );
+    }
+  }
+
   updateActiveDownloadActions(element: HTMLElement, download: Download) {
     const actions = element.querySelector<HTMLElement>('.download-actions');
     if (!actions) return;
 
+    const t = (key: string, fallback: string) => {
+      const translated = window.i18n?.t?.(key);
+      return translated && translated !== key ? translated : fallback;
+    };
+
     if (download.status === 'paused') {
       actions.innerHTML = `
-        <button class="download-action-btn" data-action="resume" title="Resume"><i class="bi bi-play-circle"></i></button>
+        <button class="download-action-btn" data-action="resume" title="${t('downloads.resume', 'Resume')}" aria-label="${t('downloads.resume', 'Resume')}"><i class="bi bi-play-circle"></i></button>
+        <button class="download-action-btn" data-action="cancel" title="${t('downloads.cancel', 'Cancel')}" aria-label="${t('downloads.cancel', 'Cancel')}"><i class="bi bi-x-circle"></i></button>
       `;
       actions
         .querySelector<HTMLElement>('[data-action="resume"]')
         ?.addEventListener('click', () => this.resumeDownload(download.id));
+      actions
+        .querySelector<HTMLElement>('[data-action="cancel"]')
+        ?.addEventListener('click', () => this.cancelDownload(download.id));
       return;
     }
 
+    const pauseButton =
+      download.status === 'downloading'
+        ? `<button class="download-action-btn" data-action="pause" title="${t('downloads.pause', 'Pause')}" aria-label="${t('downloads.pause', 'Pause')}"><i class="bi bi-pause-circle"></i></button>`
+        : '';
+
     actions.innerHTML = `
-      <button class="download-action-btn" data-action="cancel" title="Cancel"><i class="bi bi-x-circle"></i></button>
+      ${pauseButton}
+      <button class="download-action-btn" data-action="cancel" title="${t('downloads.cancel', 'Cancel')}" aria-label="${t('downloads.cancel', 'Cancel')}"><i class="bi bi-x-circle"></i></button>
     `;
+    actions
+      .querySelector<HTMLElement>('[data-action="pause"]')
+      ?.addEventListener('click', () =>
+        this.requestPauseDownload(download.id),
+      );
     actions
       .querySelector<HTMLElement>('[data-action="cancel"]')
       ?.addEventListener('click', () => this.cancelDownload(download.id));
@@ -631,11 +766,12 @@ class DownloadManager {
     element.className = 'download-item download-active';
     element.setAttribute('data-download-id', download.id);
 
-    const subItemsHtml = download.subItems && download.subItems.length > 0
-      ? `<div class="download-subitems" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;">
-             ${download.subItems.map(item => `<span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: var(--text-light); text-transform: uppercase;">${item}</span>`).join('')}
+    const subItemsHtml =
+      download.subItems && download.subItems.length > 0
+        ? `<div class="download-subitems" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;">
+             ${download.subItems.map((item) => `<span style="background: rgba(255, 255, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 10px; color: var(--text-light); text-transform: uppercase;">${item}</span>`).join('')}
            </div>`
-      : '';
+        : '';
 
     element.innerHTML = `
 <div class="download-icon">
@@ -739,7 +875,10 @@ ${subItemsHtml}
     const normalizedName = modName.toLowerCase().replace(/^\[.*?\]\s*/, '');
     const mod = window.modManager.mods.find((m) => {
       const mName = m.name.toLowerCase().replace(/^\[.*?\]\s*/, '');
-      return mName === normalizedName || m.name.toLowerCase().includes(normalizedName);
+      return (
+        mName === normalizedName ||
+        m.name.toLowerCase().includes(normalizedName)
+      );
     });
 
     if (!mod) {
@@ -758,7 +897,9 @@ ${subItemsHtml}
     setTimeout(() => {
       window.modManager.selectMod(mod.id);
 
-      const modElement = document.querySelector<HTMLElement>(`[data-mod-id="${mod.id}"]`);
+      const modElement = document.querySelector<HTMLElement>(
+        `[data-mod-id="${mod.id}"]`,
+      );
       if (modElement) {
         modElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
@@ -766,7 +907,9 @@ ${subItemsHtml}
   }
 
   navigateToSetting(settingsTab: string, targetSelector: string) {
-    const settingsBtn = document.querySelector<HTMLElement>('[data-tab="settings"]');
+    const settingsBtn = document.querySelector<HTMLElement>(
+      '[data-tab="settings"]',
+    );
     if (settingsBtn) settingsBtn.click();
 
     setTimeout(() => {
@@ -778,13 +921,15 @@ ${subItemsHtml}
         const target = document.querySelector<HTMLElement>(targetSelector);
         if (!target) return;
 
-        const section = target.closest<HTMLElement>('.settings-section') || target;
+        const section =
+          target.closest<HTMLElement>('.settings-section') || target;
 
         section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         const original = section.style.boxShadow;
         section.style.transition = 'box-shadow 0.4s ease';
-        section.style.boxShadow = '0 0 0 2px rgba(var(--accent-rgb), 0.6), 0 0 20px rgba(var(--accent-rgb), 0.3)';
+        section.style.boxShadow =
+          '0 0 0 2px rgba(var(--accent-rgb), 0.6), 0 0 20px rgba(var(--accent-rgb), 0.3)';
         section.style.borderRadius = '12px';
 
         setTimeout(() => {
@@ -947,17 +1092,30 @@ ${subItemsHtml}
   async sendToSwitch() {
     if (!window.settingsManager || !window.settingsManager.hasSwitchConfig()) {
       if (window.toastManager) {
-        window.toastManager.error('toasts.switchSettingsNotConfigured', 5000, {}, {
-          actionButton: {
-            text: window.i18n?.t?.('toasts.settings') || 'Settings',
-            onClick: () => this.navigateToSetting('advanced', '#switch-transfer-method-select'),
+        window.toastManager.error(
+          'toasts.switchSettingsNotConfigured',
+          5000,
+          {},
+          {
+            actionButton: {
+              text: window.i18n?.t?.('toasts.settings') || 'Settings',
+              onClick: () =>
+                this.navigateToSetting(
+                  'advanced',
+                  '#switch-transfer-method-select',
+                ),
+            },
           },
-        });
+        );
       }
       return;
     }
 
     const transferMethod = window.settingsManager.getSwitchTransferMethod();
+    const syncMode: 'quick' | 'full' =
+      window.settingsManager.getSwitchSyncMode?.() === 'full'
+        ? 'full'
+        : 'quick';
     if (
       window.settingsManager.getAppRunMode?.() === 'hardware' &&
       window.settingsManager.getHardwareLibraryMode?.() === 'direct'
@@ -968,18 +1126,27 @@ ${subItemsHtml}
 
     if (transferMethod === 'none') {
       if (window.toastManager) {
-        window.toastManager.error('toasts.switchSettingsNotConfigured', 5000, {}, {
-          actionButton: {
-            text: window.i18n?.t?.('toasts.settings') || 'Settings',
-            onClick: () => this.navigateToSetting('advanced', '#switch-transfer-method-select'),
+        window.toastManager.error(
+          'toasts.switchSettingsNotConfigured',
+          5000,
+          {},
+          {
+            actionButton: {
+              text: window.i18n?.t?.('toasts.settings') || 'Settings',
+              onClick: () =>
+                this.navigateToSetting(
+                  'advanced',
+                  '#switch-transfer-method-select',
+                ),
+            },
           },
-        });
+        );
       }
       return;
     }
 
     if (transferMethod === 'mtp') {
-      await this.sendToSwitchMtp();
+      await this.sendToSwitchMtp(syncMode);
       return;
     }
 
@@ -998,18 +1165,32 @@ ${subItemsHtml}
 
     if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
       if (window.toastManager) {
-        window.toastManager.error('toasts.modsFolderPathNotSet', 5000, {}, {
-          actionButton: {
-            text: window.i18n?.t?.('toasts.settings') || 'Settings',
-            onClick: () => this.navigateToSetting('paths', '#mods-folder-path'),
+        window.toastManager.error(
+          'toasts.modsFolderPathNotSet',
+          5000,
+          {},
+          {
+            actionButton: {
+              text: window.i18n?.t?.('toasts.settings') || 'Settings',
+              onClick: () =>
+                this.navigateToSetting('paths', '#mods-folder-path'),
+            },
           },
-        });
+        );
       }
       return;
     }
 
     const modsPath = window.settingsManager.getModsPath();
     const pluginsPath = window.settingsManager.getPluginsPath?.() || null;
+
+    const recentDownloads =
+      syncMode === 'quick' ? await this.getPendingSwitchDownloads() : [];
+
+    if (syncMode === 'quick' && recentDownloads.length === 0) {
+      window.toastManager?.info('toasts.noRecentDownloads');
+      return;
+    }
 
     // Call the Electron API to send mods to Switch
     if (!window.electronAPI || !window.electronAPI.sendModsToSwitch) {
@@ -1067,9 +1248,10 @@ ${subItemsHtml}
         switchFtpModsPath,
         switchFtpPluginsPath,
         switchDriveLetter,
+        switchSyncMode: syncMode,
         modsPath,
         pluginsPath,
-        recentDownloads: [],
+        recentDownloads,
       });
 
       if (this.sendToSwitchBtn) {
@@ -1085,6 +1267,7 @@ ${subItemsHtml}
       this.switchTransfer = null;
 
       if (result.success) {
+        await this.completePendingSwitchSync(syncMode, recentDownloads);
         window.appSoundManager?.stop('loading');
         window.appSoundManager?.play('complete');
         window.statusBarManager?.completeSwitchTransfer?.(
@@ -1143,15 +1326,21 @@ ${subItemsHtml}
     }
   }
 
-  async sendToSwitchMtp() {
+  async sendToSwitchMtp(syncMode: 'quick' | 'full') {
     if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
       if (window.toastManager) {
-        window.toastManager.error('toasts.modsFolderPathNotSet', 5000, {}, {
-          actionButton: {
-            text: window.i18n?.t?.('toasts.settings') || 'Settings',
-            onClick: () => this.navigateToSetting('paths', '#mods-folder-path'),
+        window.toastManager.error(
+          'toasts.modsFolderPathNotSet',
+          5000,
+          {},
+          {
+            actionButton: {
+              text: window.i18n?.t?.('toasts.settings') || 'Settings',
+              onClick: () =>
+                this.navigateToSetting('paths', '#mods-folder-path'),
+            },
           },
-        });
+        );
       }
       return;
     }
@@ -1167,6 +1356,13 @@ ${subItemsHtml}
 
     const modsPath = window.settingsManager.getModsPath();
     const pluginsPath = window.settingsManager.getPluginsPath?.() || null;
+    const recentDownloads =
+      syncMode === 'quick' ? await this.getPendingSwitchDownloads() : [];
+
+    if (syncMode === 'quick' && recentDownloads.length === 0) {
+      window.toastManager?.info('toasts.noRecentDownloads');
+      return;
+    }
     const switchFtpModsPath =
       window.settingsManager.getSwitchFtpModsPath?.() ||
       window.settingsManager.getSwitchFtpPath() ||
@@ -1215,9 +1411,10 @@ ${subItemsHtml}
         switchFtpModsPath,
         switchFtpPluginsPath,
         switchDriveLetter: '',
+        switchSyncMode: syncMode,
         modsPath,
         pluginsPath,
-        recentDownloads: [],
+        recentDownloads,
       });
 
       if (!manifest.success) {
@@ -1246,9 +1443,7 @@ ${subItemsHtml}
             length,
           );
           if (!result.success) {
-            throw new Error(
-              result.error || 'Unable to read MTP file chunk',
-            );
+            throw new Error(result.error || 'Unable to read MTP file chunk');
           }
           return new Uint8Array(result.bytes);
         },
@@ -1261,8 +1456,10 @@ ${subItemsHtml}
           };
           window.statusBarManager?.checkAndUpdateForDownloads();
         },
+        manifest.skipExistingCheck === true,
       );
 
+      await this.completePendingSwitchSync(syncMode, recentDownloads);
       this.switchTransfer = null;
       window.appSoundManager?.stop('loading');
       window.appSoundManager?.play('complete');
@@ -1313,16 +1510,44 @@ ${subItemsHtml}
   /**
    * Cancel a download
    */
-  cancelDownload(downloadId) {
+  async cancelDownload(downloadId) {
     const download = this.activeDownloads.get(downloadId);
     if (!download) return;
 
-    // Call main process to pause the download and keep the partial file.
-    if (window.electronAPI && window.electronAPI.cancelDownload) {
-      window.electronAPI.cancelDownload(downloadId);
+    const element = document.querySelector<HTMLElement>(
+      `[data-download-id="${downloadId}"]`,
+    );
+    const actions = element?.querySelector<HTMLElement>('.download-actions');
+    if (actions) {
+      actions
+        .querySelectorAll<HTMLButtonElement>('button')
+        .forEach((button) => (button.disabled = true));
     }
 
-    this.pauseDownload(downloadId, download.receivedBytes, download.totalBytes);
+    const result = await window.electronAPI?.cancelDownload?.(downloadId);
+    if (!result?.success) {
+      if (actions) this.updateActiveDownloadActions(element!, download);
+      window.toastManager?.error(
+        result?.error || 'Unable to cancel download',
+      );
+    }
+  }
+
+  removeCancelledDownload(downloadId: string) {
+    const download = this.activeDownloads.get(downloadId);
+    if (!download) return;
+
+    this.activeDownloads.delete(downloadId);
+    document
+      .querySelector<HTMLElement>(`[data-download-id="${downloadId}"]`)
+      ?.remove();
+    this.updateUI();
+    this.updateBadge();
+    window.appSoundManager?.stop('downloading');
+
+    if (window.statusBarManager) {
+      window.statusBarManager.checkAndUpdateForDownloads();
+    }
   }
 }
 

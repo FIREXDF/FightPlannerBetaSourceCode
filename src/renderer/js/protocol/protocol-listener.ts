@@ -191,13 +191,53 @@ class ProtocolListener {
     mods: Array<{ modPath: string; modName: string }>,
     gameBananaName: string | null,
   ) {
+    const unnamedModIndexes = mods
+      .map((mod, index) => (/^mod-\d+$/.test(mod.modName) ? index : -1))
+      .filter((index) => index >= 0);
+    let autoUseGameBananaName = false;
+    if (
+      gameBananaName &&
+      !/^unknown mod$/i.test(gameBananaName.trim()) &&
+      unnamedModIndexes.length === 1
+    ) {
+      try {
+        autoUseGameBananaName =
+          (await window.electronAPI.store.get('autoUseGameBananaModName')) ===
+          true;
+      } catch (error) {
+        console.warn(
+          'Failed to read automatic GameBanana naming setting:',
+          error,
+        );
+      }
+    }
+
+    if (autoUseGameBananaName && gameBananaName) {
+      const index = unnamedModIndexes[0];
+      const suggestedName = this.sanitizeSuggestedName(gameBananaName);
+      if (!this.validateCustomName(suggestedName)) {
+        const result = await window.electronAPI.renameMod(
+          mods[index].modPath,
+          suggestedName,
+        );
+        if (result.success) {
+          mods[index] = {
+            ...mods[index],
+            modPath: result.newPath,
+            modName: suggestedName,
+          };
+          return;
+        }
+      }
+    }
+
     for (let index = 0; index < mods.length; index++) {
       if (!/^mod-\d+$/.test(mods[index].modName)) continue;
       const renamed = await this.promptForUnnamedMod(
         mods[index],
         gameBananaName,
       );
-      if (renamed) mods[index] = renamed;
+      if (renamed) mods[index] = { ...mods[index], ...renamed };
     }
   }
 
@@ -272,7 +312,23 @@ class ProtocolListener {
       }
 
       if (window.toastManager) {
+        window.toastManager.info('toasts.downloadPaused');
+      }
+    });
+
+    window.electronAPI.onModDownloadCancelled((data) => {
+      if (window.downloadManager && data.downloadId) {
+        const rendererId = this.idMap.get(data.downloadId) || data.downloadId;
+        window.downloadManager.removeCancelledDownload(rendererId);
+      }
+
+      if (window.toastManager) {
         window.toastManager.warning('toasts.downloadCancelled');
+      }
+
+      if (data.downloadId) {
+        this.idMap.delete(data.downloadId);
+        this.gameBananaNames.delete(data.downloadId);
       }
     });
 
@@ -300,6 +356,14 @@ class ProtocolListener {
         this.gameBananaNames.get(data.downloadId) || null;
       await this.resolveUnnamedMods(data.resultingMods, gameBananaName);
 
+      const textFiles = data.resultingMods.flatMap((mod) =>
+        (mod.textFiles || []).map((relativePath) => ({
+          modName: mod.modName,
+          modPath: mod.modPath,
+          relativePath,
+        })),
+      );
+
       if (window.downloadManager) {
         const rendererId = this.idMap.get(data.downloadId) || data.downloadId;
         window.downloadManager.completeDownload(rendererId, data.resultingMods);
@@ -326,6 +390,8 @@ class ProtocolListener {
         this.idMap.delete(data.downloadId);
         this.gameBananaNames.delete(data.downloadId);
       }
+
+      window.modalManager?.showTextFileNotice(textFiles);
     });
 
     window.electronAPI.onModInstallError((data) => {

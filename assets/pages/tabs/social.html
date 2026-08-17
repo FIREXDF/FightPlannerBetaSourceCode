@@ -5,10 +5,20 @@
     <div id="social-onboarding-lottie" class="social-onboarding-lottie"></div>
     <div class="social-onboarding-overlay">
       <div class="social-onboarding-text">
-        <h2 data-i18n="social.getStartedWith">Get started with FPT Social</h2>
-        <button id="social-get-started" class="social-btn social-btn-primary" data-i18n="social.getStarted">
-          Get Started
-        </button>
+        <h2 data-i18n="social.featuresOnboardingTitle">Choose your experience</h2>
+        <p class="social-onboarding-description" data-i18n="social.featuresOnboardingDescription">
+          Would you like to enable Social features? You can change this later in Settings.
+        </p>
+        <div class="social-onboarding-actions">
+          <button id="social-enable-features" class="social-btn social-btn-primary" type="button">
+            <i class="bi bi-people"></i>
+            <span data-i18n="social.enableFeatures">Enable Social features</span>
+          </button>
+          <button id="social-disable-features" class="social-btn social-btn-secondary" type="button">
+            <i class="bi bi-compass"></i>
+            <span data-i18n="social.downloadGameBananaMods">Download GameBanana mods without Social features</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -45,10 +55,6 @@
         <button type="submit" class="social-btn social-btn-primary">
           <i class="bi bi-box-arrow-in-right"></i>
           <span data-i18n="social.signIn">Sign In</span>
-        </button>
-        <button type="button" id="social-discover-only" class="social-btn social-btn-secondary">
-          <i class="bi bi-compass"></i>
-          <span data-i18n="social.accessDiscoverOnly">Access Discover only</span>
         </button>
         <p class="social-hint">
           <span data-i18n="social.noAccount">Don't have an account?</span>
@@ -253,29 +259,33 @@
   <!-- User Profile Screen (shown after login) -->
   <div id="social-profile-container" class="social-profile-container" style="display: none">
     <!-- Navigation Menu -->
-    <div class="social-nav-menu">
-      <div class="social-nav-item active" data-section="discover">
+    <div class="social-nav-menu" role="navigation" aria-label="Social">
+      <button class="social-nav-item active" type="button" data-section="discover" aria-pressed="true">
         <i class="bi bi-compass"></i>
         <span data-i18n="social.discover">Discover</span>
-      </div>
-      <div class="social-nav-item" data-section="people-downloads">
+      </button>
+      <button class="social-nav-item" type="button" data-section="people-downloads" aria-pressed="false">
         <i class="bi bi-cloud-download"></i>
         <span data-i18n="social.downloadByPeople">Download by People</span>
-      </div>
-      <div class="social-nav-item" data-section="my-mods">
+      </button>
+      <button class="social-nav-item" type="button" data-section="my-mods" aria-pressed="false">
         <i class="bi bi-collection"></i>
         <span data-i18n="social.myMods">My Mods</span>
-      </div>
-      <div class="social-nav-item" data-section="friends">
+      </button>
+      <button class="social-nav-item" type="button" data-section="friends" aria-pressed="false">
         <i class="bi bi-people"></i>
         <span data-i18n="social.friends">Friends</span>
-      </div>
-      <div class="social-nav-item" data-section="profile">
+      </button>
+      <button class="social-nav-item" type="button" data-section="profile-search" aria-pressed="false">
+        <i class="bi bi-search"></i>
+        <span data-i18n="social.profileSearch">Profiles</span>
+      </button>
+      <button class="social-nav-item" type="button" data-section="profile" aria-pressed="false">
         <i class="bi bi-person"></i>
         <span data-i18n="social.profile">Profile</span>
-      </div>
+      </button>
       <button id="social-supporter-nav-button" class="social-supporter-nav-button" type="button"
-        aria-label="Become a Supporter" data-i18n="social.supporterNavLabel" data-i18n-aria-label>
+        aria-label="View Supporter benefits" data-i18n="social.supporterNavLabel" data-i18n-aria-label>
         <i class="bi bi-heart-fill" aria-hidden="true"></i>
       </button>
     </div>
@@ -378,6 +388,44 @@
                 <i class="bi bi-hourglass-split"></i>
                 <p data-i18n="social.loadingFriends">Loading friends...</p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Search Section -->
+      <div id="social-section-profile-search" class="social-section">
+        <div class="social-section-header">
+          <h2 class="social-section-title" data-i18n="social.profileSearchTitle">
+            Find a profile
+          </h2>
+          <p class="social-section-subtitle" data-i18n="social.profileSearchSubtitle">
+            Search by username to view a community profile.
+          </p>
+        </div>
+        <div class="social-profile-search-shell">
+          <form id="social-profile-search-form" class="social-profile-search-form" role="search">
+            <label for="social-profile-search-input" class="social-profile-search-label"
+              data-i18n="social.profileSearchLabel">Username</label>
+            <div class="social-profile-search-controls">
+              <div class="social-profile-search-input-wrap">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input id="social-profile-search-input" class="social-input" type="search" maxlength="50"
+                  autocomplete="off" spellcheck="false" aria-describedby="social-profile-search-feedback"
+                  data-i18n="social.profileSearchPlaceholder" data-i18n-placeholder
+                  placeholder="Enter a username" />
+              </div>
+              <button id="social-profile-search-submit" class="social-btn social-btn-primary" type="submit">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <span data-i18n="social.searchProfileAction">Search</span>
+              </button>
+            </div>
+          </form>
+          <p id="social-profile-search-feedback" class="social-profile-search-feedback" aria-live="polite"></p>
+          <div id="social-profile-search-results" class="social-profile-search-results">
+            <div class="social-profile-search-empty">
+              <i class="bi bi-person-bounding-box" aria-hidden="true"></i>
+              <p data-i18n="social.profileSearchEmpty">Enter a username to find a profile.</p>
             </div>
           </div>
         </div>
@@ -683,6 +731,19 @@
                     </div>
                     <label class="settings-switch">
                       <input type="checkbox" id="social-privacy-sync" />
+                      <span class="settings-switch-slider"></span>
+                    </label>
+                  </div>
+                  <div class="social-settings-row">
+                    <div class="social-settings-row-copy">
+                      <label for="social-share-installs-on-profile" class="social-setting-label"
+                        data-i18n="social.shareInstallsOnProfile">Show future installs on my profile</label>
+                      <span class="social-setting-description" data-i18n="social.shareInstallsOnProfileHint">
+                        Applies to future GameBanana installs. You can still hide individual mods.
+                      </span>
+                    </div>
+                    <label class="settings-switch">
+                      <input type="checkbox" id="social-share-installs-on-profile" checked />
                       <span class="settings-switch-slider"></span>
                     </label>
                   </div>

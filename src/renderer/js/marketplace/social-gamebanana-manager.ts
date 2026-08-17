@@ -3864,6 +3864,28 @@ class SocialGameBananaManager extends SocialManagerBase {
   ) {
     if (!this.authToken || !this.userData) return;
 
+    if (window.electronAPI?.store) {
+      try {
+        const shareInstalls = await window.electronAPI.store.get(
+          'social.shareInstallsOnProfile',
+        );
+        if (shareInstalls === false) {
+          const skippedDownloadId =
+            String(eventDownloadId || '') ||
+            this.getDownloadIdFromGameBananaUrl(downloadUrl);
+          if (skippedDownloadId) {
+            this.pendingGameBananaSocialDownloads.delete(skippedDownloadId);
+          }
+          return;
+        }
+      } catch (error) {
+        console.warn(
+          '[Social] Failed to read install sharing preference:',
+          error,
+        );
+      }
+    }
+
     const downloadId =
       String(eventDownloadId || '') ||
       this.getDownloadIdFromGameBananaUrl(downloadUrl);

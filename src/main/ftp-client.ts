@@ -18,6 +18,7 @@ export interface UploadFileProcessed {
 }
 
 export interface UploadDirectoryOptions {
+  skipExistingCheck?: boolean;
   onFileStarted?: (file: UploadFileProgress) => void;
   onFileProgress?: (file: UploadFileProgress) => void;
   onFileProcessed?: (file: UploadFileProcessed) => void;
@@ -115,11 +116,12 @@ export default class FTPClient {
     });
 
     if (
-      await this.remoteFileMatchesFile(
+      !options.skipExistingCheck &&
+      (await this.remoteFileMatchesFile(
         localPath,
         normalizedRemotePath,
         fileStats.size,
-      )
+      ))
     ) {
       console.log(`Skipped identical FTP file: ${normalizedRemotePath}`);
       options.onFileProcessed?.({

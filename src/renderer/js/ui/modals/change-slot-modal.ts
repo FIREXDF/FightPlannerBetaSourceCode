@@ -11,6 +11,55 @@ function slotNumberToString(slotNumber: number): string {
   return `c${slotNumber.toString().padStart(2, '0')}`;
 }
 
+function normalizeSlotInput(value: string): string | null {
+  const match = value
+    .trim()
+    .toLowerCase()
+    .match(/^c?(\d{1,3})$/);
+  if (!match) return null;
+
+  const slotNumber = Number(match[1]);
+  return slotNumber <= 255 ? slotNumberToString(slotNumber) : null;
+}
+
+function updateChangeSlotApplyState() {
+  const modal = document.querySelector('#change-slot-modal');
+  const applyButton = modal?.querySelector<HTMLButtonElement>(
+    '#confirm-change-slots',
+  );
+  const hasInvalidInput = Boolean(
+    modal?.querySelector(
+      '.slot-item-content:not(.deleted) .slot-input[aria-invalid="true"]',
+    ),
+  );
+
+  if (applyButton) applyButton.disabled = hasInvalidInput;
+}
+
+function translate(key: string, params: Record<string, unknown> = {}): string {
+  return window.i18n?.t
+    ? window.i18n.t(key, params as Record<string, string>)
+    : key;
+}
+
+function countAffectedEntries(pathData, fighters: string[], slot: string): number {
+  const entries = new Set<string>();
+
+  for (const fighter of fighters) {
+    const slotData = pathData?.[fighter]?.[slot];
+    if (!slotData) continue;
+
+    for (const entry of [
+      ...(slotData.pathsToBeModified || []),
+      ...(slotData.filesToBeModified || []),
+    ]) {
+      entries.add(`${entry.type}:${entry.original}`);
+    }
+  }
+
+  return entries.size;
+}
+
 const MULTI_CHAR_FIGHTER_GROUPS: Record<
   string,
   { members: string[]; displayName: string }
@@ -92,72 +141,12 @@ function getFighterDisplayName(fighterNameOrGroup: string): string {
   return characterInfo?.name || fighterNameOrGroup;
 }
 
-const SLOT_DROPDOWN_OFFSET_PX = 5;
-const SLOT_DROPDOWN_VIEWPORT_PADDING_PX = 12;
-const SLOT_DROPDOWN_MAX_HEIGHT_PX = 300;
-
-function getDropdownHiddenTransform(dropdown: HTMLElement): string {
-  return dropdown.dataset.openDirection === 'up'
-    ? 'translateY(10px)'
-    : 'translateY(-10px)';
-}
-
-function hideSlotDropdown(dropdown: HTMLElement) {
-  dropdown.style.opacity = '0';
-  dropdown.style.pointerEvents = 'none';
-  dropdown.style.visibility = 'hidden';
-  dropdown.style.transform = getDropdownHiddenTransform(dropdown);
-}
-
-function positionSlotDropdown(
-  selectContainer: HTMLElement,
-  selectDropdown: HTMLElement,
-) {
-  const rect = selectContainer.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-  const viewportWidth = window.innerWidth;
-  const spaceAbove = rect.top - SLOT_DROPDOWN_VIEWPORT_PADDING_PX;
-  const spaceBelow =
-    viewportHeight - rect.bottom - SLOT_DROPDOWN_VIEWPORT_PADDING_PX;
-
-  selectDropdown.style.width = `${rect.width}px`;
-  selectDropdown.style.left = `${Math.min(
-    Math.max(SLOT_DROPDOWN_VIEWPORT_PADDING_PX, rect.left),
-    Math.max(
-      SLOT_DROPDOWN_VIEWPORT_PADDING_PX,
-      viewportWidth - rect.width - SLOT_DROPDOWN_VIEWPORT_PADDING_PX,
-    ),
-  )}px`;
-  selectDropdown.style.top = '0px';
-  selectDropdown.style.maxHeight = `${SLOT_DROPDOWN_MAX_HEIGHT_PX}px`;
-
-  const naturalHeight = Math.min(
-    selectDropdown.scrollHeight,
-    SLOT_DROPDOWN_MAX_HEIGHT_PX,
-  );
-  const opensUpward =
-    naturalHeight > spaceBelow && spaceAbove > spaceBelow;
-  const availableSpace = Math.max(opensUpward ? spaceAbove : spaceBelow, 1);
-  const maxHeight = Math.min(
-    SLOT_DROPDOWN_MAX_HEIGHT_PX,
-    Math.max(availableSpace - SLOT_DROPDOWN_OFFSET_PX, 1),
-  );
-
-  selectDropdown.style.maxHeight = `${maxHeight}px`;
-  selectDropdown.dataset.openDirection = opensUpward ? 'up' : 'down';
-
-  const dropdownHeight = Math.min(selectDropdown.scrollHeight, maxHeight);
-  const top = opensUpward
-    ? rect.top - dropdownHeight - SLOT_DROPDOWN_OFFSET_PX
-    : rect.bottom + SLOT_DROPDOWN_OFFSET_PX;
-
-  selectDropdown.style.top = `${Math.max(
-    SLOT_DROPDOWN_VIEWPORT_PADDING_PX,
-    top,
-  )}px`;
-}
-
 M.prototype.openChangeSlotModal = function (mod, modData, callback) {
+  // Every opening is a new editing session. Do not carry deletions or slot
+  // usage state over from the previously opened mod.
+  this.deletedSlots = new Map();
+  this.slotUsageByFighter = null;
+  this.selectedFighterName = null;
   this.currentMod = mod;
   this.changeSlotCallback = callback;
 
@@ -246,6 +235,10 @@ M.prototype.closeChangeSlotModal = function () {
   this.closeModal('change-slot-modal');
 
   const modal = document.querySelector<HTMLElement>('#change-slot-modal');
+  if (modal) {
+    modal.inert = false;
+    modal.removeAttribute('aria-hidden');
+  }
   const modalHeader = modal?.querySelector<HTMLElement>('.modal-header');
   const contentDiv = modalHeader?.querySelector<HTMLElement>(
     '.modal-header-content',
@@ -275,10 +268,13 @@ M.prototype.closeChangeSlotModal = function () {
 
   this.changeSlotCallback = null;
   this.slotAssignments = new Map();
+  this.deletedSlots = new Map();
   this.fighterNames = [];
   this.rawFighterNames = [];
   this.selectedFighterName = null;
   this.slotUsageByFighter = null;
+  this.currentMod = null;
+  this.pathData = {};
 };
 
 M.prototype._renderSlotUsageLoading = function () {
@@ -734,10 +730,7 @@ M.prototype._renderSlotList = function () {
   };
 
   container.innerHTML = '';
-
-  document
-    .querySelectorAll('.custom-select-dropdown[data-parent-id]')
-    .forEach((dropdown) => dropdown.remove());
+  updateChangeSlotApplyState();
 
   const actualFighters = getActualFighterNames(
     this.selectedFighterName,
@@ -796,197 +789,125 @@ M.prototype._renderSlotList = function () {
     const arrow = document.createElement('i');
     arrow.className = 'bi bi-arrow-right slot-arrow';
 
-    const selectContainer = document.createElement('div');
-    selectContainer.className = 'custom-select slot-select-custom';
-    selectContainer.dataset.index = `${index}`;
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'slot-input-wrapper';
 
-    const selectTrigger = document.createElement('div');
-    selectTrigger.className = 'custom-select-trigger';
+    const slotSelect = document.createElement('select');
+    slotSelect.className = 'slot-select';
+    slotSelect.setAttribute(
+      'aria-label',
+      t('modals.changeSlot.newSlotLabel', { slot: originalSlotString }),
+    );
 
-    const selectedValueSpan = document.createElement('span');
-    selectedValueSpan.className = 'selected-value';
-    selectedValueSpan.textContent = t('modals.changeSlot.slotOption', {
-      slot: selectedSlotString,
-    });
+    for (let slotNumber = 0; slotNumber <= 16; slotNumber++) {
+      const slotString = slotNumberToString(slotNumber);
+      const option = document.createElement('option');
+      option.value = slotString;
+      option.textContent = slotString;
+      slotSelect.appendChild(option);
+    }
 
-    const triggerIcon = document.createElement('i');
-    triggerIcon.className = 'bi bi-chevron-down';
-
-    selectTrigger.appendChild(selectedValueSpan);
-    selectTrigger.appendChild(triggerIcon);
-
-    const selectDropdown = document.createElement('div');
-    selectDropdown.className = 'custom-select-dropdown';
+    const extendedOption = document.createElement('option');
+    extendedOption.value = 'extended';
+    extendedOption.textContent = t('modals.changeSlot.extendedSlotsOption');
+    slotSelect.appendChild(extendedOption);
 
     const selectedSlotNumber = slotStringToNumber(selectedSlotString);
-    const visibleSlotLimit = 16;
-    const maxSlotNumber = 255;
-    const createSlotOption = (slotNumber: number) => {
-      const slotString = slotNumberToString(slotNumber);
-      const option = document.createElement('div');
-      option.className = 'custom-select-option';
+    const usesExtendedSlot = selectedSlotNumber > 16;
+    slotSelect.value = usesExtendedSlot ? 'extended' : selectedSlotString;
+    inputWrapper.classList.toggle('has-extended-input', usesExtendedSlot);
 
-      if (slotNumber === selectedSlotNumber) {
-        option.classList.add('active');
-      }
+    const slotInput = document.createElement('input');
+    slotInput.className = 'slot-input';
+    slotInput.type = 'text';
+    slotInput.value = usesExtendedSlot ? selectedSlotString : '';
+    slotInput.placeholder = 'c17';
+    slotInput.maxLength = 4;
+    slotInput.autocomplete = 'off';
+    slotInput.spellcheck = false;
+    slotInput.hidden = !usesExtendedSlot;
+    slotInput.setAttribute('aria-invalid', 'false');
+    slotInput.setAttribute(
+      'aria-label',
+      t('modals.changeSlot.newSlotLabel', { slot: originalSlotString }),
+    );
+    slotInput.setAttribute('aria-describedby', `slot-error-${index}`);
 
-      option.dataset.value = `${slotNumber}`;
+    const inputError = document.createElement('span');
+    inputError.id = `slot-error-${index}`;
+    inputError.className = 'slot-input-error';
+    inputError.textContent = t('modals.changeSlot.invalidSlot');
+    inputError.hidden = true;
 
-      const optionText = document.createElement('span');
+    const assignSlot = (slotString: string) => {
+      const selectedActualFighters = getActualFighterNames(
+        this.selectedFighterName!,
+        this.rawFighterNames,
+      );
 
-      optionText.textContent = t('modals.changeSlot.slotOption', {
-        slot: slotString,
-      });
-
-      option.appendChild(optionText);
-
-      option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const selectedActualFighters = getActualFighterNames(
-          this.selectedFighterName!,
-          this.rawFighterNames,
-        );
-
-        for (const fighter of selectedActualFighters) {
-          const fighterAssignments = this.slotAssignments.get(fighter);
-
-          if (
-            fighterAssignments &&
-            fighterAssignments.has(originalSlotString)
-          ) {
-            fighterAssignments.set(originalSlotString, slotString);
-          }
+      for (const fighter of selectedActualFighters) {
+        const fighterAssignments = this.slotAssignments.get(fighter);
+        if (fighterAssignments?.has(originalSlotString)) {
+          fighterAssignments.set(originalSlotString, slotString);
         }
-
-        selectedValueSpan.textContent = t('modals.changeSlot.slotOption', {
-          slot: slotString,
-        });
-
-        selectContainer.classList.remove('open');
-        hideSlotDropdown(selectDropdown);
-
-        const allOptions = selectDropdown.querySelectorAll<HTMLElement>(
-          '.custom-select-option',
-        );
-        allOptions.forEach((opt) => opt.classList.remove('active'));
-        option.classList.add('active');
-      });
-
-      selectDropdown.appendChild(option);
-
-      return option;
+      }
     };
 
-    for (let slotNumber = 0; slotNumber <= visibleSlotLimit; slotNumber++) {
-      createSlotOption(slotNumber);
-    }
+    const validateAndAssign = (normalizeDisplay = false) => {
+      const normalizedSlot = normalizeSlotInput(slotInput.value);
+      const isValid =
+        normalizedSlot !== null && slotStringToNumber(normalizedSlot) > 16;
 
-    if (
-      selectedSlotNumber > visibleSlotLimit &&
-      selectedSlotNumber <= maxSlotNumber
-    ) {
-      createSlotOption(selectedSlotNumber);
-    }
+      slotInput.setCustomValidity(
+        isValid ? '' : inputError.textContent || 'Invalid slot',
+      );
+      slotInput.setAttribute('aria-invalid', String(!isValid));
+      inputError.hidden = isValid;
 
-    const moreOption = document.createElement('div');
-    moreOption.className = 'custom-select-option slot-more-option';
-    const moreText = document.createElement('span');
-    moreText.textContent = t('modals.changeSlot.moreSlots', {
-      maxSlot: slotNumberToString(maxSlotNumber),
-    });
-    moreOption.appendChild(moreText);
-    moreOption.addEventListener('click', (e) => {
-      e.stopPropagation();
-      moreOption.remove();
+      if (normalizedSlot) {
+        if (isValid) assignSlot(normalizedSlot);
 
-      for (
-        let slotNumber = visibleSlotLimit + 1;
-        slotNumber <= maxSlotNumber;
-        slotNumber++
-      ) {
-        if (slotNumber === selectedSlotNumber) {
-          continue;
-        }
-
-        createSlotOption(slotNumber);
+        if (isValid && normalizeDisplay) slotInput.value = normalizedSlot;
       }
+
+      updateChangeSlotApplyState();
+    };
+
+    slotInput.addEventListener('input', () => {
+      slotInput.value = slotInput.value.toLowerCase();
+      validateAndAssign();
     });
+    slotInput.addEventListener('blur', () => validateAndAssign(true));
 
-    selectDropdown.appendChild(moreOption);
+    slotSelect.addEventListener('change', () => {
+      const showExtendedInput = slotSelect.value === 'extended';
+      slotInput.hidden = !showExtendedInput;
+      inputWrapper.classList.toggle(
+        'has-extended-input',
+        showExtendedInput,
+      );
 
-    selectContainer.appendChild(selectTrigger);
-
-    selectDropdown.dataset.parentId = `${index}`;
-    selectDropdown.style.position = 'fixed';
-    selectDropdown.style.opacity = '0';
-    selectDropdown.style.pointerEvents = 'none';
-    selectDropdown.style.visibility = 'hidden';
-    document.body.appendChild(selectDropdown);
-
-    selectTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      const wasOpen = selectContainer.classList.contains('open');
-
-      document
-        .querySelectorAll<HTMLElement>('.custom-select.open')
-        .forEach((el) => {
-          if (el !== selectContainer) {
-            el.classList.remove('open');
-            const drop = document.body.querySelector<HTMLElement>(
-              `.custom-select-dropdown[data-parent-id="${el.dataset.index}"]`,
-            );
-
-            if (drop) {
-              hideSlotDropdown(drop);
-            }
-          }
-        });
-
-      if (!wasOpen) {
-        selectContainer.classList.add('open');
-
-        positionSlotDropdown(selectContainer, selectDropdown);
-        selectDropdown.style.zIndex = '100005';
-
-        selectDropdown.style.transition = 'none';
-        selectDropdown.style.opacity = '0';
-        selectDropdown.style.transform = getDropdownHiddenTransform(selectDropdown);
-        selectDropdown.style.pointerEvents = 'all';
-        selectDropdown.style.visibility = 'visible';
-
-        void selectDropdown.offsetWidth;
-
-        selectDropdown.style.transition =
-          'opacity 0.2s ease, transform 0.2s ease';
-
-        requestAnimationFrame(() => {
-          selectDropdown.style.opacity = '1';
-          selectDropdown.style.transform = 'translateY(0)';
-        });
-      } else {
-        selectContainer.classList.remove('open');
-        hideSlotDropdown(selectDropdown);
+      if (showExtendedInput) {
+        validateAndAssign();
+        slotInput.focus();
+        slotInput.select();
+        return;
       }
+
+      slotInput.setCustomValidity('');
+      slotInput.setAttribute('aria-invalid', 'false');
+      inputError.hidden = true;
+      assignSlot(slotSelect.value);
+      updateChangeSlotApplyState();
     });
 
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-
-      if (
-        !selectContainer.contains(target) &&
-        !selectDropdown.contains(target)
-      ) {
-        if (selectContainer.classList.contains('open')) {
-          selectContainer.classList.remove('open');
-          hideSlotDropdown(selectDropdown);
-        }
-      }
-    });
+    inputWrapper.appendChild(slotSelect);
+    inputWrapper.appendChild(slotInput);
+    inputWrapper.appendChild(inputError);
 
     info.appendChild(label);
     info.appendChild(arrow);
-    info.appendChild(selectContainer);
+    info.appendChild(inputWrapper);
 
     const filesInfo = document.createElement('div');
     filesInfo.className = 'slot-item-files';
@@ -1121,14 +1042,252 @@ M.prototype._toggleDeleteSlot = function (content, slot) {
 
     content.classList.add('deleted');
   }
+
+  updateChangeSlotApplyState();
 };
 
 M.prototype.confirmChangeSlots = function () {
   if (!this.changeSlotCallback || !this.slotAssignments) return;
 
-  this.changeSlotCallback(this.slotAssignments, this.deletedSlots);
-  this.closeChangeSlotModal();
+  const firstInvalidInput = document.querySelector<HTMLInputElement>(
+    '#change-slot-modal .slot-item-content:not(.deleted) .slot-input[aria-invalid="true"]',
+  );
+  if (firstInvalidInput) {
+    firstInvalidInput.focus();
+    firstInvalidInput.reportValidity();
+    return;
+  }
+
+  if (
+    window.settingsManager?.settings?.reviewSlotChangesBeforeApply === false
+  ) {
+    if (this.isApplyingSlotChanges) return;
+    this.isApplyingSlotChanges = true;
+
+    const callback = this.changeSlotCallback;
+    const assignments = this.slotAssignments;
+    const deletions = this.deletedSlots;
+
+    this.closeChangeSlotModal();
+    Promise.resolve(callback(assignments, deletions)).finally(() => {
+      this.isApplyingSlotChanges = false;
+    });
+    return;
+  }
+
+  const summary = document.createElement('div');
+  summary.className = 'slot-change-summary';
+
+  const intro = document.createElement('p');
+  intro.className = 'slot-change-summary-intro';
+  intro.textContent = translate('modals.changeSlot.confirmIntro', {
+    modName: this.currentMod?.name || '',
+  });
+  summary.appendChild(intro);
+
+  const groups: HTMLElement[] = [];
+  let changedSlots = 0;
+  let deletedSlots = 0;
+  let affectedEntries = 0;
+
+  for (const fighterName of this.fighterNames || []) {
+    const actualFighters = getActualFighterNames(
+      fighterName,
+      this.rawFighterNames || [],
+    );
+    const mergedAssignments = new Map<string, string>();
+
+    for (const fighter of actualFighters) {
+      const assignments = this.slotAssignments.get(fighter);
+      if (!assignments) continue;
+
+      for (const [originalSlot, targetSlot] of assignments) {
+        if (!mergedAssignments.has(originalSlot)) {
+          mergedAssignments.set(originalSlot, targetSlot);
+        }
+      }
+    }
+
+    const operations: HTMLElement[] = [];
+    const sortedAssignments = Array.from(mergedAssignments).sort(
+      ([a], [b]) => slotStringToNumber(a) - slotStringToNumber(b),
+    );
+
+    for (const [originalSlot, targetSlot] of sortedAssignments) {
+      const isDeleted = actualFighters.some((fighter) =>
+        this.deletedSlots?.get(fighter)?.has(originalSlot),
+      );
+      if (!isDeleted && originalSlot === targetSlot) continue;
+
+      const entryCount = countAffectedEntries(
+        this.pathData,
+        actualFighters,
+        originalSlot,
+      );
+      affectedEntries += entryCount;
+
+      const operation = document.createElement('div');
+      operation.className = `slot-change-summary-operation ${
+        isDeleted ? 'is-deletion' : 'is-move'
+      }`;
+
+      const icon = document.createElement('i');
+      icon.className = isDeleted
+        ? 'bi bi-trash3 slot-change-summary-icon'
+        : 'bi bi-arrow-right slot-change-summary-icon';
+
+      const operationText = document.createElement('div');
+      operationText.className = 'slot-change-summary-operation-text';
+
+      const action = document.createElement('strong');
+      action.textContent = isDeleted
+        ? translate('modals.changeSlot.confirmDeleteSlot', {
+            slot: originalSlot,
+          })
+        : translate('modals.changeSlot.confirmMoveSlot', {
+            from: originalSlot,
+            to: targetSlot,
+          });
+
+      const impact = document.createElement('span');
+      impact.textContent = translate('modals.changeSlot.confirmAffected', {
+        count: entryCount,
+      });
+
+      operationText.appendChild(action);
+      operationText.appendChild(impact);
+      operation.appendChild(icon);
+      operation.appendChild(operationText);
+      operations.push(operation);
+
+      if (isDeleted) deletedSlots += 1;
+      else changedSlots += 1;
+    }
+
+    if (operations.length === 0) continue;
+
+    const group = document.createElement('section');
+    group.className = 'slot-change-summary-group';
+
+    const heading = document.createElement('h4');
+    heading.textContent = getFighterDisplayName(fighterName);
+    group.appendChild(heading);
+    operations.forEach((operation) => group.appendChild(operation));
+    groups.push(group);
+  }
+
+  const totalOperations = changedSlots + deletedSlots;
+  const metrics = document.createElement('div');
+  metrics.className = 'slot-change-summary-metrics';
+  metrics.setAttribute('aria-label', translate('modals.changeSlot.confirmSummary'));
+
+  const addMetric = (value: number, labelKey: string) => {
+    const metric = document.createElement('span');
+    const strong = document.createElement('strong');
+    strong.textContent = String(value);
+    metric.appendChild(strong);
+    metric.append(` ${translate(labelKey, { count: value })}`);
+    metrics.appendChild(metric);
+  };
+
+  addMetric(changedSlots, 'modals.changeSlot.confirmChangedCount');
+  addMetric(deletedSlots, 'modals.changeSlot.confirmDeletedCount');
+  addMetric(affectedEntries, 'modals.changeSlot.confirmFilesCount');
+  summary.appendChild(metrics);
+
+  const operationList = document.createElement('div');
+  operationList.className = 'slot-change-summary-list';
+
+  if (groups.length > 0) {
+    groups.forEach((group) => operationList.appendChild(group));
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'slot-change-summary-empty';
+    empty.innerHTML = '<i class="bi bi-check2-circle"></i>';
+    const emptyText = document.createElement('span');
+    emptyText.textContent = translate('modals.changeSlot.confirmNoChanges');
+    empty.appendChild(emptyText);
+    operationList.appendChild(empty);
+  }
+
+  summary.appendChild(operationList);
+
+  const editorModal = document.querySelector<HTMLElement>('#change-slot-modal');
+  if (editorModal) {
+    editorModal.inert = true;
+    editorModal.setAttribute('aria-hidden', 'true');
+  }
+
+  const modal = this.showCustomModal({
+    id: 'change-slot-summary-modal',
+    title: translate('modals.changeSlot.confirmTitle'),
+    body: summary,
+    clickOverlayToClose: false,
+    escapeToClose: false,
+    buttons: [
+      {
+        id: 'change-slot-summary-back',
+        text: translate('modals.changeSlot.confirmBack'),
+        type: 'cancel',
+        closeOnClick: false,
+        onClick: () => {
+          this.closeModal(modal, {
+            skipHideOverlay: true,
+            onModalClosed: () => {
+              modal.remove();
+              if (editorModal) {
+                editorModal.inert = false;
+                editorModal.removeAttribute('aria-hidden');
+              }
+              document
+                .querySelector<HTMLButtonElement>('#confirm-change-slots')
+                ?.focus();
+            },
+          });
+          return false;
+        },
+      },
+      {
+        id: 'change-slot-summary-confirm',
+        text: translate('modals.changeSlot.confirmApply'),
+        type: 'primary',
+        closeOnClick: false,
+        onClick: () => {
+          if (this.isApplyingSlotChanges) return false;
+          this.isApplyingSlotChanges = true;
+
+          const callback = this.changeSlotCallback;
+          const assignments = this.slotAssignments;
+          const deletions = this.deletedSlots;
+
+          this.closeModal(modal, {
+            skipHideOverlay: true,
+            onModalClosed: () => modal.remove(),
+          });
+          this.closeChangeSlotModal();
+
+          Promise.resolve(callback(assignments, deletions)).finally(() => {
+            this.isApplyingSlotChanges = false;
+          });
+          return false;
+        },
+      },
+    ],
+  });
+
+  const confirmButton = modal.querySelector(
+    '#change-slot-summary-confirm',
+  ) as HTMLButtonElement | null;
+  if (confirmButton) confirmButton.disabled = totalOperations === 0;
+
+  requestAnimationFrame(() => {
+    const focusTarget =
+      totalOperations > 0
+        ? confirmButton
+        : (modal.querySelector(
+            '#change-slot-summary-back',
+          ) as HTMLButtonElement | null);
+    focusTarget?.focus();
+  });
 };
 })();
-
-

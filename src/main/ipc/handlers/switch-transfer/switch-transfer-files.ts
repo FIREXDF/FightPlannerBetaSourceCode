@@ -32,6 +32,7 @@ async function summarizeDirectory(
 
 export async function collectModDirectories(
   modsPath?: string | null,
+  selectedPaths?: string[],
 ): Promise<TransferItem[]> {
   if (!modsPath) {
     return [];
@@ -45,6 +46,20 @@ export async function collectModDirectories(
     return [];
   }
 
+  const normalizedSelectedPaths = selectedPaths
+    ? new Set(
+        selectedPaths.map((selectedPath) =>
+          normalizeLocalPath(path.resolve(selectedPath)),
+        ),
+      )
+    : null;
+  const normalizedSelectedNames = selectedPaths
+    ? new Set(
+        selectedPaths.map((selectedPath) =>
+          normalizeLocalPath(path.basename(path.resolve(selectedPath))),
+        ),
+      )
+    : null;
   const items: TransferItem[] = [];
   for (const entry of await fs.readdir(modsPath, { withFileTypes: true })) {
     if (!entry.isDirectory()) {
@@ -52,6 +67,15 @@ export async function collectModDirectories(
     }
 
     const localPath = path.join(modsPath, entry.name);
+    if (
+      normalizedSelectedPaths &&
+      !normalizedSelectedPaths.has(
+        normalizeLocalPath(path.resolve(localPath)),
+      ) &&
+      !normalizedSelectedNames?.has(normalizeLocalPath(entry.name))
+    ) {
+      continue;
+    }
     const summary = await summarizeDirectory(localPath);
     items.push({
       localPath,
@@ -62,6 +86,10 @@ export async function collectModDirectories(
   }
 
   return items;
+}
+
+function normalizeLocalPath(localPath: string): string {
+  return process.platform === 'win32' ? localPath.toLowerCase() : localPath;
 }
 
 export async function collectPluginFiles(

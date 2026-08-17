@@ -296,8 +296,18 @@ class SocialSettingsManager extends SocialProfileManager {
     const privacySync = document.querySelector<HTMLInputElement>(
       '#social-privacy-sync',
     );
+    const shareInstallsOnProfile =
+      document.querySelector<HTMLInputElement>(
+        '#social-share-installs-on-profile',
+      );
 
-    if (!privacyVisibility || !privacySync || !this.authToken || !this.userData)
+    if (
+      !privacyVisibility ||
+      !privacySync ||
+      !shareInstallsOnProfile ||
+      !this.authToken ||
+      !this.userData
+    )
       return;
 
     const privacySettings = {
@@ -306,6 +316,19 @@ class SocialSettingsManager extends SocialProfileManager {
     };
 
     try {
+      if (window.electronAPI?.store) {
+        await Promise.all([
+          window.electronAPI.store.set(
+            'social.shareInstallsOnProfile',
+            shareInstallsOnProfile.checked,
+          ),
+          window.electronAPI.store.set(
+            'social.installSharingNoticeSeen',
+            true,
+          ),
+        ]);
+      }
+
       const response = await this.fetchWithAuth(
         `${this.API_URL}/update-user-privacy`,
         {

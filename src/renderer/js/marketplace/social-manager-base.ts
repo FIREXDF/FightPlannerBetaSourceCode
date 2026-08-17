@@ -571,6 +571,7 @@ class SocialManagerBase {
       this.setupProfileButtons();
       this.setupGameBananaSearchEvents();
       this.setupNavigation();
+      await this.applySocialFeaturesPreference();
       return;
     }
 
@@ -584,10 +585,24 @@ class SocialManagerBase {
       }, 10);
 
       if (window.electronAPI && window.electronAPI.store) {
-        const [storedToken, storedUserData] = (await Promise.all([
+        const [storedToken, storedUserData, socialFeaturesEnabled] = (await Promise.all([
           window.electronAPI.store.get('social.authToken'),
           window.electronAPI.store.get('social.userData'),
-        ])) as [string | null, typeof this.userData | null];
+          window.electronAPI.store.get('social.featuresEnabled'),
+        ])) as [string | null, typeof this.userData | null, boolean | null];
+
+        if (socialFeaturesEnabled !== true && socialFeaturesEnabled !== false) {
+          this.startOnboarding();
+          return;
+        }
+
+        if (socialFeaturesEnabled === false) {
+          if (storedToken || storedUserData) {
+            await this.clearStoredSocialSession();
+          }
+          this.showDiscoverOnly();
+          return;
+        }
 
         if (storedToken && storedUserData) {
           this.authToken = storedToken;
@@ -615,13 +630,7 @@ class SocialManagerBase {
         }
       }
 
-      const needsOnboarding = await this.checkOnboarding();
-
-      if (needsOnboarding) {
-        this.startOnboarding();
-      } else {
-        this.showLoginScreen();
-      }
+      this.startOnboarding();
     } catch (e) {
       console.error('Failed to init social tab:', e);
 
@@ -661,113 +670,144 @@ class SocialManagerBase {
     }
   }
 
+  async getSocialFeaturesPreference(): Promise<boolean | null> {
+    try {
+      const value = await window.electronAPI?.store?.get?.(
+        'social.featuresEnabled',
+      );
+      return value === true || value === false ? value : null;
+    } catch (error) {
+      console.warn('[Social] Failed to load Social preference:', error);
+      return null;
+    }
+  }
+
+  async setSocialFeaturesEnabled(enabled: boolean) {
+    try {
+      await window.electronAPI?.store?.set?.(
+        'social.featuresEnabled',
+        enabled,
+      );
+      await this.markOnboardingDone();
+    } catch (error) {
+      console.warn('[Social] Failed to save Social preference:', error);
+    }
+
+    if (!enabled) {
+      await this.clearStoredSocialSession();
+    }
+
+    await this.applySocialFeaturesPreference(enabled);
+    window.dispatchEvent(
+      new CustomEvent('social-features-preference-changed', {
+        detail: { enabled },
+      }),
+    );
+  }
+
+  async applySocialFeaturesPreference(preference?: boolean | null) {
+    const enabled =
+      preference === true || preference === false
+        ? preference
+        : await this.getSocialFeaturesPreference();
+
+    if (enabled === true && (!this.authToken || !this.userData)) {
+      await this.restoreStoredSocialSession();
+    }
+
+    if (enabled === null) {
+      this.startOnboarding();
+    } else if (enabled === false) {
+      this.showDiscoverOnly();
+    } else if (this.authToken && this.userData) {
+      await this.showProfileScreen();
+    } else {
+      this.showLoginScreen();
+    }
+  }
+
+  async restoreStoredSocialSession() {
+    try {
+      const [storedToken, storedUserData] = await Promise.all([
+        window.electronAPI?.store?.get?.('social.authToken'),
+        window.electronAPI?.store?.get?.('social.userData'),
+      ]);
+      if (!storedToken || !storedUserData) return false;
+
+      this.authToken = storedToken as string;
+      this.userData = storedUserData as typeof this.userData;
+      return true;
+    } catch (error) {
+      console.warn('[Social] Failed to restore stored session:', error);
+      return false;
+    }
+  }
+
   startOnboarding() {
+    const profileContainer = document.querySelector<HTMLElement>(
+      '#social-profile-container',
+    );
+    const loginContainer = document.querySelector<HTMLElement>(
+      '#social-login-container',
+    );
+    if (profileContainer) profileContainer.style.display = 'none';
+    if (loginContainer) loginContainer.style.display = 'none';
+
     const onboarding =
       document.querySelector<HTMLElement>('#social-onboarding');
     if (onboarding) {
       onboarding.style.display = 'flex';
-
-      setTimeout(() => {
-        this.loadOnboardingAnimation();
-      }, 0);
+      this.loadOnboardingBackgroundAnimation();
+      this.setupOnboardingChoices();
     }
   }
 
-  loadOnboardingAnimation() {
-    const onboarding =
-      document.querySelector<HTMLElement>('#social-onboarding');
-    if (!onboarding) return;
-
-    const lottieContainer = document.querySelector<HTMLElement>(
+  loadOnboardingBackgroundAnimation() {
+    const container = document.querySelector<HTMLElement>(
       '#social-onboarding-lottie',
     );
+    if (!container || !window.lottie) return;
 
-    if (lottieContainer && window.lottie) {
-      const anim = window.lottie.loadAnimation({
-        container: lottieContainer,
-        renderer: 'svg',
-        loop: false,
-        autoplay: true,
-        path: '../images/social.json',
-        rendererSettings: {
-          preserveAspectRatio: 'xMidYMid slice',
-          className: 'lottie-animation-fullscreen',
-          // For some reason, clearCanvas is not recognized unless type is "canvas"
-          ...{ clearCanvas: true },
-        },
-      });
-
-      anim.addEventListener('DOMLoaded', () => {
-        const svg = lottieContainer.querySelector<HTMLElement>('svg');
-        if (svg) {
-          svg.style.position = 'absolute';
-          svg.style.top = '0';
-          svg.style.left = '0';
-          svg.style.width = '100%';
-          svg.style.height = '100%';
-          svg.style.maxWidth = 'none';
-          svg.style.maxHeight = 'none';
-          svg.style.margin = '0';
-          svg.style.padding = '0';
-          svg.style.overflow = 'visible';
-          svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-        }
-      });
-
-      let overlayShown = false;
-      let paused = false;
-
-      anim.addEventListener('enterFrame', () => {
-        if (anim.totalFrames && anim.currentFrame !== undefined) {
-          const frameRate = anim.frameRate || 30;
-          const currentTime = anim.currentFrame / frameRate;
-
-          if (!overlayShown && currentTime >= 3.73) {
-            overlayShown = true;
-            setTimeout(() => {
-              const overlay = document.querySelector<HTMLElement>(
-                '.social-onboarding-overlay',
-              );
-              if (overlay) {
-                overlay.style.opacity = '1';
-                overlay.style.pointerEvents = 'auto';
-              }
-
-              const button = document.querySelector<HTMLElement>(
-                '#social-get-started',
-              );
-              if (button) {
-                button.style.pointerEvents = 'auto';
-                button.style.cursor = 'pointer';
-              }
-            }, 100);
-          }
-
-          if (!paused && currentTime >= 4.35) {
-            anim.pause();
-            paused = true;
-          }
-        }
-      });
-
-      this.onboardingAnim = anim;
+    if (this.onboardingAnim) {
+      try {
+        this.onboardingAnim.destroy();
+      } catch (error) {}
     }
+    container.innerHTML = '';
+    this.onboardingAnim = window.lottie.loadAnimation({
+      container,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: '../images/social.json',
+      rendererSettings: {
+        preserveAspectRatio: 'xMidYMid slice',
+      },
+    });
+  }
 
-    const getStartedBtn = document.querySelector<HTMLElement>(
-      '#social-get-started',
+  setupOnboardingChoices() {
+    const enableFeatures = document.querySelector<HTMLButtonElement>(
+      '#social-enable-features',
     );
-    if (getStartedBtn) {
-      getStartedBtn.addEventListener(
-        'click',
-        () => {
-          this.finishOnboarding();
-        },
-        { once: true },
-      );
+    const disableFeatures = document.querySelector<HTMLButtonElement>(
+      '#social-disable-features',
+    );
+    if (enableFeatures && !enableFeatures.dataset.listenerAttached) {
+      enableFeatures.addEventListener('click', () => {
+        void this.finishOnboarding(true);
+      });
+      enableFeatures.dataset.listenerAttached = 'true';
+    }
+    if (disableFeatures && !disableFeatures.dataset.listenerAttached) {
+      disableFeatures.addEventListener('click', () => {
+        void this.finishOnboarding(false);
+      });
+      disableFeatures.dataset.listenerAttached = 'true';
     }
   }
 
-  finishOnboarding() {
+  async finishOnboarding(enabled = true) {
     if (this.onboardingAnim) {
       try {
         this.onboardingAnim.destroy();
@@ -781,9 +821,7 @@ class SocialManagerBase {
       onboarding.style.display = 'none';
     }
 
-    this.markOnboardingDone();
-
-    this.showLoginScreen();
+    await this.setSocialFeaturesEnabled(enabled);
   }
 
   showLoginScreen() {
@@ -989,9 +1027,6 @@ class SocialManagerBase {
     const useInvite = document.querySelector<HTMLElement>(
       '#social-use-invite',
     );
-    const discoverOnly = document.querySelector<HTMLElement>(
-      '#social-discover-only',
-    );
     const submitButton = form
       ? form.querySelector<HTMLButtonElement>('button[type="submit"]')
       : null;
@@ -1098,14 +1133,6 @@ class SocialManagerBase {
       });
     }
 
-    if (discoverOnly && !discoverOnly.dataset.listenerAttached) {
-      discoverOnly.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.showDiscoverOnly();
-      });
-      discoverOnly.dataset.listenerAttached = 'true';
-    }
-
     this.setupForgotPasswordModal();
 
     this.setupRegisterModal();
@@ -1146,10 +1173,9 @@ class SocialManagerBase {
     const navItems =
       socialRoot.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
-      item.classList.toggle(
-        'active',
-        item.getAttribute('data-section') === 'discover',
-      );
+      const isActive = item.getAttribute('data-section') === 'discover';
+      item.classList.toggle('active', isActive);
+      item.setAttribute('aria-pressed', String(isActive));
     });
 
     const sections =
@@ -1848,6 +1874,12 @@ class SocialManagerBase {
     socialRoot
       .querySelector<HTMLButtonElement>('#social-supporter-nav-button')
       ?.addEventListener('click', () => this.showSupporterBenefitsModal());
+    window.addEventListener('localeChanged', () => {
+      this.updateSupporterNavStatus(
+        Boolean(this.currentSupporterActive),
+        this.currentSupporterStatus,
+      );
+    });
   }
 
   switchSection(sectionName) {
@@ -1865,11 +1897,9 @@ class SocialManagerBase {
     const navItems =
       socialRoot.querySelectorAll<HTMLElement>('.social-nav-item');
     navItems.forEach((item) => {
-      if (item.getAttribute('data-section') === sectionName) {
-        item.classList.add('active');
-      } else {
-        item.classList.remove('active');
-      }
+      const isActive = item.getAttribute('data-section') === sectionName;
+      item.classList.toggle('active', isActive);
+      item.setAttribute('aria-pressed', String(isActive));
     });
 
     setTimeout(() => {
@@ -1907,6 +1937,13 @@ class SocialManagerBase {
         break;
       case 'friends':
         setTimeout(() => this.loadFriends(), 250);
+        break;
+      case 'profile-search':
+        setTimeout(() => {
+          document
+            .querySelector<HTMLInputElement>('#social-profile-search-input')
+            ?.focus();
+        }, 250);
         break;
       case 'profile':
         break;

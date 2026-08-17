@@ -9,6 +9,7 @@ import { FileExtractor } from '../utils/file-extractor';
 import { resolveVirtualPath } from '../utils/virtual-paths';
 import { CONFLICT_WHITELIST_PATTERNS } from '../config';
 import sharedStore from '../store';
+import { prcXmlContentsConflict } from './prcxml-conflicts';
 
 interface ModInstallOptions {
   onExtractProgress?: (progress: {
@@ -106,11 +107,7 @@ export default class ModUtils {
   ]);
 
   private static isArchiveMetadataName(name: string): boolean {
-    return (
-      name === '__MACOSX' ||
-      name === '.DS_Store' ||
-      name.startsWith('._')
-    );
+    return name === '__MACOSX' || name === '.DS_Store' || name.startsWith('._');
   }
 
   private static getDisplayModName(folderName: string) {
@@ -256,7 +253,10 @@ export default class ModUtils {
     }
 
     const checkIfModDir = (dir: string): boolean => {
-      if (fs.existsSync(path.join(dir, 'config.json'))) {
+      if (
+        fs.existsSync(path.join(dir, 'config.json')) ||
+        fs.existsSync(path.join(dir, 'plugin.nro'))
+      ) {
         return true;
       }
 
@@ -563,7 +563,10 @@ export default class ModUtils {
     return candidate;
   }
 
-  private static createBatchDuplicatePath(targetBasePath: string, modName: string) {
+  private static createBatchDuplicatePath(
+    targetBasePath: string,
+    modName: string,
+  ) {
     const safeLabel = modName.replace(/[^a-z0-9._-]/gi, '_');
     let candidate = path.join(
       targetBasePath,
@@ -625,8 +628,8 @@ export default class ModUtils {
       const shouldBeActive =
         enabledSet.has(mod.path) ||
         enabledSet.has(folderName) ||
-        enabledSet.has(`active:${mod.name}`) &&
-          (mod.status === 'active' || isBatchDuplicateFolder) ||
+        (enabledSet.has(`active:${mod.name}`) &&
+          (mod.status === 'active' || isBatchDuplicateFolder)) ||
         (!hasDuplicateName && enabledSet.has(mod.name));
       const shouldMove =
         (mod.status === 'active' && !shouldBeActive) ||
@@ -773,8 +776,46 @@ export default class ModUtils {
       }
     }
 
-    fileToMods.forEach((modsList, filePath) => {
-      if (modsList.length > 1) {
+    for (const [filePath, modsList] of fileToMods) {
+      let conflictingMods = modsList;
+
+      if (modsList.length > 1 && filePath.toLowerCase().endsWith('.prcxml')) {
+        const contents = await Promise.all(
+          modsList.map(async (mod) => {
+            try {
+              return await fsPromises.readFile(
+                path.join(mod.modPath, filePath),
+                'utf8',
+              );
+            } catch {
+              return null;
+            }
+          }),
+        );
+        const conflictingIndexes = new Set<number>();
+
+        for (let first = 0; first < modsList.length; first++) {
+          for (let second = first + 1; second < modsList.length; second++) {
+            const firstContent = contents[first];
+            const secondContent = contents[second];
+            const hasConflict =
+              firstContent === null ||
+              secondContent === null ||
+              prcXmlContentsConflict(firstContent, secondContent);
+
+            if (hasConflict) {
+              conflictingIndexes.add(first);
+              conflictingIndexes.add(second);
+            }
+          }
+        }
+
+        conflictingMods = modsList.filter((_, index) =>
+          conflictingIndexes.has(index),
+        );
+      }
+
+      if (conflictingMods.length > 1) {
         const { fighter, slot } = this.getConflictGroupMetadata(filePath);
         const groupKey = `${fighter}-${slot}`;
 
@@ -788,13 +829,13 @@ export default class ModUtils {
 
         conflictGroups.get(groupKey)!.conflicts.push({
           filePath: filePath,
-          mods: modsList.map((m) => ({
+          mods: conflictingMods.map((m) => ({
             name: m.modName,
             path: m.modPath,
           })),
         });
       }
-    });
+    }
 
     // Convert to array format for return
     return Array.from(conflictGroups.values()).sort((groupA, groupB) => {
@@ -915,6 +956,32 @@ export default class ModUtils {
     } else {
       await fsPromises.copyFile(src, dest);
     }
+  }
+
+  static async findTextFiles(modPath: string): Promise<string[]> {
+    const textFiles: string[] = [];
+    const directories = [modPath];
+
+    while (directories.length > 0) {
+      const currentDirectory = directories.pop()!;
+      const entries = await fsPromises.readdir(currentDirectory, {
+        withFileTypes: true,
+      });
+
+      for (const entry of entries) {
+        const entryPath = path.join(currentDirectory, entry.name);
+        if (entry.isDirectory()) {
+          directories.push(entryPath);
+        } else if (
+          entry.isFile() &&
+          path.extname(entry.name).toLowerCase() === '.txt'
+        ) {
+          textFiles.push(path.relative(modPath, entryPath).replace(/\\/g, '/'));
+        }
+      }
+    }
+
+    return textFiles.sort((a, b) => a.localeCompare(b));
   }
 
   static async installFromArchive(
@@ -1112,6 +1179,28 @@ export default class ModUtils {
             }
           } catch {}
 
+          const topLevelTextFiles = (
+            await fsPromises.readdir(topLevelModDir, { withFileTypes: true })
+          ).filter(
+            (entry) =>
+              entry.isFile() &&
+              path.extname(entry.name).toLowerCase() === '.txt',
+          );
+
+          for (const textFile of topLevelTextFiles) {
+            const textFileSource = path.join(topLevelModDir, textFile.name);
+            const textFileDest = path.join(modPath, textFile.name);
+
+            try {
+              await fsPromises.access(textFileDest);
+            } catch {
+              await fsPromises.copyFile(textFileSource, textFileDest);
+              console.log(
+                `[installFromArchive] Copied ${textFile.name} from top level directory`,
+              );
+            }
+          }
+
           const previewSource = path.join(topLevelModDir, 'preview.webp');
           const previewDest = path.join(modPath, 'preview.webp');
 
@@ -1294,9 +1383,26 @@ export default class ModUtils {
         }
       }
 
+      const installedMods = await Promise.all(
+        resultingMods.map(async (mod) => {
+          try {
+            return {
+              ...mod,
+              textFiles: await this.findTextFiles(mod.modPath),
+            };
+          } catch (scanError) {
+            console.warn(
+              `[ModUtils] Failed to scan text files in ${mod.modPath}:`,
+              scanError,
+            );
+            return { ...mod, textFiles: [] };
+          }
+        }),
+      );
+
       return {
         success: true,
-        resultingMods,
+        resultingMods: installedMods,
       };
     } catch (error) {
       console.error('Error installing mod from path:', error);

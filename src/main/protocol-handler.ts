@@ -54,6 +54,7 @@ export interface ProtocolHandlerEvents {
     resultingMods: {
       modPath: string;
       modName: string;
+      textFiles: string[];
     }[];
   };
 
@@ -66,6 +67,10 @@ export interface ProtocolHandlerEvents {
     downloadId: string;
     receivedBytes: number;
     totalBytes: number;
+  };
+
+  'mod-download-cancelled': {
+    downloadId: string;
   };
 
   'gamebanana-pairing-success': {
@@ -687,6 +692,32 @@ export default class ProtocolHandler {
     } catch (error) {
       if (error?.message === 'Download paused') {
         console.log('[protocol][download] paused, keeping pending install:', downloadId);
+        return;
+      }
+
+      if (
+        error?.message === 'Download cancelled' ||
+        error?.message === 'Installation cancelled'
+      ) {
+        console.log('[protocol][download] cancelled:', downloadId);
+        const cancelledDownload = this.activeDownloads.get(downloadId);
+        const cancelledFilePath = cancelledDownload?.filePath;
+
+        this.activeDownloads.delete(downloadId);
+        this.pendingInstalls.delete(downloadId);
+
+        if (cancelledFilePath && fs.existsSync(cancelledFilePath)) {
+          try {
+            fs.unlinkSync(cancelledFilePath);
+          } catch (cleanupError) {
+            console.warn(
+              '[protocol][download] failed to delete cancelled download:',
+              cleanupError.message,
+            );
+          }
+        }
+
+        this.sendToRenderer('mod-download-cancelled', { downloadId });
         return;
       }
 
@@ -1419,7 +1450,7 @@ export default class ProtocolHandler {
     }
   }
 
-  cancelDownload(downloadId: string) {
+  pauseDownload(downloadId: string) {
     const download = this.activeDownloads.get(downloadId);
     if (!download) {
       return { success: false, error: 'Download not found' };
@@ -1429,17 +1460,14 @@ export default class ProtocolHandler {
       return { success: false, error: 'Download already cancelled' };
     }
 
-    const wasDownloading = !!download.request;
-    download.cancelled = true;
-
-    if (!wasDownloading) {
-      this.sendToRenderer('mod-install-error', {
-        downloadId,
-        error: 'Installation cancelled by user',
-      });
-      return { success: true };
+    if (!download.request) {
+      return {
+        success: false,
+        error: 'Download cannot be paused during extraction',
+      };
     }
 
+    download.cancelled = true;
     download.paused = true;
 
     // Destroy the request to stop data flow
@@ -1468,6 +1496,49 @@ export default class ProtocolHandler {
       receivedBytes: download.receivedBytes || 0,
       totalBytes: download.totalBytes || 0,
     });
+
+    return { success: true };
+  }
+
+  cancelDownload(downloadId: string) {
+    const download = this.activeDownloads.get(downloadId);
+    if (!download) {
+      return { success: false, error: 'Download not found' };
+    }
+
+    const wasPaused = download.paused === true;
+    download.cancelled = true;
+    download.paused = false;
+
+    if (download.request) {
+      download.request.destroy(new Error('Download cancelled'));
+      download.request = null;
+    }
+
+    if (download.file) {
+      try {
+        download.file.destroy();
+      } catch (error) {
+        console.warn('Error destroying cancelled download stream:', error);
+      }
+      download.file = null;
+    }
+
+    if (wasPaused) {
+      const filePath = download.filePath;
+      this.activeDownloads.delete(downloadId);
+      this.pendingInstalls.delete(downloadId);
+
+      if (filePath && fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (error) {
+          console.warn('Error deleting cancelled partial download:', error);
+        }
+      }
+
+      this.sendToRenderer('mod-download-cancelled', { downloadId });
+    }
 
     return { success: true };
   }

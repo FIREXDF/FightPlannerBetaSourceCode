@@ -159,6 +159,7 @@ class MTPTransferClient {
     files: MtpTransferFile[],
     readFileChunk: ReadFileChunk,
     onProgress: (progress: MtpProgress) => void,
+    skipExistingCheck = false,
   ) {
     let copiedCount = 0;
     let processedCount = 0;
@@ -217,6 +218,7 @@ class MTPTransferClient {
       }
 
       if (
+        !skipExistingCheck &&
         existing?.size === file.size &&
         (await this.objectMatchesLocalFile(
           existing.handle,

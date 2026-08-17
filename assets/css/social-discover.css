@@ -56,42 +56,23 @@
 }
 
 .social-onboarding-lottie {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: visible !important;
-  clip-path: none !important;
-  z-index: 1;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.18;
   pointer-events: none;
 }
 
 .social-onboarding-lottie svg,
 .social-onboarding-lottie canvas {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: visible !important;
-  clip-path: none !important;
 }
 
 .social-onboarding-overlay {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 100%;
+  inset: 0;
+  box-sizing: border-box;
   padding: clamp(16px, 4vh, 40px);
   background: linear-gradient(
     to top,
@@ -102,10 +83,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   overflow-y: auto;
-  transition: opacity 0.5s ease;
   z-index: 999999 !important;
 }
 
@@ -126,7 +106,21 @@
   pointer-events: auto;
 }
 
-#social-get-started {
+.social-onboarding-description {
+  max-width: 560px;
+  margin: 12px auto 22px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.social-onboarding-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.social-onboarding-actions .social-btn {
   pointer-events: auto !important;
   cursor: pointer !important;
   position: relative;
@@ -340,6 +334,26 @@
   outline-offset: 2px;
 }
 
+.social-supporter-nav-button.is-active {
+  background: color-mix(in srgb, #ff6f9c 16%, transparent);
+  color: #ffabc4;
+}
+
+.social-supporter-nav-button.is-expiring {
+  background: color-mix(in srgb, #f5a524 16%, transparent);
+  color: #ffc766;
+}
+
+.social-supporter-nav-button.is-pending {
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  color: var(--accent-color);
+}
+
+.social-supporter-nav-button.is-expired {
+  background: var(--bg-transparent-05);
+  color: var(--text-muted);
+}
+
 .social-nav-menu {
   width: 100%;
   background: var(--bg-tertiary);
@@ -349,7 +363,9 @@
   flex-direction: row;
   gap: 0;
   flex-shrink: 0;
+  overflow-x: auto;
   backdrop-filter: blur(10px);
+  scrollbar-width: thin;
 }
 
 .social-nav-item {
@@ -357,15 +373,23 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 16px 28px;
+  padding: 16px clamp(14px, 2vw, 28px);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-bottom: 3px solid transparent;
+  font-family: inherit;
   font-size: 15px;
   font-weight: 500;
   position: relative;
   transform: translateY(0);
+}
+
+.social-nav-item:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -4px;
 }
 
 .social-nav-item i {
@@ -2072,6 +2096,38 @@
   font-size: 17px;
 }
 
+.social-supporter-modal-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #ff6f9c 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, #ff6f9c 10%, transparent);
+  color: #ffabc4;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.social-supporter-modal-status.is-expiring {
+  border-color: color-mix(in srgb, #f5a524 34%, transparent);
+  background: color-mix(in srgb, #f5a524 11%, transparent);
+  color: #ffc766;
+}
+
+.social-supporter-modal-status.is-pending {
+  border-color: color-mix(in srgb, var(--accent-color) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 9%, transparent);
+  color: var(--accent-color);
+}
+
+.social-supporter-modal-status.is-expired {
+  border-color: var(--bg-transparent-10);
+  background: var(--bg-transparent-05);
+  color: var(--text-muted);
+}
+
 @media (max-width: 620px) {
   .social-supporter-benefits-list {
     grid-template-columns: 1fr;
@@ -3524,6 +3580,167 @@
   color: var(--success-color, #63d471);
 }
 
+/* Profile search */
+.social-profile-search-shell {
+  width: min(760px, 100%);
+}
+
+.social-profile-search-form {
+  padding: 20px;
+  border: 1px solid var(--bg-transparent-10);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.social-profile-search-label {
+  display: block;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.social-profile-search-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.social-profile-search-input-wrap {
+  position: relative;
+}
+
+.social-profile-search-input-wrap > i {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  color: var(--text-muted);
+  font-size: 16px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.social-profile-search-input-wrap .social-input {
+  min-height: 44px;
+  padding-left: 42px;
+}
+
+.social-profile-search-controls .social-btn {
+  min-width: 126px;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.social-profile-search-feedback {
+  min-height: 20px;
+  margin: 10px 2px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.social-profile-search-feedback.is-error {
+  color: var(--danger-color, #ff6b6b);
+}
+
+.social-profile-search-results {
+  margin-top: 14px;
+}
+
+.social-profile-search-empty,
+.social-profile-search-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 18px 4px;
+  color: var(--text-muted);
+}
+
+.social-profile-search-empty i,
+.social-profile-search-loading i {
+  flex: 0 0 auto;
+  color: var(--accent-color);
+  font-size: 28px;
+}
+
+.social-profile-search-empty p,
+.social-profile-search-loading p {
+  margin: 0;
+}
+
+.social-profile-search-loading i {
+  animation: spin 1s linear infinite;
+}
+
+.social-profile-search-result {
+  width: 100%;
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--bg-transparent-10);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out;
+}
+
+.social-profile-search-result:hover {
+  border-color: rgba(var(--accent-rgb), 0.42);
+  background: var(--bg-hover);
+}
+
+.social-profile-search-result:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.social-profile-search-avatar {
+  width: 56px;
+  height: 56px;
+  border: 2px solid var(--bg-transparent-10);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.social-profile-search-copy {
+  min-width: 0;
+}
+
+.social-profile-search-name {
+  display: block;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-profile-search-hint {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.social-profile-search-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent-color);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .social-friend-request-card {
   display: flex;
   align-items: center;
@@ -3564,6 +3781,32 @@
   .social-add-friend-controls .social-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .social-profile-search-form {
+    padding: 16px;
+  }
+
+  .social-profile-search-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .social-profile-search-controls .social-btn {
+    width: 100%;
+  }
+
+  .social-profile-search-result {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .social-profile-search-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .social-profile-search-open {
+    grid-column: 2;
   }
 }
 

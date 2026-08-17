@@ -25,6 +25,7 @@ export type ModInstallResult =
       resultingMods: {
         modPath: string;
         modName: string;
+        textFiles: string[];
       }[];
     }
   | {

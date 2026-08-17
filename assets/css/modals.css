@@ -30,6 +30,14 @@
   box-sizing: border-box;
 }
 
+/* A modal opened above another modal needs its own visual depth layer. */
+.modal.modal-stacked {
+  z-index: 10002;
+  box-shadow:
+    0 0 0 100vmax rgba(0, 0, 0, 0.58),
+    0 28px 80px rgba(0, 0, 0, 0.72);
+}
+
 .modal-large {
   min-width: 600px;
   width: 80vw;
@@ -316,6 +324,24 @@
   color: var(--text-muted);
   margin: 0;
   line-height: 1.6;
+}
+
+#social-install-sharing-notice-modal {
+  width: min(500px, calc(100vw - 32px));
+  min-width: 0;
+}
+
+.social-install-sharing-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.social-install-sharing-message {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .uninstall-mod-list {
@@ -624,6 +650,59 @@
   border-color: var(--accent-color);
   background: var(--bg-input);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+.slot-input-wrapper {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px);
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.slot-input-wrapper.has-extended-input {
+  grid-template-columns: minmax(120px, 180px) minmax(92px, 120px);
+}
+
+.slot-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-hover);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.slot-input:hover {
+  border-color: var(--text-muted);
+}
+
+.slot-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+
+.slot-input[aria-invalid='true'] {
+  border-color: var(--danger-color);
+}
+
+.slot-input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.15);
+}
+
+.slot-input-error {
+  grid-column: 1 / -1;
+  color: var(--danger-color);
+  font-size: 12px;
+}
+
+.slot-input-error[hidden] {
+  display: none;
 }
 
 .slot-item-files {
@@ -965,4 +1044,55 @@ body.no-animations .context-menu {
 
 .spin {
   animation: spin 2s linear infinite;
+}
+
+.text-file-notice-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.text-file-notice-file {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--accent-color);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.text-file-notice-file:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
+}
+
+.text-file-notice-file:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.text-file-notice-file:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.text-file-notice-content {
+  max-height: min(60vh, 620px);
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font: 13px/1.55 monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
 }

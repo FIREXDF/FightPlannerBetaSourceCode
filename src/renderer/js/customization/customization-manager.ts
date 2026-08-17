@@ -328,7 +328,7 @@ class CustomizationManager {
 
     document.body.appendChild(modal);
     window.modalManager.showOverlay();
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
 
     const checkbox = document.querySelector<HTMLInputElement>(
       '#js-warning-understand-checkbox',

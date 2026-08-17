@@ -149,6 +149,25 @@ async function collectDriveTransferItems(
   targetPluginsPath: string,
 ): Promise<DriveTransferItem[]> {
   const items: DriveTransferItem[] = [];
+  const quickSync = config.switchSyncMode === 'quick';
+  const selectedModPaths = quickSync
+    ? new Set(
+        (config.recentDownloads || [])
+          .map((download) => download.folderPath)
+          .filter((folderPath): folderPath is string => !!folderPath)
+          .map((folderPath) => normalizeLocalPath(path.resolve(folderPath))),
+      )
+    : null;
+  const selectedModNames = quickSync
+    ? new Set(
+        (config.recentDownloads || [])
+          .map((download) => download.folderPath)
+          .filter((folderPath): folderPath is string => !!folderPath)
+          .map((folderPath) =>
+            normalizeLocalPath(path.basename(path.resolve(folderPath))),
+          ),
+      )
+    : null;
 
   if (config.modsPath && (await pathExists(config.modsPath))) {
     const modEntries = await fs.readdir(config.modsPath, {
@@ -161,6 +180,13 @@ async function collectDriveTransferItems(
       }
 
       const sourcePath = path.join(config.modsPath, entry.name);
+      if (
+        selectedModPaths &&
+        !selectedModPaths.has(normalizeLocalPath(path.resolve(sourcePath))) &&
+        !selectedModNames?.has(normalizeLocalPath(entry.name))
+      ) {
+        continue;
+      }
       const destinationPath = path.join(targetModsPath, entry.name);
       items.push({
         itemName: entry.name,
@@ -169,7 +195,11 @@ async function collectDriveTransferItems(
     }
   }
 
-  if (config.pluginsPath && (await pathExists(config.pluginsPath))) {
+  if (
+    !quickSync &&
+    config.pluginsPath &&
+    (await pathExists(config.pluginsPath))
+  ) {
     const pluginEntries = await fs.readdir(config.pluginsPath, {
       withFileTypes: true,
     });
@@ -195,6 +225,10 @@ async function collectDriveTransferItems(
   }
 
   return items;
+}
+
+function normalizeLocalPath(localPath: string): string {
+  return process.platform === 'win32' ? localPath.toLowerCase() : localPath;
 }
 
 export async function sendModsToDrive(
@@ -253,7 +287,9 @@ export async function sendModsToDrive(
 
     for (const [itemIndex, item] of transferItems.entries()) {
       for (const file of item.files) {
-        const matches = await filesMatch(file.sourcePath, file.destinationPath);
+        const matches =
+          config.switchSyncMode !== 'quick' &&
+          (await filesMatch(file.sourcePath, file.destinationPath));
 
         if (matches) {
           console.log(`Skipped existing file: ${file.destinationPath}`);

@@ -177,6 +177,23 @@ const SystemHandlers = {
     }
   },
 
+  ['pause-download']: async (common: BaseHandlerArg, downloadId: string) => {
+    try {
+      const handler = getProtocolHandler();
+      if (handler) {
+        return handler.pauseDownload(downloadId);
+      } else {
+        return createErrorResponse(
+          ErrorCodes.PROTOCOL_HANDLER_NOT_INITIALIZED,
+          'Protocol handler not initialized',
+        );
+      }
+    } catch (error) {
+      handleError(error, 'pause-download');
+      return createErrorResponse(ErrorCodes.UNKNOWN_ERROR, error.message);
+    }
+  },
+
   ['resume-download']: async (common: BaseHandlerArg, downloadId: string) => {
     try {
       const handler = getProtocolHandler();

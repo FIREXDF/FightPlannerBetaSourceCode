@@ -232,6 +232,15 @@ function initializeTabFeatures(tabName) {
                   },
                 );
               }
+              window.modalManager?.showTextFileNotice(
+                installResult.resultingMods.flatMap((mod) =>
+                  (mod.textFiles || []).map((relativePath) => ({
+                    modName: mod.modName,
+                    modPath: mod.modPath,
+                    relativePath,
+                  })),
+                ),
+              );
               setTimeout(() => {
                 if (window.modManager) {
                   window.modManager.fetchMods();

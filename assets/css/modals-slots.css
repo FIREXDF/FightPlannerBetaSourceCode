@@ -17,6 +17,125 @@
   height: 60vh;
 }
 
+#change-slot-summary-modal {
+  width: min(640px, 90vw);
+}
+
+#change-slot-summary-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.slot-change-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.slot-change-summary-intro {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.slot-change-summary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slot-change-summary-metrics > span {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg-transparent-03);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.slot-change-summary-metrics strong {
+  color: var(--text-primary);
+}
+
+.slot-change-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.slot-change-summary-group {
+  min-width: 0;
+}
+
+.slot-change-summary-group h4 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.slot-change-summary-operation {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-hover);
+}
+
+.slot-change-summary-icon {
+  color: var(--accent-color);
+  text-align: center;
+}
+
+.slot-change-summary-operation.is-deletion .slot-change-summary-icon {
+  color: var(--danger-color, #ef4444);
+}
+
+.slot-change-summary-operation-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.slot-change-summary-operation-text strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.slot-change-summary-operation-text span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.slot-change-summary-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.slot-change-summary-empty i {
+  color: var(--accent-color);
+  font-size: 20px;
+}
+
+@media (max-width: 560px) {
+  #change-slot-summary-modal {
+    min-width: 0;
+    width: calc(100vw - 24px);
+  }
+
+  .slot-change-summary-metrics {
+    flex-direction: column;
+  }
+}
+
 #conflict-slot-modal .modal-body {
   overflow-y: auto;
   height: auto;

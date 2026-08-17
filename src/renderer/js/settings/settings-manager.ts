@@ -28,6 +28,7 @@ class SettingsManager {
       switchFtpModsPath: null,
       switchFtpPluginsPath: null,
       switchTransferMethod: 'none',
+      switchSyncMode: 'quick',
       switchDriveLetter: null,
       conflictDetectionEnabled: true,
       nroLimitCheckEnabled: true,
@@ -38,6 +39,8 @@ class SettingsManager {
       pluginUpdateIntroShown: false,
       autoDisableNewMods: false,
       disableAllModsOnDownload: false,
+      autoUseGameBananaModName: false,
+      reviewSlotChangesBeforeApply: true,
       devMode: false,
       devShowModHash: false,
       theme: 'dark',
@@ -49,7 +52,7 @@ class SettingsManager {
       appSoundPaths: {},
       appSoundEnabled: {},
       checkDependenciesOnDiscoverDownload: true,
-      hideNsfwDiscoverMods: false,
+      hideNsfwDiscoverMods: true,
       showNsfwDiscoverPreviews: false,
     };
     this.initialized = false;
@@ -105,6 +108,10 @@ class SettingsManager {
     const normalized =
       typeof transferMethod === 'string' ? transferMethod.toLowerCase() : '';
     return ['ftp', 'drive', 'mtp'].includes(normalized) ? normalized : 'none';
+  }
+
+  normalizeSwitchSyncMode(syncMode) {
+    return syncMode === 'full' ? 'full' : 'quick';
   }
 
   normalizeAppRunMode(appRunMode) {
@@ -323,13 +330,15 @@ class SettingsManager {
 
   initializeFeedbackUI() {
     const form = document.querySelector<HTMLFormElement>('#feedback-form');
-    const typeInput = document.querySelector<HTMLSelectElement>('#feedback-type');
+    const typeInput =
+      document.querySelector<HTMLSelectElement>('#feedback-type');
     const messageInput =
       document.querySelector<HTMLTextAreaElement>('#feedback-message');
     const contactInput =
       document.querySelector<HTMLInputElement>('#feedback-contact');
-    const submitButton =
-      document.querySelector<HTMLButtonElement>('#feedback-submit-btn');
+    const submitButton = document.querySelector<HTMLButtonElement>(
+      '#feedback-submit-btn',
+    );
 
     if (!form || form.dataset.listenerAttached) {
       return;
@@ -340,7 +349,10 @@ class SettingsManager {
 
       const message = messageInput?.value.trim() || '';
       if (message.length < 10) {
-        this.showToast(this.translate('toasts.feedbackMessageTooShort'), 'error');
+        this.showToast(
+          this.translate('toasts.feedbackMessageTooShort'),
+          'error',
+        );
         return;
       }
 
@@ -1093,6 +1105,42 @@ class SettingsManager {
       switchTransferMethodSelect.dataset.listenerAttached = 'true';
     }
 
+    const switchSyncModeSelect = document.querySelector<HTMLElement>(
+      '#switch-sync-mode-select',
+    );
+    if (
+      switchSyncModeSelect &&
+      !switchSyncModeSelect.dataset.listenerAttached
+    ) {
+      const trigger = switchSyncModeSelect.querySelector<HTMLElement>(
+        '.custom-select-trigger',
+      );
+      const options = switchSyncModeSelect.querySelectorAll<HTMLElement>(
+        '.custom-select-option',
+      );
+
+      trigger?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        switchSyncModeSelect.classList.toggle('open');
+      });
+      document.addEventListener('click', (event) => {
+        if (!switchSyncModeSelect.contains(event.target as Node)) {
+          switchSyncModeSelect.classList.remove('open');
+        }
+      });
+      options.forEach((option) => {
+        option.addEventListener('click', () => {
+          this.settings.switchSyncMode = this.normalizeSwitchSyncMode(
+            option.dataset.value,
+          );
+          switchSyncModeSelect.classList.remove('open');
+          this.updateSwitchSyncModeUI();
+          this.saveSettings();
+        });
+      });
+      switchSyncModeSelect.dataset.listenerAttached = 'true';
+    }
+
     const switchDriveLetterSelect = document.querySelector<HTMLElement>(
       '#switch-drive-letter-select',
     );
@@ -1231,6 +1279,32 @@ class SettingsManager {
         this.saveSettings();
       });
       disableAllOnDownload.dataset.listenerAttached = 'true';
+    }
+
+    const autoUseGameBananaModName = document.querySelector<HTMLInputElement>(
+      '#auto-use-gamebanana-mod-name-enabled',
+    );
+    if (
+      autoUseGameBananaModName &&
+      !autoUseGameBananaModName.dataset.listenerAttached
+    ) {
+      autoUseGameBananaModName.addEventListener('change', () => {
+        this.settings.autoUseGameBananaModName =
+          autoUseGameBananaModName.checked;
+        this.saveSettings();
+      });
+      autoUseGameBananaModName.dataset.listenerAttached = 'true';
+    }
+
+    const reviewSlotChanges = document.querySelector<HTMLInputElement>(
+      '#review-slot-changes-enabled',
+    );
+    if (reviewSlotChanges && !reviewSlotChanges.dataset.listenerAttached) {
+      reviewSlotChanges.addEventListener('change', () => {
+        this.settings.reviewSlotChangesBeforeApply = reviewSlotChanges.checked;
+        this.saveSettings();
+      });
+      reviewSlotChanges.dataset.listenerAttached = 'true';
     }
 
     const checkUpdatesBtn =
@@ -1562,6 +1636,71 @@ class SettingsManager {
       sidebarPrideTabsToggle.dataset.listenerAttached = 'true';
     }
 
+    const socialFeaturesToggle = document.querySelector<HTMLInputElement>(
+      '#social-features-enabled',
+    );
+    if (
+      socialFeaturesToggle &&
+      !socialFeaturesToggle.dataset.listenerAttached
+    ) {
+      window.electronAPI.store
+        .get('social.featuresEnabled')
+        .then((value: boolean | null) => {
+          socialFeaturesToggle.checked = value === true;
+        })
+        .catch(() => {
+          socialFeaturesToggle.checked = false;
+        });
+
+      socialFeaturesToggle.addEventListener('change', async () => {
+        const enabled = socialFeaturesToggle.checked;
+        let hasActiveSession = Boolean(
+          window.socialManager?.authToken || window.socialManager?.userData,
+        );
+
+        if (!enabled && !hasActiveSession) {
+          const [storedToken, storedUserData] = await Promise.all([
+            window.electronAPI.store.get('social.authToken'),
+            window.electronAPI.store.get('social.userData'),
+          ]);
+          hasActiveSession = Boolean(storedToken || storedUserData);
+        }
+
+        if (!enabled && hasActiveSession) {
+          const confirmed = await this.confirmDisableSocialFeatures();
+          if (!confirmed) {
+            socialFeaturesToggle.checked = true;
+            return;
+          }
+        }
+
+        if (window.socialManager?.setSocialFeaturesEnabled) {
+          await window.socialManager.setSocialFeaturesEnabled(enabled);
+        } else {
+          await window.electronAPI.store.set(
+            'social.featuresEnabled',
+            enabled,
+          );
+          if (!enabled) {
+            await Promise.all([
+              window.electronAPI.store.delete('social.authToken'),
+              window.electronAPI.store.delete('social.userData'),
+            ]);
+          }
+        }
+        window.toastManager?.success?.('toasts.settingSaved');
+      });
+      socialFeaturesToggle.dataset.listenerAttached = 'true';
+
+      window.addEventListener(
+        'social-features-preference-changed',
+        (event: Event) => {
+          const detail = (event as CustomEvent<{ enabled: boolean }>).detail;
+          socialFeaturesToggle.checked = detail?.enabled === true;
+        },
+      );
+    }
+
     const emulatorTypeSelect = document.querySelector<HTMLElement>(
       '#emulator-type-select',
     );
@@ -1641,12 +1780,15 @@ class SettingsManager {
     this.updateFullscreenVisibility();
     this.updateSwitchSettingsUI();
     this.updateSwitchTransferMethodUI();
+    this.updateSwitchSyncModeUI();
     this.updateConflictDetectionUI();
     this.updateNroLimitCheckUI();
     this.updateLibraryPathValidationUI();
     this.updateAutoCheckPluginUpdatesUI();
     this.updateAutoDisableModsUI();
     this.updateDisableAllModsOnDownloadUI();
+    this.updateAutoUseGameBananaModNameUI();
+    this.updateReviewSlotChangesUI();
     this.updateEnhancedStatusBarUI();
     this.updateStartupSplashUI();
     this.updateStartupSplashSoundUI();
@@ -1914,7 +2056,7 @@ class SettingsManager {
       {
         selector: '#hide-nsfw-discover-mods-enabled',
         key: 'hideNsfwDiscoverMods',
-        defaultValue: false,
+        defaultValue: true,
       },
       {
         selector: '#show-nsfw-discover-previews-enabled',
@@ -1934,13 +2076,53 @@ class SettingsManager {
         this.settings[key] = toggle.checked;
         await window.electronAPI.store.set(key, toggle.checked);
 
-        if (key === 'hideNsfwDiscoverMods' || key === 'showNsfwDiscoverPreviews') {
+        if (
+          key === 'hideNsfwDiscoverMods' ||
+          key === 'showNsfwDiscoverPreviews'
+        ) {
           window.marketplaceDiscover?.refreshGameBananaFilteredContent?.();
         }
       });
       toggle.dataset.listenerAttached = 'true';
     });
+  }
 
+  confirmDisableSocialFeatures(): Promise<boolean> {
+    const title = this.translate('settings.disableSocialFeaturesTitle');
+    const message = this.translate('settings.disableSocialFeaturesMessage');
+
+    if (!window.modalManager?.showCustomModal) {
+      return Promise.resolve(window.confirm(`${title}\n\n${message}`));
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+
+      window.modalManager.showCustomModal({
+        id: 'disable-social-features-modal',
+        title,
+        body: `<p>${message}</p>`,
+        clickOverlayToClose: false,
+        onClose: () => settle(false),
+        buttons: [
+          {
+            text: this.translate('common.cancel'),
+            type: 'secondary',
+            onClick: () => settle(false),
+          },
+          {
+            text: this.translate('settings.disableAndSignOut'),
+            type: 'danger',
+            onClick: () => settle(true),
+          },
+        ],
+      });
+    });
   }
 
   updateDeveloperModeUI() {
@@ -1990,6 +2172,24 @@ class SettingsManager {
     );
     if (toggle) {
       toggle.checked = this.settings.disableAllModsOnDownload || false;
+    }
+  }
+
+  updateAutoUseGameBananaModNameUI() {
+    const toggle = document.querySelector<HTMLInputElement>(
+      '#auto-use-gamebanana-mod-name-enabled',
+    );
+    if (toggle) {
+      toggle.checked = this.settings.autoUseGameBananaModName === true;
+    }
+  }
+
+  updateReviewSlotChangesUI() {
+    const toggle = document.querySelector<HTMLInputElement>(
+      '#review-slot-changes-enabled',
+    );
+    if (toggle) {
+      toggle.checked = this.settings.reviewSlotChangesBeforeApply !== false;
     }
   }
 
@@ -2835,6 +3035,46 @@ class SettingsManager {
     }
   }
 
+  updateSwitchSyncModeUI() {
+    const syncMode = this.normalizeSwitchSyncMode(this.settings.switchSyncMode);
+    const select = document.querySelector<HTMLElement>(
+      '#switch-sync-mode-select',
+    );
+    if (!select) {
+      return;
+    }
+
+    const selectedValue = select.querySelector<HTMLElement>('.selected-value');
+    const selectedDescription = select.querySelector<HTMLElement>(
+      '.selected-description',
+    );
+    const options = select.querySelectorAll<HTMLElement>(
+      '.custom-select-option',
+    );
+    options.forEach((option) => {
+      const active = option.dataset.value === syncMode;
+      option.classList.toggle('active', active);
+      if (active && selectedValue) {
+        const label = option.querySelector<HTMLElement>(
+          '[data-sync-mode-label]',
+        );
+        const description = option.querySelector<HTMLElement>(
+          '[data-sync-mode-description]',
+        );
+        selectedValue.textContent = label?.textContent || '';
+        if (label?.dataset.i18n) {
+          selectedValue.dataset.i18n = label.dataset.i18n;
+        }
+        if (selectedDescription) {
+          selectedDescription.textContent = description?.textContent || '';
+          if (description?.dataset.i18n) {
+            selectedDescription.dataset.i18n = description.dataset.i18n;
+          }
+        }
+      }
+    });
+  }
+
   showSwitchDriveGuideChoiceModal() {
     if (!window.modalManager?.showCustomModal) {
       this.showToast(
@@ -3574,10 +3814,7 @@ class SettingsManager {
     const updateChannelSelect = document.querySelector<HTMLElement>(
       '#update-channel-select',
     );
-    if (
-      updateChannelSelect &&
-      window.electronAPI
-    ) {
+    if (updateChannelSelect && window.electronAPI) {
       try {
         const channel = 'public-beta';
         const selectedValue =
@@ -4004,6 +4241,8 @@ class SettingsManager {
       const switchTransferMethod = await window.electronAPI.store.get(
         'switchTransferMethod',
       );
+      const switchSyncMode =
+        await window.electronAPI.store.get('switchSyncMode');
       const switchDriveLetter = await this.resolveStoredSwitchDrivePath(
         await window.electronAPI.store.get('switchDriveLetter'),
       );
@@ -4034,6 +4273,12 @@ class SettingsManager {
       const disableAllModsOnDownload = await window.electronAPI.store.get(
         'disableAllModsOnDownload',
       );
+      const autoUseGameBananaModName = await window.electronAPI.store.get(
+        'autoUseGameBananaModName',
+      );
+      const reviewSlotChangesBeforeApply = await window.electronAPI.store.get(
+        'reviewSlotChangesBeforeApply',
+      );
       const startupSplashEnabled = await window.electronAPI.store.get(
         'startupSplashEnabled',
       );
@@ -4047,11 +4292,15 @@ class SettingsManager {
       const appSoundEnabled =
         await window.electronAPI.store.get('appSoundEnabled');
       const checkDependenciesOnDiscoverDownload =
-        await window.electronAPI.store.get('checkDependenciesOnDiscoverDownload');
-      const hideNsfwDiscoverMods =
-        await window.electronAPI.store.get('hideNsfwDiscoverMods');
-      const showNsfwDiscoverPreviews =
-        await window.electronAPI.store.get('showNsfwDiscoverPreviews');
+        await window.electronAPI.store.get(
+          'checkDependenciesOnDiscoverDownload',
+        );
+      const hideNsfwDiscoverMods = await window.electronAPI.store.get(
+        'hideNsfwDiscoverMods',
+      );
+      const showNsfwDiscoverPreviews = await window.electronAPI.store.get(
+        'showNsfwDiscoverPreviews',
+      );
       const normalizedSwitchTransferMethod =
         this.normalizeSwitchTransferMethod(switchTransferMethod);
       return {
@@ -4078,6 +4327,7 @@ class SettingsManager {
         switchFtpModsPath: switchFtpModsPath || switchFtpPath || null,
         switchFtpPluginsPath: switchFtpPluginsPath || null,
         switchTransferMethod: normalizedSwitchTransferMethod,
+        switchSyncMode: this.normalizeSwitchSyncMode(switchSyncMode),
         switchDriveLetter: switchDriveLetter || null,
         conflictDetectionEnabled: conflictDetectionEnabled !== false,
         nroLimitCheckEnabled: nroLimitCheckEnabled !== false,
@@ -4093,6 +4343,8 @@ class SettingsManager {
         sidebarPrideTabsEnabled: sidebarPrideTabsEnabled !== false,
         autoDisableNewMods: autoDisableNewMods || false,
         disableAllModsOnDownload: disableAllModsOnDownload || false,
+        autoUseGameBananaModName: autoUseGameBananaModName === true,
+        reviewSlotChangesBeforeApply: reviewSlotChangesBeforeApply !== false,
         startupSplashEnabled: startupSplashEnabled !== false,
         startupSplashSoundEnabled: startupSplashSoundEnabled !== false,
         startupSplashSoundPath:
@@ -4110,7 +4362,7 @@ class SettingsManager {
             : {},
         checkDependenciesOnDiscoverDownload:
           checkDependenciesOnDiscoverDownload !== false,
-        hideNsfwDiscoverMods: hideNsfwDiscoverMods === true,
+        hideNsfwDiscoverMods: hideNsfwDiscoverMods !== false,
         showNsfwDiscoverPreviews: showNsfwDiscoverPreviews === true,
       };
     } catch (error) {
@@ -4134,6 +4386,7 @@ class SettingsManager {
         switchFtpModsPath: null,
         switchFtpPluginsPath: null,
         switchTransferMethod: 'none',
+        switchSyncMode: 'quick',
         switchDriveLetter: null,
         conflictDetectionEnabled: true,
         nroLimitCheckEnabled: true,
@@ -4145,13 +4398,15 @@ class SettingsManager {
         sidebarPrideTabsEnabled: true,
         autoDisableNewMods: false,
         disableAllModsOnDownload: false,
+        autoUseGameBananaModName: false,
+        reviewSlotChangesBeforeApply: true,
         startupSplashEnabled: true,
         startupSplashSoundEnabled: true,
         startupSplashSoundPath: null,
         appSoundPaths: {},
         appSoundEnabled: {},
         checkDependenciesOnDiscoverDownload: true,
-        hideNsfwDiscoverMods: false,
+        hideNsfwDiscoverMods: true,
         showNsfwDiscoverPreviews: false,
       };
     }
@@ -4229,6 +4484,10 @@ class SettingsManager {
         this.settings.switchTransferMethod,
       );
       await window.electronAPI.store.set(
+        'switchSyncMode',
+        this.normalizeSwitchSyncMode(this.settings.switchSyncMode),
+      );
+      await window.electronAPI.store.set(
         'switchDriveLetter',
         this.settings.switchDriveLetter,
       );
@@ -4264,6 +4523,14 @@ class SettingsManager {
       await window.electronAPI.store.set(
         'disableAllModsOnDownload',
         this.settings.disableAllModsOnDownload,
+      );
+      await window.electronAPI.store.set(
+        'autoUseGameBananaModName',
+        this.settings.autoUseGameBananaModName === true,
+      );
+      await window.electronAPI.store.set(
+        'reviewSlotChangesBeforeApply',
+        this.settings.reviewSlotChangesBeforeApply !== false,
       );
       await window.electronAPI.store.set(
         'startupSplashEnabled',
@@ -4391,6 +4658,10 @@ class SettingsManager {
 
   getSwitchTransferMethod() {
     return this.settings.switchTransferMethod || 'none';
+  }
+
+  getSwitchSyncMode() {
+    return this.normalizeSwitchSyncMode(this.settings.switchSyncMode);
   }
 
   getSwitchDriveLetter() {

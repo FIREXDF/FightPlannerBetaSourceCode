@@ -29,7 +29,8 @@ body.reduced-animations .modal {
     transform 0.1s ease !important;
 }
 
-body.reduced-animations .modal[style*='display: block'] {
+body.reduced-animations .modal[style*='display: block'],
+body.reduced-animations .modal[style*='display: flex'] {
   animation: modalSlideInReduced 0.15s ease forwards !important;
   opacity: 1 !important;
 }
