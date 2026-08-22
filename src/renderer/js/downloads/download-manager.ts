@@ -895,6 +895,7 @@ ${subItemsHtml}
     }
 
     setTimeout(() => {
+      window.modManager.clearFilters();
       window.modManager.selectMod(mod.id);
 
       const modElement = document.querySelector<HTMLElement>(

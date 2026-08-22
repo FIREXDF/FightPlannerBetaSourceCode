@@ -261,11 +261,49 @@
   background-color: var(--text-muted);
 }
 
+.character-moveset-mod.conflict .mod-status-dot {
+  background-color: var(--warning-color);
+}
+
+.character-moveset-mod:is(.active, .conflict) > .mod-status-dot,
+.character-mod-item:is(.active, .conflict) > .mod-status-dot,
+.character-modal-mod-item:is(.active, .conflict) > .mod-status-indicator {
+  display: none;
+}
+
+.character-moveset-mod.active {
+  background: rgba(var(--success-color-rgb), 0.32);
+  border-color: rgba(var(--success-color-rgb), 0.56);
+}
+
+.character-moveset-mod.active:hover {
+  background: rgba(var(--success-color-rgb), 0.42);
+  border-color: rgba(var(--success-color-rgb), 0.72);
+}
+
+.character-moveset-mod.conflict {
+  background: rgba(var(--warning-color-rgb), 0.28);
+  border-color: rgba(var(--warning-color-rgb), 0.56);
+}
+
+.character-moveset-mod.conflict:hover {
+  background: rgba(var(--warning-color-rgb), 0.38);
+  border-color: rgba(var(--warning-color-rgb), 0.72);
+}
+
 .character-moveset-mod-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.character-moveset-mod-name-row,
+.character-modal-mod-name-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .character-moveset-mod-main strong,
@@ -277,6 +315,7 @@
 }
 
 .character-moveset-mod-main strong {
+  flex: 1 1 auto;
   color: var(--text-primary);
   font-size: 13px;
 }
@@ -1813,6 +1852,12 @@ body.no-animations .character-css-slots-table td.is-conflict {
   background: var(--bg-transparent-03);
   border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: context-menu;
+}
+
+.character-mod-item > .mod-name {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .character-mod-slots {
@@ -1842,13 +1887,77 @@ body.no-animations .character-css-slots-table td.is-conflict {
   flex-shrink: 0;
 }
 
-.character-mod-item.mod-active .mod-status-dot {
+.character-mod-item.mod-active .mod-status-dot,
+.character-mod-item.active .mod-status-dot {
   background-color: var(--success-color);
   box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
 }
 
-.character-mod-item.mod-disabled .mod-status-dot {
+.character-mod-item.mod-disabled .mod-status-dot,
+.character-mod-item.disabled .mod-status-dot {
   background-color: var(--text-muted);
+}
+
+.character-mod-item.conflict .mod-status-dot {
+  background-color: var(--warning-color);
+}
+
+.character-mod-item.active {
+  background: rgba(var(--success-color-rgb), 0.32);
+  box-shadow: inset 0 0 0 1px rgba(var(--success-color-rgb), 0.56);
+}
+
+.character-mod-item.active:hover {
+  background: rgba(var(--success-color-rgb), 0.42);
+}
+
+.character-mod-item.conflict {
+  background: rgba(var(--warning-color-rgb), 0.28);
+  box-shadow: inset 0 0 0 1px rgba(var(--warning-color-rgb), 0.56);
+}
+
+.character-mod-item.conflict:hover {
+  background: rgba(var(--warning-color-rgb), 0.38);
+}
+
+.character-mod-status {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.character-mod-status.active {
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text-primary);
+}
+
+.character-mod-status.disabled {
+  background: var(--bg-transparent-08);
+  color: var(--text-muted);
+}
+
+.character-mod-status.conflict {
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--text-primary);
+}
+
+.character-mod-item:is(.active, .conflict) .mod-name,
+.character-moveset-mod:is(.active, .conflict) strong,
+.character-moveset-mod:is(.active, .conflict) .character-moveset-description,
+.character-modal-mod-item:is(.active, .conflict) .mod-name {
+  color: var(--text-primary);
+}
+
+.character-mod-item:is(.active, .conflict) .character-moveset-slot,
+.character-moveset-mod:is(.active, .conflict) .character-moveset-slot,
+.character-modal-mod-item:is(.active, .conflict) .character-moveset-slot,
+.character-moveset-mod:is(.active, .conflict) .character-moveset-category {
+  background: rgba(0, 0, 0, 0.16);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
 }
 
 .mod-name {
@@ -1999,6 +2108,10 @@ body.no-animations .character-css-slots-table td.is-conflict {
   gap: 7px;
 }
 
+.character-modal-mod-name-row .mod-name {
+  flex: 1 1 auto;
+}
+
 .character-modal-mod-slots {
   min-width: 0;
   display: flex;
@@ -2011,6 +2124,30 @@ body.no-animations .character-css-slots-table td.is-conflict {
   border-color: rgba(var(--accent-rgb), 0.2);
 }
 
+.character-modal-mod-item {
+  cursor: context-menu;
+}
+
+.character-modal-mod-item.active {
+  background: rgba(var(--success-color-rgb), 0.32);
+  border-color: rgba(var(--success-color-rgb), 0.56);
+}
+
+.character-modal-mod-item.active:hover {
+  background: rgba(var(--success-color-rgb), 0.42);
+  border-color: rgba(var(--success-color-rgb), 0.72);
+}
+
+.character-modal-mod-item.conflict {
+  background: rgba(var(--warning-color-rgb), 0.28);
+  border-color: rgba(var(--warning-color-rgb), 0.56);
+}
+
+.character-modal-mod-item.conflict:hover {
+  background: rgba(var(--warning-color-rgb), 0.38);
+  border-color: rgba(var(--warning-color-rgb), 0.72);
+}
+
 .mod-status-indicator {
   width: 12px;
   height: 12px;
@@ -2019,14 +2156,25 @@ body.no-animations .character-css-slots-table td.is-conflict {
   transition: all 0.3s ease;
 }
 
-.mod-status-indicator.mod-active {
+.mod-status-indicator.mod-active,
+.mod-status-indicator.active {
   background-color: var(--success-color);
   box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
   animation: statusPulse 2s ease-in-out infinite;
 }
 
-.mod-status-indicator.mod-disabled {
+.mod-status-indicator.mod-disabled,
+.mod-status-indicator.disabled {
   background-color: var(--text-muted);
+}
+
+.mod-status-indicator.conflict {
+  background-color: var(--warning-color);
+}
+
+.character-moveset-mod:is(.active, .conflict) > i,
+.character-modal-mod-item:is(.active, .conflict) > i {
+  color: var(--text-primary);
 }
 
 @keyframes statusPulse {

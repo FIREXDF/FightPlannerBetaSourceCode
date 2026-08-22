@@ -463,7 +463,23 @@ export class FileExtractor {
     return new Promise<void>((resolve, reject) => {
       let lastLoggedPercent = -1;
       let settled = false;
+      const maxCapturedOutputLength = 8_192;
+      let stdoutTail = '';
+      let stderrTail = '';
       const args = ['x', '-y', '-bsp1', '-bso1', `-o${extractTo}`, filePath];
+
+      const appendOutputTail = (current: string, next: string) =>
+        (current + next).slice(-maxCapturedOutputLength);
+      const getDiagnostic = () => {
+        const output = [
+          stdoutTail.trim() ? `stdout:\n${stdoutTail.trim()}` : '',
+          stderrTail.trim() ? `stderr:\n${stderrTail.trim()}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        return output || '7-Zip produced no output';
+      };
 
       console.log('[extract-progress][system-7z] starting', {
         archive: filePath,
@@ -473,8 +489,13 @@ export class FileExtractor {
         progressEnabled: !!options.onProgress,
       });
 
-      const handleOutput = (data: Buffer) => {
+      const handleOutput = (data: Buffer, stream: 'stdout' | 'stderr') => {
         const text = data.toString();
+        if (stream === 'stdout') {
+          stdoutTail = appendOutputTail(stdoutTail, text);
+        } else {
+          stderrTail = appendOutputTail(stderrTail, text);
+        }
         const matches = text.matchAll(/(\d{1,3})%/g);
 
         for (const match of matches) {
@@ -502,10 +523,10 @@ export class FileExtractor {
         child.kill('SIGTERM');
       }, 200);
 
-      child.stdout.on('data', handleOutput);
-      child.stderr.on('data', handleOutput);
+      child.stdout.on('data', (data: Buffer) => handleOutput(data, 'stdout'));
+      child.stderr.on('data', (data: Buffer) => handleOutput(data, 'stderr'));
 
-      child.on('close', (code) => {
+      child.on('close', (code, signal) => {
         if (settled) return;
         settled = true;
         clearInterval(cancelTimer);
@@ -515,31 +536,64 @@ export class FileExtractor {
           return;
         }
 
-        if (code === 0 || code === 1 || code === 2) {
+        const diagnostic = getDiagnostic();
+        const logDetails = {
+          command: commandToUse,
+          archive: filePath,
+          extractTo,
+          code,
+          signal,
+          output: diagnostic,
+        };
+
+        if (code === 0) {
           if (this.verifyExtraction(extractTo)) {
             options.onProgress?.({ percent: 100 });
-            console.log('[extract-progress][system-7z] complete', {
-              archive: filePath,
-              code,
-            });
+            console.log('[extract-progress][system-7z] complete', logDetails);
             resolve();
           } else {
-            reject(new Error(`System ${commandToUse} extracted successfully but output dir is empty`));
+            console.warn(
+              '[extract-progress][system-7z] exited successfully but output dir is empty',
+              logDetails,
+            );
+            reject(
+              new Error(
+                `System ${commandToUse} exited with code 0 but output dir is empty. ${diagnostic}`,
+              ),
+            );
           }
-        } else {
-          console.warn('[extract-progress][system-7z] failed', {
-            archive: filePath,
-            code,
-          });
-          reject(new Error(`System ${commandToUse} failed with code ${code}`));
+          return;
         }
+
+        if (code === 1 && this.verifyExtraction(extractTo)) {
+          options.onProgress?.({ percent: 100 });
+          console.warn(
+            '[extract-progress][system-7z] completed with warnings',
+            logDetails,
+          );
+          resolve();
+          return;
+        }
+
+        console.warn('[extract-progress][system-7z] failed', logDetails);
+        const exitReason = signal
+          ? `signal ${signal}`
+          : `code ${code === null ? 'unknown' : code}`;
+        reject(
+          new Error(
+            `System ${commandToUse} failed with ${exitReason}. ${diagnostic}`,
+          ),
+        );
       });
       child.on('error', (error) => {
         if (settled) return;
         settled = true;
         clearInterval(cancelTimer);
         console.warn('[extract-progress][system-7z] error', {
+          command: commandToUse,
           archive: filePath,
+          extractTo,
+          output: getDiagnostic(),
           error: error?.message || error,
         });
         reject(error);

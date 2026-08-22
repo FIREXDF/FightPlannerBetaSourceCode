@@ -64,6 +64,11 @@ const MULTI_CHAR_FIGHTER_GROUPS: Record<
   string,
   { members: string[]; displayName: string }
 > = {
+  'ice-climber-group': {
+    members: ['ice_climber', 'popo', 'nana'],
+    displayName: 'Ice Climbers',
+  },
+
   'ptrainer-group': {
     members: ['ptrainer', 'pzenigame', 'pfushigisou', 'plizardon'],
     displayName: 'Pokemon Trainer',
@@ -312,9 +317,39 @@ M.prototype._renderFighterTabs = function () {
   tabsWrapper.id = 'fighter-tabs-wrapper';
   tabsWrapper.className = 'slot-usage-fighter-tabs-wrapper';
 
+  const hasMultipleFighters = this.fighterNames.length > 1;
+  tabsWrapper.classList.toggle('has-multiple-fighters', hasMultipleFighters);
+
+  if (hasMultipleFighters) {
+    const tabsHeading = document.createElement('div');
+    tabsHeading.className = 'slot-usage-fighter-tabs-heading';
+
+    const headingLabel = document.createElement('strong');
+    headingLabel.innerHTML =
+      '<i class="bi bi-people-fill" aria-hidden="true"></i>';
+    headingLabel.append(
+      ` ${translate('modals.changeSlot.fighterTabsLabel')}`,
+    );
+
+    const headingCount = document.createElement('span');
+    headingCount.className = 'slot-usage-fighter-tabs-count';
+    headingCount.textContent = translate('modals.changeSlot.fighterTabsCount', {
+      count: this.fighterNames.length,
+    });
+
+    tabsHeading.appendChild(headingLabel);
+    tabsHeading.appendChild(headingCount);
+    tabsWrapper.appendChild(tabsHeading);
+  }
+
   const tabsContainer = document.createElement('div');
   tabsContainer.id = 'fighter-tabs';
   tabsContainer.className = 'slot-usage-fighter-tabs';
+  tabsContainer.setAttribute('role', 'group');
+  tabsContainer.setAttribute(
+    'aria-label',
+    translate('modals.changeSlot.fighterTabsLabel'),
+  );
 
   this.fighterNames.forEach((fighterName) => {
     const characterName = getFighterDisplayName(fighterName);
@@ -323,9 +358,13 @@ M.prototype._renderFighterTabs = function () {
     tab.className = 'slot-usage-fighter-tab';
     tab.textContent = characterName;
     tab.dataset.fighter = fighterName;
+    tab.type = 'button';
 
     if (fighterName === this.selectedFighterName) {
       tab.classList.add('active');
+      tab.setAttribute('aria-pressed', 'true');
+    } else {
+      tab.setAttribute('aria-pressed', 'false');
     }
 
     tab.addEventListener('click', () => {
@@ -391,7 +430,9 @@ M.prototype._selectFighter = function (fighterName) {
     tabsContainer
       .querySelectorAll<HTMLElement>('.slot-usage-fighter-tab')
       .forEach((tab) => {
-        tab.classList.toggle('active', tab.dataset.fighter === fighterName);
+        const isActive = tab.dataset.fighter === fighterName;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-pressed', String(isActive));
       });
   }
 
@@ -792,29 +833,75 @@ M.prototype._renderSlotList = function () {
     const inputWrapper = document.createElement('div');
     inputWrapper.className = 'slot-input-wrapper';
 
-    const slotSelect = document.createElement('select');
-    slotSelect.className = 'slot-select';
-    slotSelect.setAttribute(
+    const slotSelect = document.createElement('div');
+    slotSelect.className = 'custom-select slot-custom-select';
+
+    const slotSelectTrigger = document.createElement('div');
+    slotSelectTrigger.className = 'custom-select-trigger';
+    slotSelectTrigger.tabIndex = 0;
+    slotSelectTrigger.setAttribute('role', 'combobox');
+    slotSelectTrigger.setAttribute('aria-haspopup', 'listbox');
+    slotSelectTrigger.setAttribute('aria-expanded', 'false');
+    slotSelectTrigger.setAttribute(
       'aria-label',
       t('modals.changeSlot.newSlotLabel', { slot: originalSlotString }),
     );
 
+    const slotSelectedValue = document.createElement('span');
+    slotSelectedValue.className = 'selected-value';
+
+    const slotSelectChevron = document.createElement('i');
+    slotSelectChevron.className = 'bi bi-chevron-down';
+    slotSelectChevron.setAttribute('aria-hidden', 'true');
+
+    const slotSelectDropdown = document.createElement('div');
+    slotSelectDropdown.className = 'custom-select-dropdown';
+    slotSelectDropdown.id = `slot-options-${index}`;
+    slotSelectDropdown.setAttribute('role', 'listbox');
+    slotSelectTrigger.setAttribute('aria-controls', slotSelectDropdown.id);
+
+    const slotChoices: Array<{ value: string; label: string }> = [];
     for (let slotNumber = 0; slotNumber <= 16; slotNumber++) {
       const slotString = slotNumberToString(slotNumber);
-      const option = document.createElement('option');
-      option.value = slotString;
-      option.textContent = slotString;
-      slotSelect.appendChild(option);
+      slotChoices.push({ value: slotString, label: slotString });
     }
 
-    const extendedOption = document.createElement('option');
-    extendedOption.value = 'extended';
-    extendedOption.textContent = t('modals.changeSlot.extendedSlotsOption');
-    slotSelect.appendChild(extendedOption);
+    slotChoices.push({
+      value: 'extended',
+      label: t('modals.changeSlot.extendedSlotsOption'),
+    });
 
     const selectedSlotNumber = slotStringToNumber(selectedSlotString);
     const usesExtendedSlot = selectedSlotNumber > 16;
-    slotSelect.value = usesExtendedSlot ? 'extended' : selectedSlotString;
+    const initialSlotChoice = usesExtendedSlot
+      ? 'extended'
+      : selectedSlotString;
+    slotSelect.dataset.value = initialSlotChoice;
+    slotSelectedValue.textContent =
+      slotChoices.find((choice) => choice.value === initialSlotChoice)?.label ||
+      initialSlotChoice;
+
+    for (const choice of slotChoices) {
+      const option = document.createElement('div');
+      option.className = 'custom-select-option';
+      option.dataset.value = choice.value;
+      option.setAttribute('role', 'option');
+      option.setAttribute(
+        'aria-selected',
+        String(choice.value === initialSlotChoice),
+      );
+      option.classList.toggle('active', choice.value === initialSlotChoice);
+
+      const optionLabel = document.createElement('span');
+      optionLabel.textContent = choice.label;
+      option.appendChild(optionLabel);
+      slotSelectDropdown.appendChild(option);
+    }
+
+    slotSelectTrigger.appendChild(slotSelectedValue);
+    slotSelectTrigger.appendChild(slotSelectChevron);
+    slotSelect.appendChild(slotSelectTrigger);
+    slotSelect.appendChild(slotSelectDropdown);
     inputWrapper.classList.toggle('has-extended-input', usesExtendedSlot);
 
     const slotInput = document.createElement('input');
@@ -879,8 +966,62 @@ M.prototype._renderSlotList = function () {
     });
     slotInput.addEventListener('blur', () => validateAndAssign(true));
 
-    slotSelect.addEventListener('change', () => {
-      const showExtendedInput = slotSelect.value === 'extended';
+    const closeSlotSelect = () => {
+      slotSelect.classList.remove('open');
+      slotSelectTrigger.setAttribute('aria-expanded', 'false');
+      slotItem.classList.remove('has-open-slot-select');
+    };
+
+    const openSlotSelect = () => {
+      document
+        .querySelectorAll<HTMLElement>('.slot-custom-select.open')
+        .forEach((select) => {
+          if (select !== slotSelect) {
+            select.classList.remove('open');
+            select
+              .querySelector<HTMLElement>('.custom-select-trigger')
+              ?.setAttribute('aria-expanded', 'false');
+            select
+              .closest('.slot-item')
+              ?.classList.remove('has-open-slot-select');
+          }
+        });
+
+      const triggerRect = slotSelectTrigger.getBoundingClientRect();
+      const modalBody = slotSelect.closest<HTMLElement>('.modal-body');
+      const boundary = modalBody?.getBoundingClientRect();
+      const spaceBelow =
+        (boundary?.bottom || window.innerHeight) - triggerRect.bottom;
+      const spaceAbove = triggerRect.top - (boundary?.top || 0);
+
+      slotSelect.classList.toggle(
+        'open-up',
+        spaceBelow < 240 && spaceAbove > spaceBelow,
+      );
+      slotSelect.classList.add('open');
+      slotSelectTrigger.setAttribute('aria-expanded', 'true');
+      slotItem.classList.add('has-open-slot-select');
+
+      window.setTimeout(() => {
+        document.addEventListener('click', closeSlotSelect, { once: true });
+      }, 0);
+    };
+
+    const applySlotChoice = (value: string) => {
+      const choice = slotChoices.find((entry) => entry.value === value);
+      if (!choice) return;
+
+      slotSelect.dataset.value = value;
+      slotSelectedValue.textContent = choice.label;
+      slotSelectDropdown
+        .querySelectorAll<HTMLElement>('.custom-select-option')
+        .forEach((option) => {
+          const isSelected = option.dataset.value === value;
+          option.classList.toggle('active', isSelected);
+          option.setAttribute('aria-selected', String(isSelected));
+        });
+
+      const showExtendedInput = value === 'extended';
       slotInput.hidden = !showExtendedInput;
       inputWrapper.classList.toggle(
         'has-extended-input',
@@ -897,8 +1038,66 @@ M.prototype._renderSlotList = function () {
       slotInput.setCustomValidity('');
       slotInput.setAttribute('aria-invalid', 'false');
       inputError.hidden = true;
-      assignSlot(slotSelect.value);
+      assignSlot(value);
       updateChangeSlotApplyState();
+    };
+
+    slotSelectTrigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (slotSelect.classList.contains('open')) closeSlotSelect();
+      else openSlotSelect();
+    });
+
+    slotSelectTrigger.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeSlotSelect();
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (slotSelect.classList.contains('open')) closeSlotSelect();
+        else openSlotSelect();
+        return;
+      }
+
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const currentIndex = Math.max(
+        0,
+        slotChoices.findIndex(
+          (choice) => choice.value === slotSelect.dataset.value,
+        ),
+      );
+      const nextIndex =
+        event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? slotChoices.length - 1
+            : event.key === 'ArrowDown'
+              ? Math.min(currentIndex + 1, slotChoices.length - 1)
+              : Math.max(currentIndex - 1, 0);
+      applySlotChoice(slotChoices[nextIndex].value);
+    });
+
+    slotSelectDropdown
+      .querySelectorAll<HTMLElement>('.custom-select-option')
+      .forEach((option) => {
+        option.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const value = option.dataset.value || '';
+          applySlotChoice(value);
+          closeSlotSelect();
+          if (value === 'extended') {
+            slotInput.focus();
+            slotInput.select();
+          } else {
+            slotSelectTrigger.focus();
+          }
+        });
     });
 
     inputWrapper.appendChild(slotSelect);
@@ -963,13 +1162,22 @@ M.prototype._renderSlotList = function () {
         const fileItem = document.createElement('div');
         fileItem.className = 'slot-file-item';
 
-        const iconChar = entry.type === 'directory' ? '📁' : '📄';
+        const icon = document.createElement('i');
+        icon.className =
+          entry.type === 'directory'
+            ? 'bi bi-folder-fill'
+            : 'bi bi-file-earmark';
+        icon.setAttribute('aria-hidden', 'true');
+
         const typeLabel =
           entry.type === 'directory'
             ? t('modals.changeSlot.directory')
             : t('modals.changeSlot.file');
 
-        fileItem.textContent = `${iconChar} ${typeLabel} ${entry.original}`;
+        fileItem.appendChild(icon);
+        fileItem.appendChild(
+          document.createTextNode(` ${typeLabel} ${entry.original}`),
+        );
         fileListContainer.appendChild(fileItem);
       });
 

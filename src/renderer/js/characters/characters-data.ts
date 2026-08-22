@@ -216,7 +216,7 @@ const CHARACTER_IMAGES = {
     'https://www.smashbros.com/assets_v2/img/fighter/banjo_and_kazooie/main.png',
   dolly: 'https://www.smashbros.com/assets_v2/img/fighter/terry/main.png',
   master: 'https://www.smashbros.com/assets_v2/img/fighter/byleth/main.png',
-  tantan: 'https://www.smashbros.com/assets_v2/img/fighter/min_min/main.png',
+  tantan: 'https://www.smashbros.com/assets_v2/img/fighter/minmin/main.png',
   pickel: 'https://www.smashbros.com/assets_v2/img/fighter/steve/main.png',
   edge: 'https://www.smashbros.com/assets_v2/img/fighter/sephiroth/main.png',
   eflame: 'https://www.smashbros.com/assets_v2/img/fighter/pyra/main.png',

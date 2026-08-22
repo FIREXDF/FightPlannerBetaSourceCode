@@ -25,6 +25,25 @@ interface FighterDirectory {
   };
 }
 
+interface VanillaDirectory {
+  files?: number[];
+  directories?: Record<string, VanillaDirectory>;
+}
+
+export interface ReslotConfigMapping {
+  sourceSlot: string;
+  targetSlot: string;
+  shareSlot?: string;
+}
+
+interface GeneratedConfig {
+  'new-dir-infos': string[];
+  'new-dir-infos-base': Record<string, string>;
+  'share-to-vanilla': Record<string, string[]>;
+  'share-to-added': Record<string, string[]>;
+  'new-dir-files': Record<string, string[]>;
+}
+
 const slotDetectionRegex = /([/_])(c\d{2,3})([/.])/;
 
 export class ConfigGenerator {
@@ -52,19 +71,12 @@ export class ConfigGenerator {
     allFiles: [] as string[],
   };
 
-  resultingConfig: {
-    'new-dir-infos': string[];
-    'new-dir-infos-base': Record<string, string>;
-    'share-to-vanilla': Record<string, string[]>;
-    'share-to-added': Record<string, string[]>;
-    'new-dir-files': Record<string, string[]>;
-  };
+  resultingConfig: GeneratedConfig;
 
   constructor(modDirectory: string, fighterName: string) {
     this.fighterName = fighterName;
     this.modDirectory = modDirectory;
 
-    this.initializeFighterData();
     this.initializeResultingConfig();
   }
 
@@ -87,12 +99,99 @@ export class ConfigGenerator {
     this.isInitialized = true;
   }
 
+  static hasVanillaFighter(fighterName: string): boolean {
+    return Boolean(
+      this.vanillaData?.dirs?.directories?.fighter?.directories?.[fighterName],
+    );
+  }
+
+  static resolveVanillaFighters(fighterName: string): string[] {
+    const fighterAliases: Record<string, string[]> = {
+      ice_climber: ['popo', 'nana'],
+      flame_first: ['eflame'],
+      flame_only: ['eflame'],
+      light_first: ['elight'],
+      light_only: ['elight'],
+    };
+
+    return (fighterAliases[fighterName] || [fighterName]).filter((name) =>
+      this.hasVanillaFighter(name),
+    );
+  }
+
+  static getDefaultShareSlot(fighterName: string, sourceSlot: string): string {
+    const sourceNumber = Number.parseInt(sourceSlot.replace(/^c/i, ''), 10) % 8;
+    const lastTwoShare = new Set([
+      'edge',
+      'szerosuit',
+      'littlemac',
+      'mario',
+      'metaknight',
+      'jack',
+    ]);
+    const parityShare = new Set([
+      'bayonetta',
+      'master',
+      'cloud',
+      'kamui',
+      'ike',
+      'shizue',
+      'demon',
+      'link',
+      'packun',
+      'reflet',
+      'wario',
+      'wiifit',
+      'ptrainer',
+      'ptrainer_low',
+      'pfushigisou',
+      'plizardon',
+      'pzenigame',
+    ]);
+    const exactShare = new Set([
+      'koopajr',
+      'murabito',
+      'purin',
+      'pikachu',
+      'pichu',
+      'sonic',
+    ]);
+
+    let shareNumber = 0;
+    if (fighterName === 'brave' || fighterName === 'trail') {
+      shareNumber = sourceNumber % 4;
+    } else if (
+      fighterName === 'pikmin' ||
+      fighterName === 'popo' ||
+      fighterName === 'nana'
+    ) {
+      shareNumber = sourceNumber < 4 ? 0 : 4;
+    } else if (fighterName === 'pacman') {
+      shareNumber = sourceNumber === 0 || sourceNumber === 7 ? 0 : sourceNumber;
+    } else if (fighterName === 'ridley') {
+      shareNumber = sourceNumber === 1 || sourceNumber === 7 ? 0 : sourceNumber;
+    } else if (fighterName === 'inkling' || fighterName === 'pickel') {
+      shareNumber = sourceNumber < 6 ? sourceNumber % 2 : sourceNumber;
+    } else if (fighterName === 'shulk') {
+      shareNumber = sourceNumber < 7 ? 0 : 7;
+    } else if (lastTwoShare.has(fighterName)) {
+      shareNumber = sourceNumber < 6 ? 0 : sourceNumber;
+    } else if (exactShare.has(fighterName)) {
+      shareNumber = sourceNumber;
+    } else if (parityShare.has(fighterName)) {
+      shareNumber = sourceNumber % 2;
+    }
+
+    return `c${shareNumber.toString().padStart(2, '0')}`;
+  }
+
   /**
    * Generates the configuration based on the chosen parameters.
    *
    * @param finalSlots - An array of final slot identifiers (e.g., ['c48', 'c49', ...]).
    */
-  async generateConfig(finalSlots: string[]) {
+  async generateConfig(finalSlots: string[], mergeWithExisting = false) {
+    this.initializeFighterData();
     const newDirInfos: string[] = [];
     const newDirInfosBase = {};
     const shareToVanilla = {};
@@ -394,15 +493,186 @@ export class ConfigGenerator {
     this.resultingConfig['share-to-added'] = sortedShareToAdded;
     this.resultingConfig['new-dir-files'] = sortedNewDirFiles;
 
-    // Save the resulting configuration to a JSON file
-    const configPath = `${this.modDirectory}/config.json`;
-
-    await ModFileOperations.writeModFile(
-      configPath,
-      JSON.stringify(this.resultingConfig, null, 2),
+    await this.writeGeneratedConfig(this.resultingConfig, mergeWithExisting);
+    console.log(
+      `Configuration saved to ${path.join(this.modDirectory, 'config.json')}`,
     );
+  }
 
-    console.log(`Configuration saved to ${configPath}`);
+  async generateReslotConfig(
+    slotMappings: ReslotConfigMapping[],
+    mergeWithExisting = false,
+  ) {
+    const fighterRoot =
+      ConfigGenerator.vanillaData?.dirs?.directories?.fighter?.directories?.[
+        this.fighterName
+      ] as unknown as VanillaDirectory | undefined;
+    if (!fighterRoot) {
+      throw new Error(
+        `No data found for fighter '${this.fighterName}' in vanilla.json`,
+      );
+    }
+
+    const config: GeneratedConfig = {
+      'new-dir-infos': [],
+      'new-dir-infos-base': {},
+      'share-to-vanilla': {},
+      'share-to-added': {},
+      'new-dir-files': {},
+    };
+    const fileArray = ConfigGenerator.vanillaData?.file_array || [];
+    const knownFiles = new Set(fileArray);
+    const existingFiles = new Set(
+      (await ModFileOperations.getAllModFiles(this.modDirectory)).map(
+        fixWindowsPath,
+      ),
+    );
+    const fighterDirectories = fighterRoot.directories || {};
+    const replaceSlot = (filePath: string, targetSlot: string) =>
+      filePath.replace(slotDetectionRegex, `$1${targetSlot}$3`);
+    const addUnique = (values: string[], value: string) => {
+      if (!values.includes(value)) values.push(value);
+    };
+
+    const addSlotDirectory = (
+      sourceDirectory: VanillaDirectory,
+      shareDirectory: VanillaDirectory,
+      sharePath: string,
+      targetPath: string,
+      targetSlot: string,
+    ) => {
+      addUnique(config['new-dir-infos'], targetPath);
+      const targetFiles = (config['new-dir-files'][targetPath] ||= []);
+
+      for (const fileIndex of shareDirectory.files || []) {
+        const sourceFile = fileArray[fileIndex];
+        if (!sourceFile || sourceFile.startsWith('0x')) continue;
+
+        const targetFile = replaceSlot(sourceFile, targetSlot);
+        addUnique(targetFiles, targetFile);
+        if (existingFiles.has(targetFile)) continue;
+
+        const section =
+          sourceFile.includes('/motion/') ||
+          sourceFile.includes('/camera/') ||
+          sourceFile.startsWith('camera/') ||
+          sourceFile.startsWith('sound/bank/fighter')
+            ? config['share-to-added']
+            : config['share-to-vanilla'];
+        addUnique((section[sourceFile] ||= []), targetFile);
+      }
+
+      for (const childDirectory of Object.keys(
+        sourceDirectory.directories || {},
+      )) {
+        config['new-dir-infos-base'][`${targetPath}/${childDirectory}`] =
+          `${sharePath}/${childDirectory}`;
+      }
+    };
+
+    for (const mapping of slotMappings) {
+      if (
+        !/^c\d{2,3}$/.test(mapping.sourceSlot) ||
+        !/^c\d{2,3}$/.test(mapping.targetSlot)
+      ) {
+        throw new Error(
+          `Invalid slot mapping: ${mapping.sourceSlot}-${mapping.targetSlot}`,
+        );
+      }
+
+      const targetNumber = Number.parseInt(mapping.targetSlot.slice(1), 10);
+      if (targetNumber <= 7) continue;
+
+      const sourceNumber = Number.parseInt(mapping.sourceSlot.slice(1), 10);
+      const vanillaSourceSlot =
+        sourceNumber <= 7
+          ? mapping.sourceSlot
+          : `c${(sourceNumber % 8).toString().padStart(2, '0')}`;
+      const shareSlot =
+        mapping.shareSlot ||
+        ConfigGenerator.getDefaultShareSlot(
+          this.fighterName,
+          vanillaSourceSlot,
+        );
+
+      const directSource = fighterDirectories[vanillaSourceSlot];
+      const directShare = fighterDirectories[shareSlot] || directSource;
+      if (directSource && directShare) {
+        addSlotDirectory(
+          directSource,
+          directShare,
+          `fighter/${this.fighterName}/${shareSlot}`,
+          `fighter/${this.fighterName}/${mapping.targetSlot}`,
+          mapping.targetSlot,
+        );
+      }
+
+      for (const [subdirectoryName, subdirectory] of Object.entries(
+        fighterDirectories,
+      )) {
+        const nestedSource = subdirectory.directories?.[vanillaSourceSlot];
+        if (!nestedSource) continue;
+        const nestedShare =
+          subdirectory.directories?.[shareSlot] || nestedSource;
+        addSlotDirectory(
+          nestedSource,
+          nestedShare,
+          `fighter/${this.fighterName}/${subdirectoryName}/${shareSlot}`,
+          `fighter/${this.fighterName}/${subdirectoryName}/${mapping.targetSlot}`,
+          mapping.targetSlot,
+        );
+      }
+    }
+
+    const targetSlots = new Set(slotMappings.map(({ targetSlot }) => targetSlot));
+    for (const file of existingFiles) {
+      const fileInfo = await ModScanner.extractFighterAndSlotInfo(file);
+      if (
+        fileInfo.fighterName !== this.fighterName ||
+        !fileInfo.slot ||
+        !targetSlots.has(fileInfo.slot) ||
+        !/\.[^/\\]+$/.test(file) ||
+        knownFiles.has(file)
+      ) {
+        continue;
+      }
+
+      let directoryPath = '';
+      if (file.startsWith(`camera/fighter/${this.fighterName}/`)) {
+        directoryPath = `fighter/${this.fighterName}/${fileInfo.slot}/camera`;
+      } else if (
+        file.startsWith(`fighter/kirby/model/copy_${this.fighterName}_`)
+      ) {
+        directoryPath = `fighter/${this.fighterName}/kirbycopy/${fileInfo.slot}`;
+      } else if (file.startsWith(`fighter/${this.fighterName}/movie/`)) {
+        directoryPath = `fighter/${this.fighterName}/movie/${fileInfo.slot}`;
+      } else if (file.startsWith(`fighter/${this.fighterName}/result/`)) {
+        directoryPath = `fighter/${this.fighterName}/result/${fileInfo.slot}`;
+      } else if (
+        file.startsWith(`fighter/${this.fighterName}/`) ||
+        file.startsWith(`effect/fighter/${this.fighterName}/`) ||
+        file.startsWith(`sound/bank/fighter/se_${this.fighterName}`) ||
+        file.startsWith(`sound/bank/fighter_voice/vc_${this.fighterName}`)
+      ) {
+        directoryPath = `fighter/${this.fighterName}/${fileInfo.slot}`;
+      }
+
+      if (directoryPath) {
+        addUnique((config['new-dir-files'][directoryPath] ||= []), file);
+      }
+    }
+
+    config['new-dir-infos'].sort();
+    for (const section of [
+      config['new-dir-files'],
+      config['share-to-vanilla'],
+      config['share-to-added'],
+    ]) {
+      for (const values of Object.values(section)) values.sort();
+    }
+
+    this.resultingConfig = config;
+    await this.writeGeneratedConfig(config, mergeWithExisting);
   }
 
   /**
@@ -503,6 +773,64 @@ export class ConfigGenerator {
     );
   }
 
+  private async writeGeneratedConfig(
+    generatedConfig: GeneratedConfig,
+    mergeWithExisting: boolean,
+  ) {
+    const configPath = path.join(this.modDirectory, 'config.json');
+    let outputConfig: Record<string, any> = generatedConfig;
+
+    if (mergeWithExisting && (await ModFileOperations.fileExists(configPath))) {
+      const existingConfig = JSON.parse(
+        await ModFileOperations.readModFile(configPath),
+      ) as Record<string, any>;
+      const mergeArrayRecord = (
+        existing: Record<string, string[]> = {},
+        generated: Record<string, string[]> = {},
+      ) => {
+        const merged: Record<string, string[]> = { ...existing };
+        for (const [key, values] of Object.entries(generated)) {
+          merged[key] = [
+            ...new Set([...(merged[key] || []), ...values]),
+          ].sort();
+        }
+        return merged;
+      };
+
+      outputConfig = {
+        ...existingConfig,
+        ...generatedConfig,
+        'new-dir-infos': [
+          ...new Set([
+            ...(existingConfig['new-dir-infos'] || []),
+            ...generatedConfig['new-dir-infos'],
+          ]),
+        ].sort(),
+        'new-dir-infos-base': {
+          ...(existingConfig['new-dir-infos-base'] || {}),
+          ...generatedConfig['new-dir-infos-base'],
+        },
+        'share-to-vanilla': mergeArrayRecord(
+          existingConfig['share-to-vanilla'],
+          generatedConfig['share-to-vanilla'],
+        ),
+        'share-to-added': mergeArrayRecord(
+          existingConfig['share-to-added'],
+          generatedConfig['share-to-added'],
+        ),
+        'new-dir-files': mergeArrayRecord(
+          existingConfig['new-dir-files'],
+          generatedConfig['new-dir-files'],
+        ),
+      };
+    }
+
+    await ModFileOperations.writeModFile(
+      configPath,
+      JSON.stringify(outputConfig, null, 2),
+    );
+  }
+
   private initializeFighterData() {
     const fighterDir =
       ConfigGenerator.vanillaData?.dirs?.directories?.fighter?.directories?.[
@@ -533,25 +861,25 @@ export class ConfigGenerator {
 
     // Check within 'dirs' for entries related to the fighter
     if (fighterDir) {
-      this.fighterData.fighterFiles = (fighterDir.c00.files || []).reduce(
+      this.fighterData.fighterFiles = (fighterDir.c00?.files || []).reduce(
         _getFileNameFromFilesArray,
         [],
       );
 
       this.fighterData.cameraFiles = (
-        fighterDir.camera.directories.c00.files || []
+        fighterDir.camera?.directories?.c00?.files || []
       ).reduce(_getFileNameFromFilesArray, []);
 
       this.fighterData.movieFiles = (
-        fighterDir.movie.directories.c00.files || []
+        fighterDir.movie?.directories?.c00?.files || []
       ).reduce(_getFileNameFromFilesArray, []);
 
       this.fighterData.resultFiles = (
-        fighterDir.result.directories.c00.files || []
+        fighterDir.result?.directories?.c00?.files || []
       ).reduce(_getFileNameFromFilesArray, []);
 
       this.fighterData.kirbyCopyFiles = (
-        fighterDir.kirbycopy?.directories.c00.files || []
+        fighterDir.kirbycopy?.directories?.c00?.files || []
       ).reduce(_getFileNameFromFilesArray, []);
 
       this.fighterData.allFiles = [

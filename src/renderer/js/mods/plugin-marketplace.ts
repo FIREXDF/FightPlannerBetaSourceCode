@@ -356,6 +356,7 @@ class PluginMarketplace {
     downloadUrl: string;
     version: string;
     selectedMods: string[];
+    archiveId?: string;
   }) {
     if (!window.electronAPI?.installCskCollection) {
       throw new Error('CSK installer not available');
@@ -382,6 +383,7 @@ class PluginMarketplace {
       modsPath,
       options.selectedMods,
       options.version,
+      options.archiveId || null,
     );
 
     if (!result.success) {

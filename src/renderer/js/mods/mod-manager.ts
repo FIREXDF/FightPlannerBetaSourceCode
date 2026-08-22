@@ -154,6 +154,43 @@ class ModManager {
     this.updateVisibility();
   }
 
+  clearFilters() {
+    this.searchQuery = '';
+    this.categoryFilter = '';
+
+    const searchInput =
+      document.querySelector<HTMLInputElement>('#search-mods-input');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+
+    const categoryFilter =
+      document.querySelector<HTMLElement>('#category-filter');
+    if (categoryFilter) {
+      const options = categoryFilter.querySelectorAll<HTMLElement>(
+        '.custom-select-option',
+      );
+      const allCategoriesOption = Array.from(options).find(
+        (option) => (option.dataset.value || '') === '',
+      );
+      const selectedValue =
+        categoryFilter.querySelector<HTMLElement>('.selected-value');
+
+      options.forEach((option) => option.classList.remove('active'));
+      allCategoriesOption?.classList.add('active');
+
+      const allCategoriesLabel =
+        allCategoriesOption?.querySelector<HTMLElement>('span')?.textContent;
+      if (selectedValue && allCategoriesLabel) {
+        selectedValue.textContent = allCategoriesLabel;
+      }
+
+      categoryFilter.classList.remove('open');
+    }
+
+    this.updateVisibility();
+  }
+
   sortModsBy(order: string) {
     const allowedOrders: ModSortOrder[] = [
       'name-asc',
@@ -289,6 +326,7 @@ class ModManager {
     }
 
     this.scheduleNroLimitCheck();
+    window.dispatchEvent(new CustomEvent('mods-library-updated'));
   }
 
   scheduleNroLimitCheck() {
@@ -1868,6 +1906,7 @@ class ModManager {
 
         if (statusesChanged) {
           this.renderModList(true);
+          window.dispatchEvent(new CustomEvent('mod-conflicts-updated'));
         }
       }
 

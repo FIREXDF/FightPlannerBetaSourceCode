@@ -79,10 +79,26 @@ const TutorialHandlers = {
   ['detect-yuzu-path']: async (common: BaseHandlerArg) => {
     try {
       const homeDir = os.homedir();
-      const yuzuPath = path.join(homeDir, 'AppData', 'Roaming', 'yuzu');
+      const yuzuCompatiblePaths = [
+        {
+          name: 'Yuzu',
+          path: path.join(homeDir, 'AppData', 'Roaming', 'yuzu'),
+        },
+        {
+          name: 'Eden',
+          path: path.join(homeDir, 'AppData', 'Roaming', 'eden'),
+        },
+      ];
+      const detectedPaths = yuzuCompatiblePaths.filter((candidate) =>
+        fs.existsSync(candidate.path),
+      );
 
-      if (fs.existsSync(yuzuPath)) {
-        return { success: true, path: yuzuPath };
+      if (detectedPaths.length > 0) {
+        return {
+          success: true,
+          path: detectedPaths[0].path,
+          paths: detectedPaths,
+        };
       }
 
       return { success: false, path: null };

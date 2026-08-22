@@ -103,6 +103,7 @@ export class SlotChanger {
     generateSupportFiles = true,
   ) {
     const changedPaths: string[] = [];
+    const pendingConfigMappings = new Map<string, Map<string, string>>();
 
     for (const fighterName of Object.keys(pathData)) {
       const isItem = fighterName.startsWith('item/');
@@ -436,12 +437,40 @@ export class SlotChanger {
         );
       }
 
+      // UI assets can use a shared character id whose gameplay data is split
+      // across multiple vanilla fighter roots (ice_climber => popo + nana).
       if (fighterName) {
         await ConfigGenerator.init();
-        const jsonCreator = new ConfigGenerator(modPath, fighterName);
+        const vanillaFighters =
+          ConfigGenerator.resolveVanillaFighters(fighterName);
 
-        await jsonCreator.generateConfig(finalSlots);
+        for (const vanillaFighter of vanillaFighters) {
+          const mappings =
+            pendingConfigMappings.get(vanillaFighter) ||
+            new Map<string, string>();
+          for (const [sourceSlot, targetSlot] of fighterAssignments) {
+            mappings.set(sourceSlot, targetSlot);
+          }
+          pendingConfigMappings.set(vanillaFighter, mappings);
+        }
       }
+    }
+
+    let hasGeneratedConfig = false;
+    for (const [fighterName, assignments] of pendingConfigMappings) {
+      const jsonCreator = new ConfigGenerator(modPath, fighterName);
+      await jsonCreator.generateReslotConfig(
+        Array.from(assignments, ([sourceSlot, targetSlot]) => ({
+          sourceSlot,
+          targetSlot,
+          shareSlot: ConfigGenerator.getDefaultShareSlot(
+            fighterName,
+            sourceSlot,
+          ),
+        })),
+        hasGeneratedConfig,
+      );
+      hasGeneratedConfig = true;
     }
 
     return changedPaths.length;

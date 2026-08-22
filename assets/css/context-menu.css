@@ -17,6 +17,10 @@
   backdrop-filter: blur(20px);
 }
 
+.context-menu.character-context-menu {
+  z-index: 10020;
+}
+
 .context-menu-item {
   display: flex;
   align-items: center;

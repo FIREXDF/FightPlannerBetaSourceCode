@@ -1701,6 +1701,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           const result = await apiWrapper.detectYuzuPath();
+          if (result.success && result.paths?.length > 1) {
+            statusDiv!.innerHTML = `
+                    <div style="background: rgba(122, 155, 255, 0.1); border: 1px solid rgba(122, 155, 255, 0.3); border-radius: 12px; padding: 16px;">
+                        <p style="color: #fff; margin-bottom: 16px;">Yuzu and Eden were detected. Which emulator do you want to configure?</p>
+                        <div style="display: flex; gap: 12px;">
+                            ${result.paths
+                              .map(
+                                (candidate, index) => `
+                                <button class="select-yuzu-compatible-btn" data-index="${index}" style="flex: 1; padding: 12px; background: rgba(122, 155, 255, 0.2); color: #fff; border: 1px solid rgba(122, 155, 255, 0.4); border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                    ${candidate.name}
+                                </button>`,
+                              )
+                              .join('')}
+                        </div>
+                    </div>
+                `;
+
+            document
+              .querySelectorAll<HTMLElement>('.select-yuzu-compatible-btn')
+              .forEach((button) => {
+                button.addEventListener('click', async () => {
+                  const candidate = result.paths[Number(button.dataset.index)];
+                  if (!candidate) return;
+
+                  await window.tutorialAPI.store.set(
+                    'tutorial.yuzuPath',
+                    candidate.path,
+                  );
+                  statusDiv!.innerHTML = `
+                            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 24px;"></i>
+                                    <div>
+                                        <strong style="color: #fff; display: block;">${candidate.name} selected</strong>
+                                        <span style="color: rgba(255,255,255,0.6); font-size: 13px; font-family: monospace;">${candidate.path}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                  if (nextBtn) {
+                    nextBtn.style.opacity = '1';
+                    nextBtn.style.pointerEvents = 'auto';
+                  }
+                });
+              });
+            return;
+          }
+
           if (result.success && result.path) {
             await window.tutorialAPI.store.set(
               'tutorial.yuzuPath',

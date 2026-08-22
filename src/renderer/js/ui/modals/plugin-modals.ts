@@ -600,6 +600,8 @@ export {};
     let files: any[] = [];
     let activeOptions: string[] = [];
     let installedCskMods = new Set<string>();
+    let archiveId = '';
+    let optionsLoadId = 0;
 
     const escape = (value: string) => this.escapeHtml(String(value || ''));
     const setBusy = (busy: boolean, text = 'Install') => {
@@ -667,9 +669,11 @@ export {};
     const loadOptions = async () => {
       const selectedFile = getSelectedFile();
       if (!selectedFile) return;
+      const loadId = ++optionsLoadId;
 
       optionsList.innerHTML =
         '<div class="marketplace-empty">Reading archive options...</div>';
+      archiveId = '';
       setBusy(true, 'Install');
 
       try {
@@ -677,14 +681,23 @@ export {};
           await window.pluginMarketplace.inspectCskCollectionArchive(
             selectedFile._sDownloadUrl,
           );
+        if (loadId !== optionsLoadId) return;
+
         const availableMods = inspection.availableMods || [];
+        archiveId = inspection.archiveId || '';
         installedCskMods = await getInstalledCskMods(availableMods);
+        if (loadId !== optionsLoadId) return;
+
         renderOptions(availableMods);
       } catch (error) {
+        if (loadId !== optionsLoadId) return;
+
         console.error('[CSK Collection] Failed to inspect archive:', error);
         optionsList.innerHTML = `<div class="marketplace-empty">${escape(error.message || 'Failed to inspect archive')}</div>`;
       } finally {
-        setBusy(false, isInstalled ? 'Apply' : 'Install');
+        if (loadId === optionsLoadId) {
+          setBusy(false, isInstalled ? 'Apply' : 'Install');
+        }
       }
     };
 
@@ -749,6 +762,7 @@ export {};
           downloadUrl: selectedFile._sDownloadUrl,
           version: selectedFile._sVersion || '',
           selectedMods,
+          archiveId,
         });
         window.toastManager?.success(
           `CSK Collection installed with ${selectedMods.length} toggle(s)`,

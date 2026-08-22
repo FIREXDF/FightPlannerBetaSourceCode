@@ -627,29 +627,52 @@
   color: var(--accent-color);
 }
 
-.slot-select {
-  padding: 10px 16px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-hover);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s ease;
-  min-width: 120px;
+.slot-item.has-open-slot-select {
+  position: relative;
+  z-index: 2;
 }
 
-.slot-select:hover {
+.slot-custom-select {
+  min-width: 150px;
+  background: var(--bg-input);
+}
+
+.slot-custom-select:hover {
   background: var(--bg-item-hover);
-  border-color: var(--border-hover);
 }
 
-.slot-select:focus {
-  border-color: var(--accent-color);
-  background: var(--bg-input);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+.slot-custom-select .custom-select-trigger {
+  min-height: 40px;
+  padding: 10px 12px;
+}
+
+.slot-custom-select .custom-select-trigger:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.slot-custom-select .custom-select-dropdown {
+  min-width: 210px;
+  max-height: 232px;
+}
+
+.slot-custom-select.open-up .custom-select-dropdown {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform: translateY(10px);
+}
+
+.slot-custom-select.open.open-up .custom-select-dropdown {
+  transform: translateY(0);
+}
+
+.slot-custom-select .custom-select-option {
+  min-height: 38px;
+  padding: 9px 12px;
+}
+
+.slot-custom-select .custom-select-option.active::before {
+  width: 1px;
 }
 
 .slot-input-wrapper {

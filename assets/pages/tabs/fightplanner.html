@@ -1,11 +1,25 @@
 <!-- FightPlanner Tab Content - Credits -->
 <div class="credits-container">
   <div class="credits-header">
-    <img
-      src="../images/pride-logo/pride.png"
-      alt="FightPlanner Logo"
-      class="credits-logo"
-    />
+    <div class="credits-logo-picker">
+      <img
+        src="../images/pride-logo/pride.png"
+        alt="FightPlanner Logo"
+        class="credits-logo"
+        tabindex="0"
+        role="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-describedby="credits-logo-hint"
+      />
+      <span
+        class="credits-logo-hint"
+        id="credits-logo-hint"
+        role="tooltip"
+        data-i18n="fightplanner.logoStyleHint"
+        >Right-click to change the logo style</span
+      >
+    </div>
     <h1 class="credits-title">
       FightPlanner
       <span
@@ -120,6 +134,50 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Supporters Section -->
+    <div class="credits-section credits-section-supporters">
+      <div class="credits-section-header">
+        <i class="bi bi-gem"></i>
+        <h2 data-i18n="fightplanner.supporters">Supporters</h2>
+      </div>
+      <p
+        class="credits-supporters-message"
+        data-i18n="fightplanner.supportersMessage"
+      >
+        Thank you to everyone who supports FightPlanner and helps the project
+        grow.
+      </p>
+      <div class="credits-list credits-supporters-list">
+        <div class="credits-person">
+          <img
+            src="../images/credits/sonickid1.png"
+            alt="Sonickid1"
+            class="credits-person-avatar"
+            onerror="this.outerHTML = '<i class=\'bi bi-person-circle\'></i>'"
+          />
+          <div class="credits-person-info">
+            <span class="credits-person-name">Sonickid1</span>
+            <span
+              class="credits-person-role"
+              data-i18n="fightplanner.kofiMember"
+              >Ko-fi Member</span
+            >
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="credits-become-member-btn"
+        onclick="window.electronAPI.openUrl('https://ko-fi.com/firexdf')"
+        aria-label="Become a member"
+        data-i18n="fightplanner.becomeMember"
+        data-i18n-aria-label
+      >
+        <i class="bi bi-heart-fill" aria-hidden="true"></i>
+        <span data-i18n="fightplanner.becomeMember">Become a member</span>
+      </button>
     </div>
 
     <!-- Testers Section -->

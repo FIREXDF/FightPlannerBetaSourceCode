@@ -1,15 +1,22 @@
 import { Mod } from '../../../main/mod-utils';
 
+type CharacterModStatus = 'active' | 'disabled' | 'conflict';
+
 interface Character {
   id: string;
   info: { name: string; number: string };
-  mods: { name: string; path: string; status: string; slots: string[] }[];
+  mods: {
+    name: string;
+    path: string;
+    status: CharacterModStatus;
+    slots: string[];
+  }[];
 }
 
 interface CharacterMovesetMod {
   name: string;
   path: string;
-  status: 'active' | 'disabled';
+  status: CharacterModStatus;
   category: string;
   description: string;
   slots: string[];
@@ -116,6 +123,20 @@ class CharactersManager {
     this.cssSourceLayoutPath = null;
     this.cssSourceMsbtPath = null;
     this.cssSourceImporting = false;
+
+    window.addEventListener('mods-library-updated', () => {
+      const charactersTab = document.querySelector<HTMLElement>(
+        '#tab-characters.active',
+      );
+      if (this.initialized && charactersTab) {
+        void this.refresh();
+      }
+    });
+    window.addEventListener('mod-conflicts-updated', () => {
+      if (this.initialized) {
+        this.syncLiveModStatuses();
+      }
+    });
 
     console.log('Characters Manager created');
   }
@@ -514,7 +535,7 @@ class CharactersManager {
       const allMods = [
         ...result.activeMods.map((m) => ({
           mod: m,
-          status: 'active' as const,
+          status: this.resolveLiveModStatus(m.path, 'active'),
         })),
         ...result.disabledMods.map((m) => ({
           mod: m,
@@ -549,6 +570,38 @@ class CharactersManager {
     }
   }
 
+  resolveLiveModStatus(
+    modPath: string,
+    fallback: CharacterModStatus,
+  ): CharacterModStatus {
+    const liveStatus = window.modManager?.mods.find(
+      (mod) => mod.path === modPath,
+    )?.status;
+
+    if (liveStatus === 'conflict') return 'conflict';
+    if (liveStatus === 'disabled') return 'disabled';
+    if (liveStatus === 'active') return 'active';
+    return fallback;
+  }
+
+  syncLiveModStatuses() {
+    for (const character of this.characters.values()) {
+      for (const mod of character.mods) {
+        mod.status = this.resolveLiveModStatus(mod.path, mod.status);
+      }
+    }
+
+    for (const character of this.movesetCharacters.values()) {
+      for (const mod of character.mods) {
+        mod.status = this.resolveLiveModStatus(mod.path, mod.status);
+      }
+    }
+
+    if (this.searchQuery) this.filterCharacters();
+    else this.renderCharacters();
+    this.renderMovesetTracker();
+  }
+
   async runWithConcurrency<T>(
     items: T[],
     concurrency: number,
@@ -568,7 +621,7 @@ class CharactersManager {
     );
   }
 
-  async scanModForCharacters(mod: Mod, status: 'active' | 'disabled') {
+  async scanModForCharacters(mod: Mod, status: CharacterModStatus) {
     if (!window.electronAPI || !window.electronAPI.scanMod) {
       return;
     }
@@ -768,6 +821,36 @@ class CharactersManager {
       .join('');
   }
 
+  renderModStatus(status: CharacterModStatus) {
+    const label =
+      status === 'active'
+        ? this.t('characters.modActive', 'Active')
+        : status === 'conflict'
+          ? this.t('characters.modConflict', 'Conflict')
+          : this.t('characters.modDisabled', 'Disabled');
+
+    return `<span class="character-mod-status ${status}">${this.escapeHtml(label)}</span>`;
+  }
+
+  showModContextMenu(event: MouseEvent, modPath?: string) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!modPath || !window.modManager) return;
+
+    const mod = window.modManager.mods.find((entry) => entry.path === modPath);
+    if (!mod) return;
+
+    if (!window.modManager.contextMenuHandler) {
+      window.modManager.initContainer();
+    }
+
+    window.modManager.contextMenuHandler?.showContextMenu(event, mod, {
+      source: 'characters',
+      useSelection: false,
+    });
+  }
+
   createCharacterCard(char) {
     const card = document.createElement('div');
     card.className = 'character-card';
@@ -777,6 +860,14 @@ class CharactersManager {
       window.CHARACTER_IMAGES[char.id] ||
       'https://www.smashbros.com/assets_v2/img/fighter/mario/main.png';
     const escapedName = this.escapeHtml(char.info.name);
+    const activeModCount = char.mods.filter(
+      (mod) => mod.status !== 'disabled',
+    ).length;
+    const activeModSummary = this.t(
+      'characters.activeModCount',
+      `${activeModCount} active`,
+      { count: String(activeModCount) },
+    );
 
     card.innerHTML = `
 <div class="character-card-header">
@@ -794,15 +885,16 @@ onerror="this.style.display='none'; this.nextElementSibling.classList.add('show-
 <h3 class="character-name">${this.escapeHtml(char.info.name)}</h3>
 <div class="character-mod-count">
 <i class="bi bi-file-earmark-code"></i>
-<span>${char.mods.length} mod${char.mods.length > 1 ? 's' : ''}</span>
+<span>${char.mods.length} mod${char.mods.length > 1 ? 's' : ''} · ${this.escapeHtml(activeModSummary)}</span>
 </div>
 <div class="character-mods-list">
 ${char.mods
   .map(
     (mod) => `
-<div class="character-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
+<div class="character-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}" title="${this.escapeHtml(this.t('characters.modActionsHint', 'Right-click for mod actions'))}">
 <span class="mod-status-dot"></span>
 <span class="mod-name">${this.escapeHtml(mod.name)}</span>
+${this.renderModStatus(mod.status)}
 <span class="character-mod-slots" aria-label="Detected character slots">
 ${this.renderCharacterSlotBadges(mod.slots, 'Unknown')}
 </span>
@@ -820,6 +912,9 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Unknown')}
         e.stopPropagation();
         const modPath = item.dataset.modPath;
         this.openModInToolsTab(modPath);
+      });
+      item.addEventListener('contextmenu', (event) => {
+        this.showModContextMenu(event, item.dataset.modPath);
       });
     });
 
@@ -854,10 +949,13 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Unknown')}
 ${char.mods
   .map(
     (mod) => `
-<div class="character-modal-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}">
+<div class="character-modal-mod-item ${mod.status}" data-mod-path="${this.escapeHtml(mod.path)}" title="${this.escapeHtml(this.t('characters.modActionsHint', 'Right-click for mod actions'))}">
 <span class="mod-status-indicator ${mod.status}"></span>
 <span class="character-modal-mod-main">
+<span class="character-modal-mod-name-row">
 <span class="mod-name">${this.escapeHtml(mod.name)}</span>
+${this.renderModStatus(mod.status)}
+</span>
 <span class="character-modal-mod-slots" aria-label="Detected character slots">
 ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
 </span>
@@ -926,6 +1024,10 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
         this.closeCharacterModal(modal, escapeHandler || undefined);
         this.openModInToolsTab(modPath);
       });
+      item.addEventListener('contextmenu', (event) => {
+        this.closeCharacterModal(modal, escapeHandler || undefined);
+        this.showModContextMenu(event, item.dataset.modPath);
+      });
     });
 
     escapeHandler = (e: KeyboardEvent) => {
@@ -949,6 +1051,7 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
         const mod = window.modManager.mods.find((m) => m.path === modPath);
 
         if (mod) {
+          window.modManager.clearFilters();
           window.modManager.selectMod(mod.id);
 
           setTimeout(() => {
@@ -1135,6 +1238,9 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
       item.addEventListener('click', () => {
         this.openModInToolsTab(item.dataset.modPath);
       });
+      item.addEventListener('contextmenu', (event) => {
+        this.showModContextMenu(event, item.dataset.modPath);
+      });
     });
 
     list
@@ -1198,10 +1304,13 @@ ${character.mods.map((mod) => this.renderMovesetModRow(mod)).join('')}
         : '<span class="character-moveset-slot is-unknown">Slot unknown</span>';
 
     return `
-<button class="character-moveset-mod ${mod.status}" type="button" data-mod-path="${this.escapeHtml(mod.path)}">
+<button class="character-moveset-mod ${mod.status}" type="button" data-mod-path="${this.escapeHtml(mod.path)}" title="${this.escapeHtml(this.t('characters.modActionsHint', 'Right-click for mod actions'))}">
 <span class="mod-status-dot"></span>
 <span class="character-moveset-mod-main">
+<span class="character-moveset-mod-name-row">
 <strong>${this.escapeHtml(mod.name)}</strong>
+${this.renderModStatus(mod.status)}
+</span>
 ${description}
 </span>
 <span class="character-moveset-slots" aria-label="Detected moveset slots">

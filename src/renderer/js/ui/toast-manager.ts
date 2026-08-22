@@ -227,6 +227,7 @@ ${actionButtonHtml}
     toast.classList.remove('toast-show');
     toast.removeAttribute('data-stacked');
     toast.classList.add('toast-hide');
+    this.updateStackState();
 
     const noAnimations = document.body.classList.contains('no-animations');
     const delay = noAnimations ? 0 : 450;
@@ -240,8 +241,6 @@ ${actionButtonHtml}
       if (index > -1) {
         this.toasts.splice(index, 1);
       }
-
-      this.updateStackState();
     }, delay);
   }
 

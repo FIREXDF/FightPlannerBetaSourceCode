@@ -231,6 +231,19 @@ class FightPlannerManager {
       event.preventDefault();
       this.openLogoVariantMenu(event.clientX, event.clientY);
     });
+
+    logo.addEventListener('keydown', (event) => {
+      const opensContextMenu =
+        event.key === 'ContextMenu' ||
+        (event.key === 'F10' && event.shiftKey) ||
+        event.key === 'Enter' ||
+        event.key === ' ';
+      if (!opensContextMenu) return;
+
+      event.preventDefault();
+      const rect = logo.getBoundingClientRect();
+      this.openLogoVariantMenu(rect.left + rect.width / 2, rect.bottom);
+    });
   }
 
   openLogoVariantMenu(clientX: number, clientY: number) {
@@ -250,6 +263,9 @@ class FightPlannerManager {
       .join('');
 
     document.body.appendChild(menu);
+    document
+      .querySelector<HTMLImageElement>('.credits-logo')
+      ?.setAttribute('aria-expanded', 'true');
     requestAnimationFrame(() => {
       menu.classList.add('is-open');
     });
@@ -280,6 +296,10 @@ class FightPlannerManager {
   }
 
   closeLogoVariantMenu() {
+    document
+      .querySelector<HTMLImageElement>('.credits-logo')
+      ?.setAttribute('aria-expanded', 'false');
+
     const menu = document.querySelector<HTMLElement>('.credits-logo-menu');
     if (!menu) return;
 

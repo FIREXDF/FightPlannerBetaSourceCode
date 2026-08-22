@@ -468,7 +468,11 @@ class ModContextMenuHandler {
     }
   }
 
-  showContextMenu(e, mod) {
+  showContextMenu(
+    e,
+    mod,
+    options: { source?: 'characters'; useSelection?: boolean } = {},
+  ) {
     e.preventDefault();
 
     const contextMenu =
@@ -486,8 +490,14 @@ class ModContextMenuHandler {
     };
     const selectedMods = this.modManager.getCurrentSelectedMods();
     const useSelection =
+      options.useSelection !== false &&
       selectedMods.length > 1 &&
       selectedMods.some((selectedMod) => selectedMod.id === mod.id);
+
+    contextMenu.classList.toggle(
+      'character-context-menu',
+      options.source === 'characters',
+    );
 
     if (mod.status === 'disabled') {
       if (toggleText) {

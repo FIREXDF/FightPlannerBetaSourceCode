@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, IpcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { randomUUID } from 'crypto';
 import PluginUtils, { SimplePlugin } from '../../plugin-utils';
 import PluginUpdateChecker, {
   PluginUpdateResult,
@@ -23,6 +24,7 @@ export type PluginHandlers = typeof PluginHandlers;
 type CskCollectionInspectResult = {
   availableMods: string[];
   pluginFileName: string;
+  archiveId: string;
 };
 
 type CskCollectionInstallResult = {
@@ -34,6 +36,17 @@ const CSK_PLUGIN_RELATIVE_PATH =
   'atmosphere/contents/01006A800016E000/romfs/skyline/plugins/libthe_csk_collection.nro';
 const ONE_SLOT_EFFECTS_PLUGIN_RELATIVE_PATH =
   'atmosphere/contents/01006A800016E000/romfs/skyline/plugins/libone_slot_eff.nro';
+const CSK_ARCHIVE_CACHE_TTL = 10 * 60 * 1000;
+
+type CachedCskArchive = {
+  downloadUrl: string;
+  tempRoot: string;
+  archivePath: string;
+  extractDir: string;
+  cleanupTimer: ReturnType<typeof setTimeout>;
+};
+
+const cachedCskArchives = new Map<string, CachedCskArchive>();
 
 function findFileByRelativePath(rootDir: string, relativePath: string) {
   const normalizedTarget = relativePath.toLowerCase().replace(/\\/g, '/');
@@ -128,6 +141,42 @@ function cleanupTempDir(tempRoot: string) {
   } catch (error) {
     handleError(error, 'csk-cleanup');
   }
+}
+
+function cacheCskArchive(
+  downloadUrl: string,
+  extracted: Awaited<ReturnType<typeof downloadAndExtractCskArchive>>,
+) {
+  const archiveId = randomUUID();
+  const cleanupTimer = setTimeout(() => {
+    const cachedArchive = cachedCskArchives.get(archiveId);
+    if (!cachedArchive) return;
+
+    cachedCskArchives.delete(archiveId);
+    cleanupTempDir(cachedArchive.tempRoot);
+  }, CSK_ARCHIVE_CACHE_TTL);
+
+  cleanupTimer.unref();
+  cachedCskArchives.set(archiveId, {
+    downloadUrl,
+    ...extracted,
+    cleanupTimer,
+  });
+
+  return archiveId;
+}
+
+function takeCachedCskArchive(archiveId: string, downloadUrl: string) {
+  if (!archiveId) return null;
+
+  const cachedArchive = cachedCskArchives.get(archiveId);
+  if (!cachedArchive || cachedArchive.downloadUrl !== downloadUrl) {
+    return null;
+  }
+
+  cachedCskArchives.delete(archiveId);
+  clearTimeout(cachedArchive.cleanupTimer);
+  return cachedArchive;
 }
 
 const PluginHandlers = {
@@ -377,6 +426,7 @@ const PluginHandlers = {
     downloadUrl: string,
   ): HandlerResponse<CskCollectionInspectResult> => {
     let tempRoot = '';
+    let archiveId = '';
 
     try {
       const extracted = await downloadAndExtractCskArchive(downloadUrl);
@@ -394,10 +444,13 @@ const PluginHandlers = {
         );
       }
 
+      archiveId = cacheCskArchive(downloadUrl, extracted);
+
       return {
         success: true,
         availableMods: listCskModFolders(extracted.extractDir),
         pluginFileName: path.basename(pluginPath),
+        archiveId,
       };
     } catch (error) {
       handleError(error, 'inspect-csk-collection-archive');
@@ -406,7 +459,9 @@ const PluginHandlers = {
         error.message,
       );
     } finally {
-      cleanupTempDir(tempRoot);
+      if (!archiveId) {
+        cleanupTempDir(tempRoot);
+      }
     }
   },
 
@@ -417,6 +472,7 @@ const PluginHandlers = {
     modsPath: string,
     selectedMods: string[],
     targetVersion: string | null,
+    archiveId: string | null,
   ): HandlerResponse<CskCollectionInstallResult> => {
     let tempRoot = '';
 
@@ -438,7 +494,9 @@ const PluginHandlers = {
         );
       }
 
-      const extracted = await downloadAndExtractCskArchive(downloadUrl);
+      const extracted =
+        takeCachedCskArchive(archiveId || '', downloadUrl) ||
+        (await downloadAndExtractCskArchive(downloadUrl));
       tempRoot = extracted.tempRoot;
 
       const pluginSourcePath = findFileByRelativePath(

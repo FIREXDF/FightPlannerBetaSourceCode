@@ -314,6 +314,15 @@ export const ModScanner = {
       return null;
     }
 
+    const uiFighterAliases: Record<string, string> = {
+      eflame_first: 'flame_first',
+      eflame_only: 'flame_only',
+      elight_first: 'light_first',
+      elight_only: 'light_only',
+    };
+    detectedFighterName =
+      uiFighterAliases[detectedFighterName] || detectedFighterName;
+
     const namesDataPath = path.join(PATHS.dataDir(), 'names.data');
     const namesData = await ModFileOperations.readModFile(namesDataPath);
     const validFighterNames = namesData.split('\n').map((s) => s.split(',')[0]);
