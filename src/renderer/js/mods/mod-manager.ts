@@ -307,8 +307,30 @@ class ModManager {
     return allMods;
   }
 
-  async refreshModsFromState(result: FolderModState) {
+  async refreshModsFromState(
+    result: FolderModState,
+    forcedChangedPaths: string[] = [],
+  ) {
+    const previousMods = new Map(this.mods.map((mod) => [mod.path, mod]));
     const allMods = this.mapFolderStateToMods(result);
+    const nextMods = new Map(allMods.map((mod) => [mod.path, mod]));
+    const changedPaths = new Set(forcedChangedPaths);
+
+    for (const [path, mod] of nextMods) {
+      const previous = previousMods.get(path);
+      if (
+        !previous ||
+        previous.name !== mod.name ||
+        previous.status !== mod.status ||
+        previous.hash !== mod.hash ||
+        previous.modifiedAt !== mod.modifiedAt
+      ) {
+        changedPaths.add(path);
+      }
+    }
+    for (const path of previousMods.keys()) {
+      if (!nextMods.has(path)) changedPaths.add(path);
+    }
 
     await this.loadMods(allMods);
     this.clearBatchTestingOverride();
@@ -326,7 +348,11 @@ class ModManager {
     }
 
     this.scheduleNroLimitCheck();
-    window.dispatchEvent(new CustomEvent('mods-library-updated'));
+    window.dispatchEvent(
+      new CustomEvent('mods-library-updated', {
+        detail: { changedPaths: [...changedPaths] },
+      }),
+    );
   }
 
   scheduleNroLimitCheck() {
@@ -1591,7 +1617,10 @@ class ModManager {
     ]);
   }
 
-  async loadModsFromFolder(modsPath: string) {
+  async loadModsFromFolder(
+    modsPath: string,
+    forcedChangedPaths: string[] = [],
+  ) {
     if (this.isBatchTestingLocked()) {
       console.log(
         '[ModManager] Skipping folder refresh while batch testing is active',
@@ -1638,7 +1667,7 @@ class ModManager {
       }
 
       this.saveHardwareLibraryCache(modsPath, result);
-      await this.refreshModsFromState(result);
+      await this.refreshModsFromState(result, forcedChangedPaths);
     } catch (error) {
       if (this.isDirectHardwareLibraryMode()) {
         if (await this.renderHardwareCache(modsPath)) {
@@ -1790,7 +1819,7 @@ class ModManager {
     }
   }
 
-  async fetchMods() {
+  async fetchMods(forcedChangedPaths: string[] = []) {
     if (this.isBatchTestingLocked()) {
       console.log('[ModManager] Ignoring fetch request during batch testing');
       return;
@@ -1819,7 +1848,7 @@ class ModManager {
 
       this.setHardwareLibraryBlockedState(false);
       console.log('Loading mods from saved path:', modsPath);
-      await this.loadModsFromFolder(modsPath);
+      await this.loadModsFromFolder(modsPath, forcedChangedPaths);
         return;
       }
 

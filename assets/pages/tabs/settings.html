@@ -946,8 +946,8 @@
       </div>
 
       <div class="settings-section">
-        <label class="settings-label" data-i18n="settings.modsFolder"
-          >Mods Folder Path</label
+        <label class="settings-label" data-i18n="settings.primaryModsFolder"
+          >Primary Mods Folder</label
         >
         <div class="settings-input-group">
           <input
@@ -966,8 +966,54 @@
             Browse
           </button>
         </div>
-        <p class="settings-hint" data-i18n="settings.modsFolderHint">
-          Select the folder containing your mods (usually atmosphere/contents)
+        <p class="settings-hint" data-i18n="settings.primaryModsFolderHint">
+          Main library, usually used by your emulator.
+        </p>
+      </div>
+
+      <div class="settings-section">
+        <label class="settings-label" data-i18n="settings.modsLibrarySwitcher"
+          >Mods Library Switcher</label
+        >
+        <div class="settings-input-group">
+          <label class="settings-switch">
+            <input type="checkbox" id="mods-library-switcher-enabled" />
+            <span class="settings-switch-slider"></span>
+          </label>
+          <span
+            style="margin-left: 12px; color: var(--text-secondary)"
+            data-i18n="settings.enableModsLibrarySwitcher"
+            >Show the library switch button in the Mods menu</span
+          >
+        </div>
+        <p class="settings-hint" data-i18n="settings.modsLibrarySwitcherHint">
+          Hidden by default. Enable it when you regularly use two mods folders.
+        </p>
+      </div>
+
+      <div class="settings-section" id="secondary-mods-folder-section" hidden>
+        <label class="settings-label" data-i18n="settings.secondaryModsFolder"
+          >Secondary Mods Folder</label
+        >
+        <div class="settings-input-group">
+          <input
+            type="text"
+            id="secondary-mods-folder-path"
+            class="settings-input"
+            data-i18n="settings.secondaryModsFolderPlaceholder"
+            data-i18n-placeholder
+            placeholder="Select alternate mods folder..."
+          />
+          <button
+            class="settings-btn"
+            id="browse-secondary-mods-folder"
+            data-i18n="settings.browse"
+          >
+            Browse
+          </button>
+        </div>
+        <p class="settings-hint" data-i18n="settings.secondaryModsFolderHint">
+          Alternate library for a Switch SD card or another emulator.
         </p>
       </div>
 
@@ -1089,11 +1135,7 @@
         >
         <div class="settings-input-group">
           <label class="settings-switch">
-            <input
-              type="checkbox"
-              id="review-slot-changes-enabled"
-              checked
-            />
+            <input type="checkbox" id="review-slot-changes-enabled" checked />
             <span class="settings-switch-slider"></span>
           </label>
           <span

@@ -86,6 +86,29 @@
   background: rgba(0, 0, 0, 0.5);
 }
 
+.mods-library-switch-btn {
+  min-width: 148px;
+}
+
+.mods-library-switch-btn[hidden] {
+  display: none;
+}
+
+.mods-library-switch-btn[data-active-library='secondary'] {
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.mods-library-switch-btn.is-unconfigured {
+  color: var(--text-muted);
+  border-style: dashed;
+}
+
+.mods-library-switch-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
 .hardware-library-blocked .top-inputs,
 #right-panel.hardware-library-blocked {
   opacity: 0.45;
@@ -307,7 +330,11 @@ body.no-animations .plugin-item {
   padding: 14px 16px;
   border: 1px solid var(--bg-transparent-08);
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--border-color) 0%, var(--bg-tertiary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--border-color) 0%,
+    var(--bg-tertiary) 100%
+  );
   box-shadow: var(--shadow-sm);
   color: inherit;
 }
@@ -762,7 +789,9 @@ body.no-animations .mod-info-item {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease,
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
     color 0.2s ease;
 }
 

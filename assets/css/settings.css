@@ -1638,3 +1638,6 @@ body.no-animations .mod-status-indicator.mod-active {
     opacity: 0;
   }
 }
+#secondary-mods-folder-section[hidden] {
+  display: none;
+}

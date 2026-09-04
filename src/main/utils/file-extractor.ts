@@ -5,7 +5,15 @@ import Seven from 'node-7z';
 import child_process, { execSync } from 'child_process';
 import fs from 'fs';
 
-type ArchiveKind = 'zip' | 'rar' | '7z' | 'tar' | 'gzip' | 'bzip2' | 'xz' | 'unknown';
+type ArchiveKind =
+  | 'zip'
+  | 'rar'
+  | '7z'
+  | 'tar'
+  | 'gzip'
+  | 'bzip2'
+  | 'xz'
+  | 'unknown';
 
 export interface ExtractProgress {
   percent: number;
@@ -19,6 +27,8 @@ export interface ExtractArchiveOptions {
 }
 
 export class FileExtractor {
+  private static preparedBundled7ZipPath: string | null | undefined;
+
   private static getCommandEnv() {
     if (process.platform !== 'darwin') {
       return process.env;
@@ -67,7 +77,10 @@ export class FileExtractor {
     const exactPath = path.resolve(extractDir, normalizedEntry);
     const extractRoot = path.resolve(extractDir);
 
-    if (exactPath.startsWith(extractRoot + path.sep) && fs.existsSync(exactPath)) {
+    if (
+      exactPath.startsWith(extractRoot + path.sep) &&
+      fs.existsSync(exactPath)
+    ) {
       return exactPath;
     }
 
@@ -179,7 +192,104 @@ export class FileExtractor {
     }
   }
 
+  private static getBundled7ZipPath(): string | undefined {
+    if (this.preparedBundled7ZipPath !== undefined) {
+      return this.preparedBundled7ZipPath || undefined;
+    }
+
+    const relativePath =
+      process.platform === 'win32'
+        ? ['tools', '7z', 'win', '7z.exe']
+        : process.platform === 'darwin'
+          ? ['tools', '7z', 'macos', '7zz']
+          : process.platform === 'linux' && process.arch === 'x64'
+            ? ['tools', '7z', 'linux', '7zzs']
+            : null;
+
+    if (!relativePath) {
+      console.warn('[FileExtractor] No bundled 7-Zip for this platform', {
+        platform: process.platform,
+        arch: process.arch,
+      });
+      this.preparedBundled7ZipPath = null;
+      return undefined;
+    }
+
+    const bundledPath = path.join(
+      app.isPackaged ? process.resourcesPath : app.getAppPath(),
+      ...relativePath,
+    );
+
+    if (!fs.existsSync(bundledPath)) {
+      console.warn('[FileExtractor] Bundled 7-Zip not found', {
+        bundledPath,
+      });
+      this.preparedBundled7ZipPath = null;
+      return undefined;
+    }
+
+    if (process.platform === 'win32') {
+      this.preparedBundled7ZipPath = bundledPath;
+      return bundledPath;
+    }
+
+    try {
+      fs.accessSync(bundledPath, fs.constants.X_OK);
+      this.preparedBundled7ZipPath = bundledPath;
+      return bundledPath;
+    } catch {
+      // AppImage resources can be read-only. Try fixing development/unpacked builds first.
+      try {
+        fs.chmodSync(bundledPath, 0o755);
+        fs.accessSync(bundledPath, fs.constants.X_OK);
+        this.preparedBundled7ZipPath = bundledPath;
+        return bundledPath;
+      } catch {
+        const executableDir = path.join(
+          app.getPath('userData'),
+          'tools',
+          '7z',
+          `${process.platform}-${process.arch}`,
+        );
+        const executablePath = path.join(
+          executableDir,
+          path.basename(bundledPath),
+        );
+        const temporaryPath = `${executablePath}.${process.pid}.tmp`;
+
+        try {
+          fs.mkdirSync(executableDir, { recursive: true });
+          fs.copyFileSync(bundledPath, temporaryPath);
+          fs.chmodSync(temporaryPath, 0o755);
+          fs.renameSync(temporaryPath, executablePath);
+          this.preparedBundled7ZipPath = executablePath;
+          console.log('[FileExtractor] Prepared bundled 7-Zip executable', {
+            source: bundledPath,
+            executablePath,
+          });
+          return executablePath;
+        } catch (error) {
+          try {
+            fs.rmSync(temporaryPath, { force: true });
+          } catch {}
+          console.warn('[FileExtractor] Failed to prepare bundled 7-Zip', {
+            bundledPath,
+            error: error instanceof Error ? error.message : error,
+          });
+          this.preparedBundled7ZipPath = null;
+          return undefined;
+        }
+      }
+    }
+  }
+
   private static get7ZipPath(): string | undefined {
+    const bundledPath = this.getBundled7ZipPath();
+    if (bundledPath) {
+      console.log('[FileExtractor] Using bundled 7-Zip', { bundledPath });
+      return bundledPath;
+    }
+
     const binaryNames =
       process.platform === 'win32'
         ? ['7z', '7zz', '7za']
@@ -199,7 +309,7 @@ export class FileExtractor {
           .find(Boolean);
         console.log(`Found ${binaryName} in system PATH`);
         return resolvedPath || binaryName;
-      } catch { }
+      } catch {}
     }
 
     for (const candidate of this.getMac7ZipCandidates()) {
@@ -209,13 +319,7 @@ export class FileExtractor {
       }
     }
 
-    // Fallback to bundled version
-    console.log('No 7-Zip binary found in PATH, using bundled version');
-    const bundledBinaryName = process.platform === 'win32' ? '7z.exe' : '7zz';
-    const bundledPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'tools', bundledBinaryName)
-      : path.join(app.getAppPath(), 'tools', bundledBinaryName);
-    return bundledPath;
+    return undefined;
   }
 
   private static async extractWith7Zip(
@@ -254,8 +358,15 @@ export class FileExtractor {
 
       seven.on('progress', (progress) => {
         if (options.isCancelled?.()) return;
-        const percent = Math.max(0, Math.min(100, Math.round(progress.percent || 0)));
-        if (percent === 0 || percent === 100 || percent - lastLoggedPercent >= 5) {
+        const percent = Math.max(
+          0,
+          Math.min(100, Math.round(progress.percent || 0)),
+        );
+        if (
+          percent === 0 ||
+          percent === 100 ||
+          percent - lastLoggedPercent >= 5
+        ) {
           lastLoggedPercent = percent;
           console.log('[extract-progress][7z] progress event', {
             percent,
@@ -305,7 +416,12 @@ export class FileExtractor {
 
   private static async extractWithTar(filePath: string, extractTo: string) {
     return new Promise<void>((resolve, reject) => {
-      const child = child_process.spawn('tar', ['-xf', filePath, '-C', extractTo]);
+      const child = child_process.spawn('tar', [
+        '-xf',
+        filePath,
+        '-C',
+        extractTo,
+      ]);
 
       child.on('close', (code) => {
         if (code !== 0) {
@@ -327,7 +443,13 @@ export class FileExtractor {
 
   private static async extractWithUnzip(filePath: string, extractTo: string) {
     return new Promise<void>((resolve, reject) => {
-      const child = child_process.spawn('unzip', ['-o', '-q', filePath, '-d', extractTo]);
+      const child = child_process.spawn('unzip', [
+        '-o',
+        '-q',
+        filePath,
+        '-d',
+        extractTo,
+      ]);
       child.on('close', (code) => {
         if (code === 0 || code === 1) {
           if (!this.verifyExtraction(extractTo)) {
@@ -373,7 +495,10 @@ export class FileExtractor {
         return 'zip';
       }
 
-      if (buffer.length >= 7 && buffer.subarray(0, 7).toString('ascii') === 'Rar!\x1a\x07') {
+      if (
+        buffer.length >= 7 &&
+        buffer.subarray(0, 7).toString('ascii') === 'Rar!\x1a\x07'
+      ) {
         return 'rar';
       }
 
@@ -393,7 +518,10 @@ export class FileExtractor {
         return 'gzip';
       }
 
-      if (buffer.length >= 3 && buffer.subarray(0, 3).toString('ascii') === 'BZh') {
+      if (
+        buffer.length >= 3 &&
+        buffer.subarray(0, 3).toString('ascii') === 'BZh'
+      ) {
         return 'bzip2';
       }
 
@@ -405,11 +533,17 @@ export class FileExtractor {
         return 'xz';
       }
 
-      if (buffer.length >= 262 && buffer.subarray(257, 262).toString('ascii') === 'ustar') {
+      if (
+        buffer.length >= 262 &&
+        buffer.subarray(257, 262).toString('ascii') === 'ustar'
+      ) {
         return 'tar';
       }
     } catch (error) {
-      console.warn('[FileExtractor] Failed to inspect archive signature:', error);
+      console.warn(
+        '[FileExtractor] Failed to inspect archive signature:',
+        error,
+      );
     }
 
     if (ext === '.zip') return 'zip';
@@ -450,8 +584,9 @@ export class FileExtractor {
 
     if (!commandToUse) {
       commandToUse =
-        this.getMac7ZipCandidates().find((candidate) => fs.existsSync(candidate)) ||
-        null;
+        this.getMac7ZipCandidates().find((candidate) =>
+          fs.existsSync(candidate),
+        ) || null;
     }
 
     if (!commandToUse) {
@@ -500,7 +635,11 @@ export class FileExtractor {
 
         for (const match of matches) {
           const percent = Math.max(0, Math.min(100, Number(match[1]) || 0));
-          if (percent === 0 || percent === 100 || percent - lastLoggedPercent >= 5) {
+          if (
+            percent === 0 ||
+            percent === 100 ||
+            percent - lastLoggedPercent >= 5
+          ) {
             lastLoggedPercent = percent;
             console.log('[extract-progress][system-7z] progress output', {
               percent,
@@ -516,10 +655,13 @@ export class FileExtractor {
       const cancelTimer = setInterval(() => {
         if (!options.isCancelled?.() || settled) return;
 
-        console.log('[extract-progress][system-7z] cancelled, killing process', {
-          archive: filePath,
-          pid: child.pid,
-        });
+        console.log(
+          '[extract-progress][system-7z] cancelled, killing process',
+          {
+            archive: filePath,
+            pid: child.pid,
+          },
+        );
         child.kill('SIGTERM');
       }, 200);
 
@@ -619,17 +761,25 @@ export class FileExtractor {
           .toLowerCase()
           .includes('cancelled')
       ) {
-        console.log('[extract-progress][archive] cancelled, skipping extraction fallbacks', {
-          archive: filePath,
-        });
+        console.log(
+          '[extract-progress][archive] cancelled, skipping extraction fallbacks',
+          {
+            archive: filePath,
+          },
+        );
         throw new Error('Extraction cancelled');
       }
 
-      console.log('[FileExtractor] bundled 7-Zip extraction failed or binary missing, trying fallback...', sevenZipError?.message || sevenZipError);
+      console.log(
+        '[FileExtractor] bundled 7-Zip extraction failed or binary missing, trying fallback...',
+        sevenZipError?.message || sevenZipError,
+      );
 
       const archiveKind = this.getArchiveKind(filePath);
       const ext = path.extname(filePath).toLowerCase();
-      console.log(`[FileExtractor] Detected archive kind: ${archiveKind} (${ext || 'no extension'})`);
+      console.log(
+        `[FileExtractor] Detected archive kind: ${archiveKind} (${ext || 'no extension'})`,
+      );
 
       if (archiveKind === 'zip') {
         try {
@@ -643,12 +793,17 @@ export class FileExtractor {
       }
 
       if (archiveKind === '7z' || archiveKind === 'rar') {
-        console.log(`[FileExtractor] Trying to extract ${archiveKind} using system 7z/7zz/7za...`);
+        console.log(
+          `[FileExtractor] Trying to extract ${archiveKind} using system 7z/7zz/7za...`,
+        );
         try {
           await this.extractWithSystem7Zip(filePath, extractTo, options);
           return;
         } catch (system7zError: any) {
-          console.log('[FileExtractor] System 7z/7za fallback failed:', system7zError?.message || system7zError);
+          console.log(
+            '[FileExtractor] System 7z/7za fallback failed:',
+            system7zError?.message || system7zError,
+          );
           throw system7zError;
         }
       }
@@ -667,7 +822,10 @@ export class FileExtractor {
       }
     }
   }
-  static async extractFppMetadata(filePath: string, extractTo: string): Promise<void> {
+  static async extractFppMetadata(
+    filePath: string,
+    extractTo: string,
+  ): Promise<void> {
     if (!fs.existsSync(extractTo)) fs.mkdirSync(extractTo, { recursive: true });
 
     let sevenZipPath: string | undefined;
@@ -675,17 +833,29 @@ export class FileExtractor {
       sevenZipPath = this.get7ZipPath();
     } catch (error) {
       if (process.platform === 'linux' || process.platform === 'darwin') {
-        console.log('[FileExtractor] 7-Zip not found, falling back to native unzip for metadata extraction.');
+        console.log(
+          '[FileExtractor] 7-Zip not found, falling back to native unzip for metadata extraction.',
+        );
         return new Promise((resolve, reject) => {
           const child = child_process.spawn('unzip', [
-            '-q', '-o', filePath,
-            'manifest.xml', 'downloads.json', 'thumbnail.*',
-            '-d', extractTo
+            '-q',
+            '-o',
+            filePath,
+            'manifest.xml',
+            'downloads.json',
+            'thumbnail.*',
+            '-d',
+            extractTo,
           ]);
 
           child.on('close', (code) => {
             if (code === 0 || code === 1 || code === 11) resolve();
-            else reject(new Error(`unzip fallback metadata extraction failed with code ${code}`));
+            else
+              reject(
+                new Error(
+                  `unzip fallback metadata extraction failed with code ${code}`,
+                ),
+              );
           });
           child.on('error', reject);
         });
@@ -695,12 +865,13 @@ export class FileExtractor {
 
     return new Promise((resolve, reject) => {
       const child = child_process.spawn(sevenZipPath!, [
-        'e', filePath,
+        'e',
+        filePath,
         `-o${extractTo}`,
         'manifest.xml',
         'downloads.json',
         'thumbnail.*',
-        '-y'
+        '-y',
       ]);
 
       child.on('close', (code) => {
@@ -720,14 +891,22 @@ export class FileExtractor {
       sevenZipPath = this.get7ZipPath();
     } catch (error) {
       if (process.platform === 'linux' || process.platform === 'darwin') {
-        console.log('[FileExtractor] 7-Zip not found, falling back to native unzip for listing contents.');
+        console.log(
+          '[FileExtractor] 7-Zip not found, falling back to native unzip for listing contents.',
+        );
         return new Promise((resolve, reject) => {
           const child = child_process.spawn('unzip', ['-Z1', filePath]);
           let output = '';
-          child.stdout.on('data', (d) => output += d.toString());
+          child.stdout.on('data', (d) => (output += d.toString()));
           child.on('close', (code) => {
-            if (code !== 0 && code !== 1) return reject(new Error(`unzip list failed with code ${code}`));
-            resolve(output.split(/[\r\n]+/).map(line => line.trim()).filter(Boolean));
+            if (code !== 0 && code !== 1)
+              return reject(new Error(`unzip list failed with code ${code}`));
+            resolve(
+              output
+                .split(/[\r\n]+/)
+                .map((line) => line.trim())
+                .filter(Boolean),
+            );
           });
           child.on('error', reject);
         });
@@ -736,12 +915,10 @@ export class FileExtractor {
     }
 
     return new Promise((resolve, reject) => {
-      const child = child_process.spawn(sevenZipPath!, [
-        'l', '-slt', filePath
-      ]);
+      const child = child_process.spawn(sevenZipPath!, ['l', '-slt', filePath]);
 
       let output = '';
-      child.stdout.on('data', (d) => output += d.toString());
+      child.stdout.on('data', (d) => (output += d.toString()));
 
       child.on('close', (code) => {
         if (code !== 0 && code !== 1 && code !== 2) {
@@ -753,7 +930,11 @@ export class FileExtractor {
         for (const line of lines) {
           if (line.startsWith('Path = ')) {
             const parsedPath = line.substring(7).trim();
-            if (parsedPath && parsedPath !== '-' && !path.isAbsolute(parsedPath)) {
+            if (
+              parsedPath &&
+              parsedPath !== '-' &&
+              !path.isAbsolute(parsedPath)
+            ) {
               files.push(parsedPath);
             }
           }
@@ -764,20 +945,27 @@ export class FileExtractor {
     });
   }
 
-  static async estimateArchiveUncompressedSize(filePath: string): Promise<number> {
+  static async estimateArchiveUncompressedSize(
+    filePath: string,
+  ): Promise<number> {
     let sevenZipPath: string | undefined;
     try {
       sevenZipPath = this.get7ZipPath();
     } catch {
       try {
         const fallbackSize = fs.statSync(filePath).size;
-        console.log('[extract-progress][estimate] 7z unavailable, using archive size', {
-          archive: filePath,
-          fallbackSize,
-        });
+        console.log(
+          '[extract-progress][estimate] 7z unavailable, using archive size',
+          {
+            archive: filePath,
+            fallbackSize,
+          },
+        );
         return fallbackSize;
       } catch {
-        console.warn('[extract-progress][estimate] failed, returning 0', { archive: filePath });
+        console.warn('[extract-progress][estimate] failed, returning 0', {
+          archive: filePath,
+        });
         return 0;
       }
     }
@@ -806,35 +994,47 @@ export class FileExtractor {
         }
 
         if (totalSize > 0) {
-          console.log('[extract-progress][estimate] uncompressed size detected', {
-            archive: filePath,
-            totalSize,
-          });
+          console.log(
+            '[extract-progress][estimate] uncompressed size detected',
+            {
+              archive: filePath,
+              totalSize,
+            },
+          );
           resolve(totalSize);
           return;
         }
 
         try {
           const fallbackSize = fs.statSync(filePath).size;
-          console.log('[extract-progress][estimate] no listed size, using archive size', {
-            archive: filePath,
-            fallbackSize,
-          });
+          console.log(
+            '[extract-progress][estimate] no listed size, using archive size',
+            {
+              archive: filePath,
+              fallbackSize,
+            },
+          );
           resolve(fallbackSize);
         } catch {
-          console.warn('[extract-progress][estimate] no listed size and stat failed', {
-            archive: filePath,
-          });
+          console.warn(
+            '[extract-progress][estimate] no listed size and stat failed',
+            {
+              archive: filePath,
+            },
+          );
           resolve(0);
         }
       });
       child.on('error', () => {
         try {
           const fallbackSize = fs.statSync(filePath).size;
-          console.warn('[extract-progress][estimate] list failed, using archive size', {
-            archive: filePath,
-            fallbackSize,
-          });
+          console.warn(
+            '[extract-progress][estimate] list failed, using archive size',
+            {
+              archive: filePath,
+              fallbackSize,
+            },
+          );
           resolve(fallbackSize);
         } catch {
           console.warn('[extract-progress][estimate] list and stat failed', {
@@ -871,7 +1071,10 @@ export class FileExtractor {
           ]);
           child.on('close', (code) => {
             if (code === 0 || code === 1 || code === 11) resolve();
-            else reject(new Error(`unzip selected files failed with code ${code}`));
+            else
+              reject(
+                new Error(`unzip selected files failed with code ${code}`),
+              );
           });
           child.on('error', reject);
         });
@@ -891,13 +1094,19 @@ export class FileExtractor {
 
       child.on('close', (code) => {
         if (code === 0 || code === 1 || code === 2) resolve();
-        else reject(new Error(`7z selected files extraction failed with code ${code}`));
+        else
+          reject(
+            new Error(`7z selected files extraction failed with code ${code}`),
+          );
       });
       child.on('error', reject);
     });
   }
 
-  static async readArchiveFile(filePath: string, entry: string): Promise<Buffer> {
+  static async readArchiveFile(
+    filePath: string,
+    entry: string,
+  ): Promise<Buffer> {
     let sevenZipPath: string | undefined;
     try {
       sevenZipPath = this.get7ZipPath();

@@ -97,6 +97,8 @@ class CharactersManager {
   cssSourceLayoutPath: string | null;
   cssSourceMsbtPath: string | null;
   cssSourceImporting: boolean;
+  pendingModRefreshPaths: Set<string>;
+  incrementalRefreshPromise: Promise<void> | null;
 
   constructor() {
     this.characters = new Map();
@@ -123,12 +125,17 @@ class CharactersManager {
     this.cssSourceLayoutPath = null;
     this.cssSourceMsbtPath = null;
     this.cssSourceImporting = false;
+    this.pendingModRefreshPaths = new Set();
+    this.incrementalRefreshPromise = null;
 
-    window.addEventListener('mods-library-updated', () => {
-      const charactersTab = document.querySelector<HTMLElement>(
-        '#tab-characters.active',
-      );
-      if (this.initialized && charactersTab) {
+    window.addEventListener('mods-library-updated', (event) => {
+      if (!this.initialized) return;
+
+      const changedPaths = (event as CustomEvent<{ changedPaths?: string[] }>)
+        .detail?.changedPaths;
+      if (changedPaths) {
+        this.queueIncrementalRefresh(changedPaths);
+      } else {
         void this.refresh();
       }
     });
@@ -621,7 +628,10 @@ class CharactersManager {
     );
   }
 
-  async scanModForCharacters(mod: Mod, status: CharacterModStatus) {
+  async scanModForCharacters(
+    mod: Pick<Mod, 'name' | 'path'>,
+    status: CharacterModStatus,
+  ) {
     if (!window.electronAPI || !window.electronAPI.scanMod) {
       return;
     }
@@ -696,7 +706,73 @@ class CharactersManager {
     }
   }
 
-  async getModInfo(mod: Mod) {
+  removeModFromCharacters(modPath: string) {
+    const affectedCharacterIds = new Set<string>();
+
+    for (const [characterId, character] of this.characters) {
+      const mods = character.mods.filter((mod) => mod.path !== modPath);
+      if (mods.length === character.mods.length) continue;
+      affectedCharacterIds.add(characterId);
+      if (mods.length === 0) this.characters.delete(characterId);
+      else character.mods = mods;
+    }
+
+    for (const [characterId, character] of this.movesetCharacters) {
+      const mods = character.mods.filter((mod) => mod.path !== modPath);
+      if (mods.length === character.mods.length) continue;
+      affectedCharacterIds.add(characterId);
+      if (mods.length === 0) this.movesetCharacters.delete(characterId);
+      else character.mods = mods;
+    }
+
+    return affectedCharacterIds;
+  }
+
+  queueIncrementalRefresh(modPaths: string[]) {
+    modPaths.forEach((path) => this.pendingModRefreshPaths.add(path));
+    if (this.incrementalRefreshPromise) return;
+
+    this.incrementalRefreshPromise = (async () => {
+      while (this.pendingModRefreshPaths.size > 0) {
+        const paths = [...this.pendingModRefreshPaths];
+        this.pendingModRefreshPaths.clear();
+        await this.refreshChangedMods(paths);
+      }
+    })().finally(() => {
+      this.incrementalRefreshPromise = null;
+      if (this.pendingModRefreshPaths.size > 0) {
+        this.queueIncrementalRefresh([]);
+      }
+    });
+  }
+
+  async refreshChangedMods(modPaths: string[]) {
+    const affectedCharacterIds = new Set<string>();
+    const liveModsByPath = new Map(
+      (window.modManager?.mods || []).map((mod) => [mod.path, mod]),
+    );
+
+    for (const path of modPaths) {
+      this.removeModFromCharacters(path).forEach((characterId) =>
+        affectedCharacterIds.add(characterId),
+      );
+
+      const mod = liveModsByPath.get(path);
+      if (!mod) continue;
+      await this.scanModForCharacters(mod, mod.status);
+
+      for (const [characterId, character] of this.characters) {
+        if (character.mods.some((entry) => entry.path === path)) {
+          affectedCharacterIds.add(characterId);
+        }
+      }
+    }
+
+    this.renderChangedCharacters(affectedCharacterIds);
+    this.renderMovesetTracker();
+  }
+
+  async getModInfo(mod: Pick<Mod, 'name' | 'path'>) {
     if (!window.electronAPI?.getModInfo || !mod.path) {
       return null;
     }
@@ -798,6 +874,47 @@ class CharactersManager {
       container.appendChild(card);
     });
 
+    this.updateCharacterCount(this.allCharacters.length);
+  }
+
+  renderChangedCharacters(affectedCharacterIds: Set<string>) {
+    const container = document.querySelector<HTMLElement>('#characters-grid');
+    if (!container) return;
+
+    this.allCharacters = Array.from(this.characters.values()).sort((a, b) => {
+      const numA = parseFloat(a.info.number.replace('ε', '.5'));
+      const numB = parseFloat(b.info.number.replace('ε', '.5'));
+      return numA - numB;
+    });
+
+    if (this.searchQuery) {
+      this.filterCharacters();
+      return;
+    }
+    if (this.allCharacters.length === 0) {
+      this.renderEmptyState();
+      this.updateCharacterCount(0);
+      return;
+    }
+
+    container.querySelector('.characters-empty-state')?.remove();
+    for (const characterId of affectedCharacterIds) {
+      const existing = Array.from(
+        container.querySelectorAll<HTMLElement>('.character-card'),
+      ).find((card) => card.dataset.characterId === characterId);
+      const character = this.characters.get(characterId);
+      if (!character) existing?.remove();
+      else if (existing)
+        existing.replaceWith(this.createCharacterCard(character));
+    }
+
+    for (const character of this.allCharacters) {
+      let card = Array.from(
+        container.querySelectorAll<HTMLElement>('.character-card'),
+      ).find((entry) => entry.dataset.characterId === character.id);
+      if (!card) card = this.createCharacterCard(character);
+      container.appendChild(card);
+    }
     this.updateCharacterCount(this.allCharacters.length);
   }
 
@@ -2439,6 +2556,67 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
     this.cssDirty = true;
   }
 
+  ensureUniqueCssSlotNameIndex(
+    character: CharacterCssEntry,
+    slot: CharacterCssSlot,
+  ) {
+    const currentIndex = Number(slot.nxxIndex);
+    const sharesNameIndex = character.slots.some(
+      (candidate) =>
+        candidate.slotIndex !== slot.slotIndex &&
+        Number(candidate.nxxIndex) === currentIndex,
+    );
+    if (!sharesNameIndex) {
+      return;
+    }
+
+    const usedIndexes = new Set(
+      character.slots
+        .filter((candidate) => candidate.slotIndex !== slot.slotIndex)
+        .map((candidate) => Number(candidate.nxxIndex))
+        .filter(
+          (index) => Number.isInteger(index) && index >= 0 && index <= 255,
+        ),
+    );
+    const preferredIndex = slot.slotIndex + 8;
+    const nextIndex =
+      preferredIndex <= 255 && !usedIndexes.has(preferredIndex)
+        ? preferredIndex
+        : Array.from({ length: 255 }, (_, index) => index + 1).find(
+            (index) => !usedIndexes.has(index),
+          );
+    if (nextIndex === undefined) {
+      return;
+    }
+
+    slot.nxxIndex = String(nextIndex);
+    this.setCssSlotUpdate(
+      character.id,
+      slot.slotIndex,
+      'nxxIndex',
+      slot.nxxIndex,
+    );
+    if (!slot.namChr1) {
+      slot.namChr1 = character.displayName;
+    }
+    for (const key of [
+      'characallLabel',
+      'namChr0',
+      'namChr1',
+      'namChr2',
+      'namChr3',
+      'namStageName',
+    ] as const) {
+      this.setCssSlotUpdate(character.id, slot.slotIndex, key, slot[key]);
+    }
+    const nxxInput = document.querySelector<HTMLInputElement>(
+      '[data-css-field="nxxIndex"]',
+    );
+    if (nxxInput) {
+      nxxInput.value = slot.nxxIndex;
+    }
+  }
+
   updateSelectedCssCharacterFromInspector(
     field: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
   ) {
@@ -2471,6 +2649,14 @@ ${field('nam_stage_name', 'namStageName', slot.namStageName, true)}
       const slot = character.slots[this.cssSelectedSlotIndex];
       if (!slot) {
         return;
+      }
+
+      if (
+        ['namChr0', 'namChr1', 'namChr2', 'namChr3', 'namStageName'].includes(
+          key,
+        )
+      ) {
+        this.ensureUniqueCssSlotNameIndex(character, slot);
       }
 
       (slot as any)[key] = String(value);
