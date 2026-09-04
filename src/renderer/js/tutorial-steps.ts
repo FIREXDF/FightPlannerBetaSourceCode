@@ -46,6 +46,67 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   };
 
+  const chooseArcropolisRelease = async (container: HTMLElement) => {
+    const [recommendedRelease, latestRelease] = await Promise.all([
+      window.tutorialAPI.getGithubRelease('Raytwo/ARCropolis', 'v4.0.8'),
+      window.tutorialAPI.getGithubRelease('Raytwo/ARCropolis'),
+    ]);
+
+    if (!recommendedRelease.success) {
+      throw new Error('Failed to get recommended ARCropolis 4.0.8 release');
+    }
+    if (!latestRelease.success) {
+      throw new Error('Failed to get latest ARCropolis release');
+    }
+
+    const latestCompatibility =
+      latestRelease.version === '4.0.9'
+        ? 'Supports only Super Smash Bros. Ultimate 13.0.5.'
+        : 'Check the release notes for supported game versions.';
+
+    container.innerHTML = `
+      <fieldset style="border: 0; margin: 0; padding: 0; display: grid; gap: 12px;">
+        <legend style="color: #fff; font-size: 16px; font-weight: 700; margin-bottom: 4px;">Choose an ARCropolis version</legend>
+        <label style="display: block; cursor: pointer; padding: 16px; border: 1px solid rgba(76, 175, 80, 0.45); border-radius: 12px; background: rgba(76, 175, 80, 0.1);">
+          <span style="display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700;">
+            <input type="radio" name="arcropolis-release" value="recommended" checked>
+            ARCropolis 4.0.8
+            <span style="color: #81c784; font-size: 12px;">Recommended</span>
+          </span>
+          <span style="display: block; margin: 8px 0 0 24px; color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.5;">
+            Supports only Super Smash Bros. Ultimate 13.0.4. Recommended now for better compatibility with existing mods.
+          </span>
+        </label>
+        <label style="display: block; cursor: pointer; padding: 16px; border: 1px solid rgba(122, 155, 255, 0.35); border-radius: 12px; background: rgba(122, 155, 255, 0.08);">
+          <span style="display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700;">
+            <input type="radio" name="arcropolis-release" value="latest">
+            ARCropolis ${latestRelease.version}
+            <span style="color: #9db5ff; font-size: 12px;">Latest</span>
+          </span>
+          <span style="display: block; margin: 8px 0 0 24px; color: rgba(255,255,255,0.72); font-size: 13px; line-height: 1.5;">
+            ${latestCompatibility} Some mods may need time to adopt this release.
+          </span>
+        </label>
+        <button id="install-selected-arcropolis" type="button" class="tutorial-btn tutorial-btn-primary" style="justify-self: end; margin-top: 4px;">
+          Install selected version
+        </button>
+      </fieldset>
+    `;
+
+    return new Promise<any>((resolve) => {
+      container
+        .querySelector<HTMLButtonElement>('#install-selected-arcropolis')!
+        .addEventListener('click', () => {
+          const selected = container.querySelector<HTMLInputElement>(
+            'input[name="arcropolis-release"]:checked',
+          );
+          resolve(
+            selected?.value === 'latest' ? latestRelease : recommendedRelease,
+          );
+        });
+    });
+  };
+
   // Check for restored dev mode state
   try {
     const restoredState = localStorage.getItem('tutorialDevState');
@@ -909,9 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
               skylineRelease,
             );
 
-          const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
-          if (!arcropolisRelease.success)
-            throw new Error('Failed to get ARCropolis release');
+          const arcropolisRelease = await chooseArcropolisRelease(statusDiv!);
 
           progressBar!.style.width = '20%';
           statusDiv!.innerHTML = `
@@ -1906,9 +1965,7 @@ document.addEventListener('DOMContentLoaded', () => {
               'Failed to get Skyline release',
               skylineRelease,
             );
-          const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
-          if (!arcropolisRelease.success)
-            throw new Error('Failed to get ARCropolis release');
+          const arcropolisRelease = await chooseArcropolisRelease(statusDiv!);
 
           // Download Skyline
           statusDiv!.innerHTML =
@@ -2404,9 +2461,7 @@ document.addEventListener('DOMContentLoaded', () => {
               skylineRelease,
             );
 
-          const arcropolisRelease = await window.tutorialAPI.getGithubRelease();
-          if (!arcropolisRelease.success)
-            throw new Error('Failed to get ARCropolis release');
+          const arcropolisRelease = await chooseArcropolisRelease(statusDiv!);
 
           // Download Skyline
           statusDiv!.innerHTML =
