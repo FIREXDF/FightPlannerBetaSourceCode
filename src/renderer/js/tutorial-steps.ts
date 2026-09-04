@@ -2769,11 +2769,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 <i class="bi bi-folder" style="opacity: 0.5;"></i> <span class="path-text" style="text-overflow: ellipsis; overflow: hidden;">Not configured</span>
             </div>
         </div>
+
+        <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 24px; height: 24px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">2</div>
+                    <strong style="color: #fff;">Plugins Path</strong>
+                </div>
+                <button id="select-plugins-path-btn" class="tutorial-btn-small" style="background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 1px solid rgba(122, 155, 255, 0.3); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s;">
+                    Browse...
+                </button>
+            </div>
+            <div id="plugins-path-display" style="background: rgba(0, 0, 0, 0.3); padding: 10px 14px; border-radius: 8px; color: #a0a0a0; font-family: monospace; font-size: 13px; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
+                <i class="bi bi-folder" style="opacity: 0.5;"></i> <span class="path-text" style="text-overflow: ellipsis; overflow: hidden;">Not configured</span>
+            </div>
+        </div>
     </div>
     
     <div style="margin-top: 24px; padding: 12px 16px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.2); border-radius: 8px; display: flex; gap: 12px; align-items: start; text-align: left;">
         <i class="bi bi-info-circle-fill" style="color: #ffc107; margin-top: 2px;"></i>
-        <span style="font-size: 13px; color: rgba(255, 255, 255, 0.7);">You can change this later in Settings.</span>
+        <span style="font-size: 13px; color: rgba(255, 255, 255, 0.7);">Select the plugins folder inside the same ARCropolis installation. You can change both paths later in Settings.</span>
     </div>
 </div>
 `,
@@ -2781,13 +2796,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.querySelector<HTMLElement>(
           '#select-mods-path-btn',
         );
+        const pluginsBtn = document.querySelector<HTMLElement>(
+          '#select-plugins-path-btn',
+        );
         const display = document.querySelector<HTMLElement>(
           '#mods-path-display .path-text',
+        );
+        const pluginsDisplay = document.querySelector<HTMLElement>(
+          '#plugins-path-display .path-text',
         );
         const nextBtn = document.querySelector<HTMLElement>('#next-btn');
         const description = document.querySelector<HTMLElement>(
           '#mods-path-description',
         );
+        let hasModsPath = false;
+        let hasPluginsPath = false;
+
+        const updateNextButton = () => {
+          if (!nextBtn) return;
+          const pathsConfigured = hasModsPath && hasPluginsPath;
+          nextBtn.style.opacity = pathsConfigured ? '1' : '0.5';
+          nextBtn.style.pointerEvents = pathsConfigured ? 'auto' : 'none';
+          nextBtn.style.cursor = pathsConfigured ? 'pointer' : 'not-allowed';
+        };
+
+        const showConfiguredPath = (
+          path: string,
+          pathDisplay: HTMLElement | null,
+          displaySelector: string,
+        ) => {
+          if (pathDisplay) {
+            pathDisplay.textContent = path;
+            pathDisplay.style.color = '#fff';
+          }
+          const icon = document.querySelector<HTMLElement>(displaySelector);
+          if (icon) {
+            icon.className = 'bi bi-check-circle-fill';
+            icon.style.color = '#4caf50';
+            icon.style.opacity = '1';
+          }
+        };
 
         // Update description based on hardware type
         if (description && window.tutorialAPI) {
@@ -2816,33 +2864,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!window.tutorialAPI || !window.tutorialAPI.store.get) return;
 
-        // Load existing setting
+        // Load existing settings
         try {
-          const currentPath = (await apiWrapper.storeGet('modsPath')) as
-            | string
-            | null;
+          const [currentModsPath, currentPluginsPath] = await Promise.all([
+            apiWrapper.storeGet('modsPath') as Promise<string | null>,
+            apiWrapper.storeGet('pluginsPath') as Promise<string | null>,
+          ]);
 
-          if (currentPath) {
-            display!.textContent = currentPath;
-            display!.style.color = '#fff';
-            // Add success indicator
-            const icon = document.querySelector<HTMLElement>(
+          if (currentModsPath) {
+            hasModsPath = true;
+            showConfiguredPath(
+              currentModsPath,
+              display,
               '#mods-path-display i',
             );
-            if (icon) {
-              icon.className = 'bi bi-check-circle-fill';
-              icon.style.color = '#4caf50';
-              icon.style.opacity = '1';
-            }
-            // Enable Next button since we have a path
-            if (nextBtn) {
-              nextBtn.style.opacity = '1';
-              nextBtn.style.pointerEvents = 'auto';
-              nextBtn.style.cursor = 'pointer';
-            }
           }
+          if (currentPluginsPath) {
+            hasPluginsPath = true;
+            showConfiguredPath(
+              currentPluginsPath,
+              pluginsDisplay,
+              '#plugins-path-display i',
+            );
+          }
+          updateNextButton();
         } catch (e) {
-          console.error('Error loading setting:', e);
+          console.error('Error loading settings:', e);
         }
 
         // Handle click
@@ -2855,29 +2902,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 await window.tutorialAPI.store.set('modsPath', path);
 
                 // Update UI
-                display!.textContent = path;
-                display!.style.color = '#fff';
-
-                const icon = document.querySelector<HTMLElement>(
-                  '#mods-path-display i',
-                );
-                if (icon) {
-                  icon.className = 'bi bi-check-circle-fill';
-                  icon.style.color = '#4caf50';
-                  icon.style.opacity = '1';
-                }
+                hasModsPath = true;
+                showConfiguredPath(path, display, '#mods-path-display i');
 
                 btn.innerHTML = '<i class="bi bi-check"></i> Selected';
                 btn.style.background = 'rgba(76, 175, 80, 0.2)';
                 btn.style.color = '#4caf50';
                 btn.style.borderColor = 'rgba(76, 175, 80, 0.3)';
-
-                // Enable Next button
-                if (nextBtn) {
-                  nextBtn.style.opacity = '1';
-                  nextBtn.style.pointerEvents = 'auto';
-                  nextBtn.style.cursor = 'pointer';
-                }
+                updateNextButton();
               }
             } catch (error) {
               console.error('Error selecting folder:', error);
@@ -2893,6 +2925,42 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.addEventListener('mouseleave', () => {
             if (!btn.innerHTML.includes('Selected')) {
               btn.style.background = 'rgba(122, 155, 255, 0.2)';
+            }
+          });
+        }
+
+        if (pluginsBtn) {
+          pluginsBtn.addEventListener('click', async () => {
+            try {
+              const path = await window.tutorialAPI.selectFolder();
+              if (path) {
+                await window.tutorialAPI.store.set('pluginsPath', path);
+                hasPluginsPath = true;
+                showConfiguredPath(
+                  path,
+                  pluginsDisplay,
+                  '#plugins-path-display i',
+                );
+
+                pluginsBtn.innerHTML = '<i class="bi bi-check"></i> Selected';
+                pluginsBtn.style.background = 'rgba(76, 175, 80, 0.2)';
+                pluginsBtn.style.color = '#4caf50';
+                pluginsBtn.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                updateNextButton();
+              }
+            } catch (error) {
+              console.error('Error selecting plugins folder:', error);
+            }
+          });
+
+          pluginsBtn.addEventListener('mouseenter', () => {
+            if (!pluginsBtn.innerHTML.includes('Selected')) {
+              pluginsBtn.style.background = 'rgba(122, 155, 255, 0.3)';
+            }
+          });
+          pluginsBtn.addEventListener('mouseleave', () => {
+            if (!pluginsBtn.innerHTML.includes('Selected')) {
+              pluginsBtn.style.background = 'rgba(122, 155, 255, 0.2)';
             }
           });
         }
