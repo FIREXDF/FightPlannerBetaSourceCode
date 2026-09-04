@@ -169,25 +169,32 @@ export {};
         btn.disabled = true;
         btn.textContent = 'Updating...';
 
-        if (window.pluginManager) {
-          await window.pluginManager.updatePlugin(
+        const updated =
+          (await window.pluginManager?.updatePlugin(
             pluginName,
             downloadUrl,
             pluginPath,
             targetVersion,
-          );
+          )) === true;
+
+        if (!updated) {
+          btn.disabled = false;
+          btn.textContent = 'Update';
+          return;
         }
 
+        btn.textContent = 'Updated';
         const updateItem = modal.querySelector<HTMLElement>(
           `[data-plugin-name="${pluginName}"]`,
         );
 
         if (updateItem) {
+          updateItem.dataset.updated = 'true';
           updateItem.style.opacity = '0.5';
         }
 
         const remainingUpdates = modal.querySelectorAll<HTMLElement>(
-          ".plugin-update-item:not([style*='opacity: 0.5'])",
+          '.plugin-update-item:not([data-updated="true"])',
         );
         if (remainingUpdates.length === 0) {
           setTimeout(() => {
