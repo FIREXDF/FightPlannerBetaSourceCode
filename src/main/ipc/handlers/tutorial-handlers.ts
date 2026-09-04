@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import { detectDrives, isSwitchSdCard } from '../../utils/drive-detector';
 import {
   getLatestArcropolisRelease,
+  getArcropolisRelease,
   getLatestSkylineRelease,
   downloadArcropolis,
   extractAndInstallArcropolis,
@@ -127,11 +128,14 @@ const TutorialHandlers = {
   ['get-github-release']: async (
     common: BaseHandlerArg,
     repo = 'Raytwo/ARCropolis',
+    tag?: string,
   ) => {
     try {
       let release;
       if (repo === 'skyline-dev/skyline') {
         release = await getLatestSkylineRelease();
+      } else if (tag) {
+        release = await getArcropolisRelease(tag);
       } else {
         release = await getLatestArcropolisRelease();
       }

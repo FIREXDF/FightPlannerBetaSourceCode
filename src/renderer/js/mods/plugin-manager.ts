@@ -747,7 +747,7 @@ ${plugin.status === 'active'
   async updatePlugin(pluginName, downloadUrl, pluginPath, targetVersion) {
     if (!window.electronAPI || !window.electronAPI.updatePlugin) {
       console.error('Electron API not available');
-      return;
+      return false;
     }
 
     try {
@@ -769,18 +769,21 @@ ${plugin.status === 'active'
         setTimeout(() => {
           this.refreshPlugins();
         }, 500);
-      } else {
-        if (window.toastManager) {
-          window.toastManager.error(
-            `Failed to update ${pluginName}: ${result.error}`,
-          );
-        }
+        return true;
       }
+
+      if (window.toastManager) {
+        window.toastManager.error(
+          `Failed to update ${pluginName}: ${result.error}`,
+        );
+      }
+      return false;
     } catch (error) {
       console.error('Error updating plugin:', error);
       if (window.toastManager) {
         window.toastManager.error(`Error updating plugin: ${error.message}`);
       }
+      return false;
     }
   }
 

@@ -335,6 +335,39 @@ function prepareExecutableTool(executablePath: string) {
   return preparedPath;
 }
 
+function prepareMsbtEditorExecutable(
+  executablePath: string,
+  patchedAssemblyPath: string,
+) {
+  const sourceDirectory = path.dirname(executablePath);
+  const cacheDirectory = path.join(
+    app.getPath('temp'),
+    'fightplanner-tools',
+    app.getVersion(),
+    path.basename(sourceDirectory),
+  );
+  const preparedPath = path.join(cacheDirectory, path.basename(executablePath));
+
+  if (!fs.existsSync(preparedPath)) {
+    fs.cpSync(sourceDirectory, cacheDirectory, {
+      recursive: true,
+      force: true,
+    });
+  }
+
+  // The self-contained app hosts carry the runtime, while this assembly also
+  // understands FightPlanner's added_labels extension used by Echo fighters.
+  fs.copyFileSync(
+    patchedAssemblyPath,
+    path.join(cacheDirectory, 'MSBTEditorCli.dll'),
+  );
+  if (process.platform !== 'win32') {
+    fs.chmodSync(preparedPath, 0o755);
+  }
+
+  return preparedPath;
+}
+
 function resolveParamLabelsPath(): string | null {
   const candidates = [
     resolveToolsPath('ParamXML', 'ParamLabels.csv'),
@@ -498,6 +531,110 @@ function restoreEchoBackups(modPath: string) {
     ensureDirectory(path.dirname(targetPath));
     if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath);
     fs.renameSync(backupPath, targetPath);
+  }
+}
+
+interface EchoDirectoryBackup {
+  originalPath: string;
+  backupPath: string;
+  existed: boolean;
+}
+
+interface EchoFileSnapshot {
+  filePath: string;
+  contents: Buffer | null;
+}
+
+async function createEchoDirectoryBackup(
+  dirPath: string,
+): Promise<EchoDirectoryBackup> {
+  const originalPath = path.resolve(dirPath);
+  const parentPath = path.dirname(originalPath);
+  const directoryName = path.basename(originalPath);
+  if (!directoryName || originalPath === parentPath) {
+    throw new Error(`Unsafe Echo backup path: ${originalPath}`);
+  }
+
+  const backupPath = path.join(
+    parentPath,
+    `.${directoryName}.fightplanner-echo-transaction-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+  const existed = fs.existsSync(originalPath);
+  if (existed) {
+    await fs.promises.cp(originalPath, backupPath, {
+      recursive: true,
+      force: false,
+      errorOnExist: true,
+    });
+  }
+
+  return { originalPath, backupPath, existed };
+}
+
+async function restoreEchoDirectoryBackup(backup: EchoDirectoryBackup) {
+  if (!backup.existed) {
+    if (fs.existsSync(backup.originalPath)) {
+      await fs.promises.rm(backup.originalPath, {
+        recursive: true,
+        force: true,
+      });
+    }
+    return;
+  }
+
+  if (!fs.existsSync(backup.backupPath)) {
+    throw new Error(`Echo backup missing: ${backup.backupPath}`);
+  }
+
+  const failedPath = `${backup.backupPath}.failed`;
+  if (fs.existsSync(failedPath)) {
+    await fs.promises.rm(failedPath, { recursive: true, force: true });
+  }
+  if (fs.existsSync(backup.originalPath)) {
+    await fs.promises.rename(backup.originalPath, failedPath);
+  }
+
+  try {
+    await fs.promises.rename(backup.backupPath, backup.originalPath);
+  } catch (error) {
+    if (
+      fs.existsSync(failedPath) &&
+      !fs.existsSync(backup.originalPath)
+    ) {
+      await fs.promises.rename(failedPath, backup.originalPath);
+    }
+    throw error;
+  }
+
+  if (fs.existsSync(failedPath)) {
+    await fs.promises.rm(failedPath, { recursive: true, force: true });
+  }
+}
+
+async function removeEchoDirectoryBackup(backup: EchoDirectoryBackup) {
+  if (fs.existsSync(backup.backupPath)) {
+    await fs.promises.rm(backup.backupPath, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
+function captureEchoFileSnapshots(filePaths: string[]): EchoFileSnapshot[] {
+  return filePaths.map((filePath) => ({
+    filePath,
+    contents: fs.existsSync(filePath) ? fs.readFileSync(filePath) : null,
+  }));
+}
+
+function restoreEchoFileSnapshots(snapshots: EchoFileSnapshot[]) {
+  for (const snapshot of snapshots) {
+    if (snapshot.contents) {
+      ensureDirectory(path.dirname(snapshot.filePath));
+      fs.writeFileSync(snapshot.filePath, snapshot.contents);
+    } else if (fs.existsSync(snapshot.filePath)) {
+      fs.unlinkSync(snapshot.filePath);
+    }
   }
 }
 
@@ -1812,7 +1949,17 @@ function resolveMsbtEditorExecutable() {
     );
   }
 
-  return prepareExecutableTool(executablePath);
+  const patchedAssemblyPath = resolveToolsPath(
+    'MSBTEditorCLI',
+    'MSBTEditorCli.dll',
+  );
+  if (!fs.existsSync(patchedAssemblyPath)) {
+    throw new Error(
+      `Patched MSBTEditorCLI assembly not found: ${patchedAssemblyPath}`,
+    );
+  }
+
+  return prepareMsbtEditorExecutable(executablePath, patchedAssemblyPath);
 }
 
 function runNativeTool(executablePath: string, args: string[]) {
@@ -2281,6 +2428,11 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
     throw new Error('Select an existing mod folder');
   }
 
+  const modsPath = store.get('modsPath') as string | null;
+  if (!modsPath || !fs.existsSync(modsPath)) {
+    throw new Error('Configure an existing mods folder before creating an Echo');
+  }
+
   const sourceEntry = [
     ...getCharacterCssLayoutData().visibleCharacters,
     ...getCharacterCssLayoutData().hiddenCharacters,
@@ -2331,90 +2483,104 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
       'No fighter voice .nus3bank found: simultaneous base/Echo matches may share voices.',
     );
   }
-  const disabledUiPatches = disableConflictingEchoUiPatches(modPath);
-  if (disabledUiPatches.length > 0) {
-    warnings.push(
-      `Disabled conflicting UI patches: ${disabledUiPatches.join(', ')}. Backups are in .fightplanner-echo-backup.`,
+  const newUiCharaId = `ui_chara_${newNameId}`;
+  const newDisplayName = payload.newDisplayName.trim() || newNameId;
+  const echoSlots = Array.from(
+    { length: payload.colorCount },
+    (_, index) =>
+      `c${String(payload.colorStartIndex + index).padStart(2, '0')}`,
+  );
+  const scan = await ModScanner.scanModFiles(modPath);
+  const sourceSlots = Object.keys(scan.pathData[sourceEntry.nameId] || {})
+    .filter((slot) => /^c\d{2,3}$/.test(slot))
+    .sort((left, right) => Number(left.slice(1)) - Number(right.slice(1)))
+    .slice(0, payload.colorCount);
+  if (sourceSlots.length !== payload.colorCount) {
+    throw new Error(
+      `Expected ${payload.colorCount} source fighter slots, found ${sourceSlots.length}: ${sourceSlots.join(', ') || 'none'}. No files were changed.`,
     );
   }
 
-  const newUiCharaId = `ui_chara_${newNameId}`;
-  const newDisplayName = payload.newDisplayName.trim() || newNameId;
-  duplicateCharacterCssEntry({
-    sourceCharacterId: payload.sourceCharacterId,
-    newUiCharaId,
-    newNameId,
-    newDisplayName,
-  });
-
-  const currentLayout = getCharacterCssLayoutData();
-  const layoutPayload: CharacterCssLayoutPayload = {
-    visibleCharacterIds: currentLayout.visibleCharacters.map(
-      (entry) => entry.id,
-    ),
-    hiddenCharacterIds: currentLayout.hiddenCharacters.map((entry) => entry.id),
-    characterUpdates: {
-      [payload.sourceCharacterId]: {
-        fighterType: 'fighter_type_both',
-        altCharaId: newUiCharaId,
-      },
-      [newUiCharaId]: {
-        fighterType: 'fighter_type_opened',
-        altCharaId: payload.sourceCharacterId,
-        colorNum: String(payload.colorCount),
-        colorStartIndex: String(payload.colorStartIndex),
-        slots: Object.fromEntries(
-          Array.from({ length: payload.colorCount }, (_, index) => [
-            String(index),
-            {
-              cxxIndex: String(index),
-              nxxIndex: String(index),
-              characallLabel: sourceEntry.slots[0]?.characallLabel || '',
-              namChr0: newDisplayName,
-              namChr1: newDisplayName,
-              namChr2: newDisplayName.toUpperCase(),
-              namChr3: newDisplayName.toUpperCase(),
-              namStageName: newDisplayName,
-            },
-          ]),
-        ),
-      },
-    },
-  };
-  await saveCharacterCssLayout(layoutPayload);
-
-  backupEchoConfig(modPath);
-  const existingConfigPath = path.join(modPath, 'config.json');
-  const existingConfig = fs.existsSync(existingConfigPath)
-    ? readJsonFile(existingConfigPath)
-    : {};
-  renameEchoUiAssets(
-    path.join(modPath, 'ui', 'replace', 'chara'),
-    sourceEntry.nameId,
-    newNameId,
-  );
-  renameEchoUiAssets(
-    path.join(modPath, 'ui', 'replace_patch', 'chara'),
-    sourceEntry.nameId,
-    newNameId,
-  );
-
+  const persistedSnapshots = captureEchoFileSnapshots([
+    getPersistedCharaJsonPath(),
+    getPersistedLayoutJsonPath(),
+    getPersistedMsgNameJsonPath(),
+    getPersistedMsgNamePath(),
+  ]);
+  const characterCssModPath = path.join(modsPath, 'Character CSS Layout');
+  const directoryBackups: EchoDirectoryBackup[] = [];
   try {
-    const echoSlots = Array.from(
-      { length: payload.colorCount },
-      (_, index) =>
-        `c${String(payload.colorStartIndex + index).padStart(2, '0')}`,
-    );
-    const scan = await ModScanner.scanModFiles(modPath);
-    const sourceSlots = Object.keys(scan.pathData[sourceEntry.nameId] || {})
-      .filter((slot) => /^c\d{2,3}$/.test(slot))
-      .sort((left, right) => Number(left.slice(1)) - Number(right.slice(1)))
-      .slice(0, payload.colorCount);
-    if (sourceSlots.length !== payload.colorCount) {
-      throw new Error(
-        `Expected ${payload.colorCount} source fighter slots, found ${sourceSlots.length}: ${sourceSlots.join(', ') || 'none'}`,
+    directoryBackups.push(await createEchoDirectoryBackup(modPath));
+    if (path.resolve(characterCssModPath) !== path.resolve(modPath)) {
+      directoryBackups.push(
+        await createEchoDirectoryBackup(characterCssModPath),
       );
     }
+  } catch (error) {
+    await Promise.allSettled(directoryBackups.map(removeEchoDirectoryBackup));
+    throw new Error(
+      `Could not back up Echo files: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  try {
+    const disabledUiPatches = disableConflictingEchoUiPatches(modPath);
+    if (disabledUiPatches.length > 0) {
+      warnings.push(
+        `Disabled conflicting UI patches: ${disabledUiPatches.join(', ')}. Backups are in .fightplanner-echo-backup.`,
+      );
+    }
+
+    duplicateCharacterCssEntry({
+      sourceCharacterId: payload.sourceCharacterId,
+      newUiCharaId,
+      newNameId,
+      newDisplayName,
+    });
+
+    const currentLayout = getCharacterCssLayoutData();
+    const layoutPayload: CharacterCssLayoutPayload = {
+      visibleCharacterIds: currentLayout.visibleCharacters.map(
+        (entry) => entry.id,
+      ),
+      hiddenCharacterIds: currentLayout.hiddenCharacters.map(
+        (entry) => entry.id,
+      ),
+      characterUpdates: {
+        [payload.sourceCharacterId]: {
+          fighterType: 'fighter_type_both',
+          altCharaId: newUiCharaId,
+        },
+        [newUiCharaId]: {
+          fighterType: 'fighter_type_opened',
+          altCharaId: payload.sourceCharacterId,
+          colorNum: String(payload.colorCount),
+          colorStartIndex: String(payload.colorStartIndex),
+          slots: Object.fromEntries(
+            Array.from({ length: payload.colorCount }, (_, index) => [
+              String(index),
+              {
+                cxxIndex: String(index),
+                nxxIndex: String(index),
+                characallLabel: sourceEntry.slots[0]?.characallLabel || '',
+                namChr0: newDisplayName,
+                namChr1: newDisplayName,
+                namChr2: newDisplayName.toUpperCase(),
+                namChr3: newDisplayName.toUpperCase(),
+                namStageName: newDisplayName,
+              },
+            ]),
+          ),
+        },
+      },
+    };
+    await saveCharacterCssLayout(layoutPayload);
+
+    backupEchoConfig(modPath);
+    const existingConfigPath = path.join(modPath, 'config.json');
+    const existingConfig = fs.existsSync(existingConfigPath)
+      ? readJsonFile(existingConfigPath)
+      : {};
     await SlotChanger.changeSlots(
       modPath,
       new Map([
@@ -2433,6 +2599,17 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
       false,
     );
 
+    renameEchoUiAssets(
+      path.join(modPath, 'ui', 'replace', 'chara'),
+      sourceEntry.nameId,
+      newNameId,
+    );
+    renameEchoUiAssets(
+      path.join(modPath, 'ui', 'replace_patch', 'chara'),
+      sourceEntry.nameId,
+      newNameId,
+    );
+
     await ConfigGenerator.init();
     const configGenerator = new ConfigGenerator(modPath, sourceEntry.nameId);
     await configGenerator.generateCskConfig(
@@ -2448,9 +2625,42 @@ export async function createEchoSlot(payload: CreateEchoSlotPayload) {
       'utf8',
     );
   } catch (error) {
+    const restoreErrors: string[] = [];
+    for (const backup of [...directoryBackups].reverse()) {
+      try {
+        await restoreEchoDirectoryBackup(backup);
+      } catch (restoreError) {
+        restoreErrors.push(
+          `${backup.originalPath}: ${restoreError instanceof Error ? restoreError.message : String(restoreError)}`,
+        );
+      }
+    }
+    try {
+      restoreEchoFileSnapshots(persistedSnapshots);
+    } catch (restoreError) {
+      restoreErrors.push(
+        `CSS data: ${restoreError instanceof Error ? restoreError.message : String(restoreError)}`,
+      );
+    }
+
+    if (restoreErrors.length > 0) {
+      throw new Error(
+        `Echo creation failed and automatic restore was incomplete. ${restoreErrors.join(' | ')}. Original error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     throw new Error(
-      `Echo CSS created, but config.json generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      `Echo creation failed; all changed files were restored: ${error instanceof Error ? error.message : String(error)}`,
     );
+  }
+
+  for (const backup of directoryBackups) {
+    try {
+      await removeEchoDirectoryBackup(backup);
+    } catch (error) {
+      warnings.push(
+        `Echo created, but temporary backup cleanup failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   return { success: true as const, newUiCharaId, modPath, warnings };
@@ -2700,6 +2910,10 @@ export async function saveCharacterCssLayout(
     Object.keys(payload.characterUpdates || {}).length > 0;
   let msbtResult: ToolExecutionResult = { stdout: '', stderr: '' };
 
+  if (fs.existsSync(generatedMsgNamePath)) {
+    fs.unlinkSync(generatedMsgNamePath);
+  }
+
   if (hasMsbtChanges) {
     const msbtToolPath = resolveMsbtEditorExecutable();
     msbtResult = await runNativeTool(msbtToolPath, [
@@ -2714,6 +2928,13 @@ export async function saveCharacterCssLayout(
       );
     }
     fs.copyFileSync(baseMsgNamePath, generatedMsgNamePath);
+  }
+
+  if (
+    !fs.existsSync(generatedMsgNamePath) ||
+    fs.statSync(generatedMsgNamePath).size === 0
+  ) {
+    throw new Error('MSBTEditorCLI did not generate a valid msg_name.msbt');
   }
 
   const modsPath = store.get('modsPath') as string | null;
@@ -2748,6 +2969,7 @@ export async function saveCharacterCssLayout(
   fs.copyFileSync(generatedCharaPrcPath, targetCharaPrcPath);
   fs.copyFileSync(generatedLayoutPrcPath, targetLayoutPrcPath);
   fs.copyFileSync(generatedMsgNamePath, targetMsgNamePath);
+  fs.copyFileSync(generatedMsgNamePath, getPersistedMsgNamePath());
 
   return {
     success: true as const,

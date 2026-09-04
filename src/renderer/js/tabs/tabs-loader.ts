@@ -111,6 +111,8 @@ function initializeTabFeatures(tabName) {
       });
     }
 
+    window.settingsManager?.initializeModsLibrarySwitcher?.();
+
     const smartRenameBtn =
       document.querySelector<HTMLElement>('#smart-rename-btn');
     if (smartRenameBtn) {

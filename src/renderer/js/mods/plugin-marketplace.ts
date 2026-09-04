@@ -8,7 +8,7 @@ export interface MarketplacePlugin {
     modelName: string;
     submissionId: string;
   };
-  specialInstaller?: 'csk-collection' | 'one-slot-effects';
+  specialInstaller?: 'arcropolis' | 'csk-collection' | 'one-slot-effects';
 }
 
 class PluginMarketplace {
@@ -20,8 +20,9 @@ class PluginMarketplace {
         name: 'ARCropolis',
         repo: 'Raytwo/ARCropolis',
         description:
-          'libarcropolis.nro (Mod loader, if you want to setup arcropolis see our tutorial for emulator.)',
+          'Smash Ultimate mod loader. Choose the recommended stable version or the latest release during installation.',
         url: 'https://github.com/Raytwo/ARCropolis/releases',
+        specialInstaller: 'arcropolis',
       },
       {
         name: 'NRO Hook Plugin',
@@ -91,14 +92,14 @@ class PluginMarketplace {
   ) {
     if (!window.electronAPI || !window.electronAPI.updatePlugin) {
       console.error('Electron API not available');
-      return;
+      return false;
     }
 
     if (!window.settingsManager) {
       if (window.toastManager) {
         window.toastManager.error('Settings manager not available');
       }
-      return;
+      return false;
     }
 
     const pluginsPath = window.settingsManager.getPluginsPath();
@@ -106,7 +107,7 @@ class PluginMarketplace {
       if (window.toastManager) {
         window.toastManager.error('Plugins folder not configured');
       }
-      return;
+      return false;
     }
 
     // Support old call style (downloadInfo is string url)
@@ -154,19 +155,45 @@ class PluginMarketplace {
             window.pluginManager.refreshPlugins();
           }, 500);
         }
-      } else {
-        if (window.toastManager) {
-          window.toastManager.error(
-            `Failed to install ${pluginName}: ${result.error}`,
-          );
-        }
+        return true;
       }
+
+      if (window.toastManager) {
+        window.toastManager.error(
+          `Failed to install ${pluginName}: ${result.error}`,
+        );
+      }
+      return false;
     } catch (error) {
       console.error('Error installing plugin:', error);
       if (window.toastManager) {
         window.toastManager.error(`Error installing plugin: ${error.message}`);
       }
+      return false;
     }
+  }
+
+  async getArcropolisReleaseChoices() {
+    if (!window.electronAPI?.getGithubRelease) {
+      throw new Error('GitHub release API not available');
+    }
+
+    const [recommended, latest] = await Promise.all([
+      window.electronAPI.getGithubRelease(
+        'Raytwo/ARCropolis',
+        'v4.0.8',
+      ),
+      window.electronAPI.getGithubRelease('Raytwo/ARCropolis'),
+    ]);
+
+    if (!recommended.success) {
+      throw new Error('ARCropolis 4.0.8 release is unavailable');
+    }
+    if (!latest.success) {
+      throw new Error('Latest ARCropolis release is unavailable');
+    }
+
+    return { recommended, latest };
   }
 
   async getLatestReleaseDownloadUrl(repo) {

@@ -2,10 +2,28 @@
 <div class="content-box">
   <!-- Top Input Fields -->
   <div class="top-inputs">
-    <input type="text" class="input-field" id="search-mods-input" data-i18n="tools.search" data-i18n-placeholder />
+    <input
+      type="text"
+      class="input-field"
+      id="search-mods-input"
+      data-i18n="tools.search"
+      data-i18n-placeholder
+    />
     <button class="input-btn short" id="refresh-mods-btn">
       <i class="bi bi-arrow-clockwise"></i>
       <span data-i18n="tools.refreshMods">Refresh Mods</span>
+    </button>
+    <button
+      type="button"
+      class="input-btn short mods-library-switch-btn"
+      id="mods-library-switch-btn"
+      aria-live="polite"
+      hidden
+    >
+      <i class="bi bi-arrow-left-right"></i>
+      <span class="mods-library-switch-label" data-i18n="tools.primaryLibrary"
+        >Primary</span
+      >
     </button>
     <button class="input-btn short" id="smart-rename-btn">
       <i class="bi bi-magic"></i>
@@ -37,7 +55,9 @@
     </div>
     <div class="custom-select short" id="category-filter">
       <div class="custom-select-trigger">
-        <span class="selected-value" data-i18n="tools.allCategories">All Categories</span>
+        <span class="selected-value" data-i18n="tools.allCategories"
+          >All Categories</span
+        >
         <i class="bi bi-chevron-down"></i>
       </div>
       <div class="custom-select-dropdown">
@@ -103,7 +123,12 @@
   <div class="mod-info-area">
     <div class="mod-info-header">
       <h3 class="mod-info-title" data-i18n="tools.details">Details</h3>
-      <button class="edit-info-btn" id="edit-info-btn" data-i18n="tools.editInfo" data-i18n-title>
+      <button
+        class="edit-info-btn"
+        id="edit-info-btn"
+        data-i18n="tools.editInfo"
+        data-i18n-title
+      >
         <i class="bi bi-pencil-fill"></i>
       </button>
     </div>
@@ -115,18 +140,40 @@
   </div>
 
   <div class="action-buttons">
-    <button class="action-btn" data-action="add-mod" data-i18n="tools.actionAdd" data-i18n-title title="Add">
+    <button
+      class="action-btn"
+      data-action="add-mod"
+      data-i18n="tools.actionAdd"
+      data-i18n-title
+      title="Add"
+    >
       <i class="bi bi-plus-circle-fill"></i>
     </button>
-    <button class="action-btn" id="create-fpp-btn" data-i18n="fpp.createTooltip" data-i18n-title
-      title="Create FPP Pack">
+    <button
+      class="action-btn"
+      id="create-fpp-btn"
+      data-i18n="fpp.createTooltip"
+      data-i18n-title
+      title="Create FPP Pack"
+    >
       <i class="bi bi-file-zip-fill"></i>
     </button>
-    <button class="action-btn" id="open-folder-btn" data-i18n="tools.actionOpenFolder" data-i18n-title
-      title="Open Folder">
+    <button
+      class="action-btn"
+      id="open-folder-btn"
+      data-i18n="tools.actionOpenFolder"
+      data-i18n-title
+      title="Open Folder"
+    >
       <i class="bi bi-folder-fill"></i>
     </button>
-    <button class="action-btn" data-action="launch-emulator" data-i18n="tools.actionPlay" data-i18n-title title="Play">
+    <button
+      class="action-btn"
+      data-action="launch-emulator"
+      data-i18n="tools.actionPlay"
+      data-i18n-title
+      title="Play"
+    >
       <i class="bi bi-play-fill"></i>
     </button>
   </div>

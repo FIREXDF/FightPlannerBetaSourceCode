@@ -2406,8 +2406,75 @@ class SocialGameBananaManager extends SocialManagerBase {
       await this.shouldCheckGameBananaDependenciesOnDownload();
     if (!shouldCheckDependencies) return Promise.resolve(true);
 
-    const readmeRequirements =
-      await this.getGameBananaReadmeRequirements(downloadUrl);
+    let dependencyCheckFinished = false;
+    let slowCheckModal: HTMLElement | null = null;
+    let disableCurrentCheck: (() => void) | null = null;
+    const dependencyChecksDisabled = new Promise<'disabled'>((resolve) => {
+      disableCurrentCheck = () => resolve('disabled');
+    });
+    const slowCheckTimer = window.setTimeout(() => {
+      if (dependencyCheckFinished || !window.modalManager?.showCustomModal) {
+        return;
+      }
+
+      slowCheckModal = window.modalManager.showCustomModal({
+        id: 'social-slow-dependency-check-modal',
+        title: this.getSocialTranslation(
+          'social.slowDependencyCheckTitle',
+          'Dependency check is taking longer than expected',
+        ),
+        body: `<p>${this.escapeHtml(
+          this.getSocialTranslation(
+            'social.slowDependencyCheckMessage',
+            'You can disable dependency checks to speed up downloads and improve responsiveness. FightPlanner will no longer warn about missing requirements before downloading.',
+          ),
+        )}</p>`,
+        buttons: [
+          {
+            text: this.getSocialTranslation(
+              'social.keepDependencyCheck',
+              'Keep checking',
+            ),
+            type: 'secondary',
+          },
+          {
+            text: this.getSocialTranslation(
+              'social.disableDependencyCheck',
+              'Disable checks',
+            ),
+            type: 'primary',
+            onClick: async () => {
+              await this.disableGameBananaDependencyChecks();
+              disableCurrentCheck?.();
+            },
+          },
+        ],
+      });
+    }, 20000);
+
+    const requirementsPromise = this.getGameBananaReadmeRequirements(
+      downloadUrl,
+    ).then((requirements) => ({ type: 'requirements' as const, requirements }));
+
+    const dependencyCheckResult = await Promise.race([
+      requirementsPromise,
+      dependencyChecksDisabled.then(() => ({ type: 'disabled' as const })),
+    ]).finally(() => {
+      dependencyCheckFinished = true;
+      window.clearTimeout(slowCheckTimer);
+      if (slowCheckModal?.isConnected) {
+        const modalToClose = slowCheckModal;
+        window.modalManager.closeModal(modalToClose, {
+          onModalClosed: () => modalToClose.remove(),
+        });
+      }
+    });
+
+    if (dependencyCheckResult.type === 'disabled') {
+      return Promise.resolve(true);
+    }
+
+    const readmeRequirements = dependencyCheckResult.requirements;
     const missingRequirements =
       this.getMissingGameBananaRequirements(readmeRequirements);
     if (!missingRequirements.length) return Promise.resolve(true);
@@ -2488,6 +2555,27 @@ class SocialGameBananaManager extends SocialManagerBase {
     } catch (error) {
       console.warn('[Social] Failed to read dependency check setting:', error);
       return true;
+    }
+  }
+
+  async disableGameBananaDependencyChecks() {
+    if (window.settingsManager?.settings) {
+      window.settingsManager.settings.checkDependenciesOnDiscoverDownload =
+        false;
+    }
+
+    const toggle = document.querySelector<HTMLInputElement>(
+      '#check-dependencies-on-discover-download-enabled',
+    );
+    if (toggle) toggle.checked = false;
+
+    try {
+      await window.electronAPI?.store?.set?.(
+        'checkDependenciesOnDiscoverDownload',
+        false,
+      );
+    } catch (error) {
+      console.warn('[Social] Failed to disable dependency checks:', error);
     }
   }
 

@@ -343,7 +343,7 @@ class ModOperations {
                     window.toastManager.success('toasts.slotChanged');
                   }
 
-                  this.modManager.fetchMods();
+                  await this.modManager.fetchMods([mod.path]);
                 } else {
                   window.toastManager.error('toasts.failedToChangeSlot', 3000, {
                     error: changeSlotsResult.error,

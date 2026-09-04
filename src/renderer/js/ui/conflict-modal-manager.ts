@@ -1220,6 +1220,7 @@ export class ConflictModalManager {
 
     let successCount = 0;
     let errorCount = 0;
+    const changedModPaths = new Set<string>();
 
     const errors: string[] = [];
     const changingModPaths = new Set(modsToChange.map((mod) => mod.path));
@@ -1382,6 +1383,7 @@ export class ConflictModalManager {
                 slots.forEach((slotName) => reserveSlot(fighterId, slotName));
               });
               successCount++;
+              changedModPaths.add(mod.path);
             } else {
               errors.push(
                 `${mod.name}: ${applyResult.error || 'Failed to apply changes'}`,
@@ -1401,7 +1403,7 @@ export class ConflictModalManager {
     }
 
     if (successCount > 0) {
-      await window.modManager.fetchMods();
+      await window.modManager.fetchMods([...changedModPaths]);
 
       if (
         window.settingsManager &&

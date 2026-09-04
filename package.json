@@ -64,18 +64,10 @@
     ],
     "extraResources": [
       {
-        "from": "tools",
-        "to": "tools",
+        "from": "tools/7z",
+        "to": "tools/7z",
         "filter": [
-          "7z.exe",
-          "7z.dll"
-        ]
-      },
-      {
-        "from": "tools",
-        "to": "tools",
-        "filter": [
-          "7zz"
+          "**/*"
         ]
       },
       {

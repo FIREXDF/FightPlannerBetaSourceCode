@@ -169,25 +169,32 @@ export {};
         btn.disabled = true;
         btn.textContent = 'Updating...';
 
-        if (window.pluginManager) {
-          await window.pluginManager.updatePlugin(
+        const updated =
+          (await window.pluginManager?.updatePlugin(
             pluginName,
             downloadUrl,
             pluginPath,
             targetVersion,
-          );
+          )) === true;
+
+        if (!updated) {
+          btn.disabled = false;
+          btn.textContent = 'Update';
+          return;
         }
 
+        btn.textContent = 'Updated';
         const updateItem = modal.querySelector<HTMLElement>(
           `[data-plugin-name="${pluginName}"]`,
         );
 
         if (updateItem) {
+          updateItem.dataset.updated = 'true';
           updateItem.style.opacity = '0.5';
         }
 
         const remainingUpdates = modal.querySelectorAll<HTMLElement>(
-          ".plugin-update-item:not([style*='opacity: 0.5'])",
+          '.plugin-update-item:not([data-updated="true"])',
         );
         if (remainingUpdates.length === 0) {
           setTimeout(() => {
@@ -433,6 +440,26 @@ export {};
         }
 
         if (window.pluginMarketplace) {
+          if (specialInstaller === 'arcropolis' && plugin) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi ${restoreIcon}"></i> <span ${restoreTextKey ? `data-i18n="${restoreTextKey}"` : ''}>${restoreText}</span>`;
+            if (window.i18n) {
+              window.i18n.updateDOM();
+            }
+            const marketplaceModal = btn.closest<HTMLElement>(
+              '#plugin-marketplace-modal',
+            );
+            if (marketplaceModal) {
+              marketplaceModal.style.display = 'none';
+            }
+            await this.openArcropolisInstallModal(
+              plugin,
+              marketplaceModal,
+              isInstalled,
+            );
+            return;
+          }
+
           if (specialInstaller === 'csk-collection' && plugin) {
             btn.disabled = false;
             btn.innerHTML = `<i class="bi ${restoreIcon}"></i> <span ${restoreTextKey ? `data-i18n="${restoreTextKey}"` : ''}>${restoreText}</span>`;
@@ -478,18 +505,25 @@ export {};
             );
 
           if (downloadUrl) {
-            await window.pluginMarketplace.downloadAndInstallPlugin(
-              pluginName,
-              pluginRepo,
-              downloadUrl,
-            );
+            const installed =
+              (await window.pluginMarketplace.downloadAndInstallPlugin(
+                pluginName,
+                pluginRepo,
+                downloadUrl,
+              )) === true;
 
             const card = btn.closest('.marketplace-plugin-card');
-            if (card) {
+            if (installed && card) {
               card.classList.add('installed');
               btn.disabled = false;
               btn.innerHTML =
                 '<i class="bi bi-check-circle-fill"></i> <span data-i18n="plugins.installed">Installed</span>';
+              if (window.i18n) {
+                window.i18n.updateDOM();
+              }
+            } else if (!installed) {
+              btn.disabled = false;
+              btn.innerHTML = `<i class="bi ${restoreIcon}"></i> <span ${restoreTextKey ? `data-i18n="${restoreTextKey}"` : ''}>${restoreText}</span>`;
               if (window.i18n) {
                 window.i18n.updateDOM();
               }
@@ -512,6 +546,176 @@ export {};
           }
         }
       });
+    });
+  };
+
+  M.prototype.openArcropolisInstallModal = async function (
+    plugin: any,
+    marketplaceModal?: HTMLElement | null,
+    isInstalled = false,
+  ) {
+    document
+      .querySelectorAll<HTMLElement>('#arcropolis-install-modal')
+      .forEach((existingModal) => existingModal.remove());
+
+    const modal = document.createElement('div');
+    modal.className = 'modal modal-large';
+    modal.id = 'arcropolis-install-modal';
+    modal.style.maxWidth = '680px';
+
+    const restoreMarketplace = () => {
+      if (marketplaceModal && document.body.contains(marketplaceModal)) {
+        marketplaceModal.style.display = 'block';
+      }
+    };
+    let closing = false;
+    let escapeHandler: ((event: KeyboardEvent) => void) | null = null;
+    const closeAndRestoreMarketplace = () => {
+      if (closing) return;
+      closing = true;
+      if (escapeHandler) {
+        document.removeEventListener('keydown', escapeHandler);
+      }
+      this.closeModal(modal, {
+        skipHideOverlay: true,
+        onModalClosed: () => {
+          modal.remove();
+          restoreMarketplace();
+          this.showOverlay();
+        },
+      });
+    };
+
+    modal.innerHTML = `
+      <div class="modal-header">
+        <h2>${isInstalled ? 'Reinstall' : 'Install'} ARCropolis</h2>
+        <button class="modal-close" id="close-arcropolis-install" type="button" aria-label="Close ARCropolis installer">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="arcropolis-install-body">
+        <div class="marketplace-loading"><i class="bi bi-arrow-repeat"></i><span>Loading ARCropolis releases...</span></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-secondary" id="cancel-arcropolis-install" type="button">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="confirm-arcropolis-install" type="button" disabled>
+          <i class="bi bi-download"></i><span>${isInstalled ? 'Reinstall' : 'Install'} selected version</span>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.showOverlay();
+    modal.style.display = 'block';
+
+    const body = modal.querySelector<HTMLElement>(
+      '#arcropolis-install-body',
+    )!;
+    const confirmBtn = modal.querySelector<HTMLButtonElement>(
+      '#confirm-arcropolis-install',
+    )!;
+    const closeBtn = modal.querySelector<HTMLButtonElement>(
+      '#close-arcropolis-install',
+    )!;
+    const cancelBtn = modal.querySelector<HTMLButtonElement>(
+      '#cancel-arcropolis-install',
+    )!;
+    closeBtn.addEventListener('click', closeAndRestoreMarketplace);
+    cancelBtn.addEventListener('click', closeAndRestoreMarketplace);
+    escapeHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeAndRestoreMarketplace();
+      }
+    };
+    document.addEventListener('keydown', escapeHandler);
+
+    let choices: any;
+    try {
+      choices = await window.pluginMarketplace.getArcropolisReleaseChoices();
+    } catch (error) {
+      body.innerHTML = `
+        <div class="marketplace-empty">
+          <i class="bi bi-exclamation-triangle"></i>
+          <p>ARCropolis releases could not be loaded.</p>
+          <small>${this.escapeHtml(error.message || String(error))}</small>
+        </div>
+      `;
+      return;
+    }
+
+    if (!document.body.contains(modal)) return;
+
+    const latestCompatibility =
+      choices.latest.version === '4.0.9'
+        ? 'Supports only Super Smash Bros. Ultimate 13.0.5.'
+        : 'Check the release notes for supported game versions.';
+
+    body.innerHTML = `
+      <fieldset style="border: 0; margin: 0; padding: 0; display: grid; gap: 12px;">
+        <legend style="color: var(--text-primary); font-size: 16px; font-weight: 700; margin-bottom: 6px;">Choose a version</legend>
+        <label style="display: block; cursor: pointer; padding: 16px; border: 1px solid rgba(76, 175, 80, 0.45); border-radius: 12px; background: rgba(76, 175, 80, 0.1);">
+          <span style="display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-weight: 700;">
+            <input type="radio" name="marketplace-arcropolis-release" value="recommended" checked>
+            ARCropolis 4.0.8
+            <span style="color: #81c784; font-size: 12px;">Recommended</span>
+          </span>
+          <span style="display: block; margin: 8px 0 0 24px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            Supports only Super Smash Bros. Ultimate 13.0.4. Recommended now because it works better with existing mods while adoption catches up.
+          </span>
+        </label>
+        <label style="display: block; cursor: pointer; padding: 16px; border: 1px solid rgba(122, 155, 255, 0.35); border-radius: 12px; background: rgba(122, 155, 255, 0.08);">
+          <span style="display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-weight: 700;">
+            <input type="radio" name="marketplace-arcropolis-release" value="latest">
+            ARCropolis ${this.escapeHtml(choices.latest.version)}
+            <span style="color: #9db5ff; font-size: 12px;">Latest</span>
+          </span>
+          <span style="display: block; margin: 8px 0 0 24px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+            ${latestCompatibility} Some mods may not support this release yet.
+          </span>
+        </label>
+      </fieldset>
+    `;
+    confirmBtn.disabled = false;
+
+    confirmBtn.addEventListener('click', async () => {
+      const selected = body.querySelector<HTMLInputElement>(
+        'input[name="marketplace-arcropolis-release"]:checked',
+      );
+      const release =
+        selected?.value === 'latest' ? choices.latest : choices.recommended;
+
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML =
+        '<i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i><span>Installing...</span>';
+
+      const installed =
+        (await window.pluginMarketplace.downloadAndInstallPlugin(
+          plugin.name,
+          plugin.repo,
+          { url: release.downloadUrl, version: release.version },
+        )) === true;
+
+      if (!installed) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = `<i class="bi bi-download"></i><span>${isInstalled ? 'Reinstall' : 'Install'} selected version</span>`;
+        return;
+      }
+
+      const marketplaceButton = Array.from(
+        marketplaceModal?.querySelectorAll<HTMLButtonElement>(
+          '.marketplace-card-install-btn',
+        ) || [],
+      ).find((button) => button.dataset.pluginRepo === plugin.repo);
+      if (marketplaceButton) {
+        marketplaceButton.dataset.isInstalled = 'true';
+        marketplaceButton.closest('.marketplace-plugin-card')?.classList.add(
+          'installed',
+        );
+        marketplaceButton.innerHTML =
+          '<i class="bi bi-arrow-clockwise"></i><span data-i18n="plugins.reinstall">Reinstall</span>';
+      }
+
+      closeAndRestoreMarketplace();
     });
   };
 

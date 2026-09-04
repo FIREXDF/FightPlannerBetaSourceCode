@@ -4,20 +4,24 @@ import * as path from 'path';
 import { FileExtractor } from './file-extractor';
 
 /**
- * Get the latest release from a GitHub repository
+ * Get a GitHub release, defaulting to the latest release.
  * @param {string} repo - Repository in format "owner/repo"
+ * @param {string} tag - Optional exact release tag
  * @returns {Promise<{tag: string, downloadUrl: string, version: string, name: string}>}
  */
-async function getLatestGitHubRelease(repo: string): Promise<{
+async function getGitHubRelease(repo: string, tag?: string): Promise<{
   tag: string;
   downloadUrl: string;
   version: string;
   name: string;
 }> {
   return new Promise((resolve, reject) => {
+    const releasePath = tag
+      ? `/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`
+      : `/repos/${repo}/releases/latest`;
     const options = {
       hostname: 'api.github.com',
-      path: `/repos/${repo}/releases/latest`,
+      path: releasePath,
       method: 'GET',
       headers: {
         'User-Agent': 'FightPlanner-Installer',
@@ -74,7 +78,11 @@ async function getLatestGitHubRelease(repo: string): Promise<{
  * @returns {Promise<{tag: string, downloadUrl: string, version: string}>}
  */
 export async function getLatestArcropolisRelease() {
-  return getLatestGitHubRelease('Raytwo/ARCropolis');
+  return getGitHubRelease('Raytwo/ARCropolis');
+}
+
+export async function getArcropolisRelease(tag: string) {
+  return getGitHubRelease('Raytwo/ARCropolis', tag);
 }
 
 /**
@@ -82,7 +90,7 @@ export async function getLatestArcropolisRelease() {
  * @returns {Promise<{tag: string, downloadUrl: string, version: string}>}
  */
 export async function getLatestSkylineRelease() {
-  return getLatestGitHubRelease('skyline-dev/skyline');
+  return getGitHubRelease('skyline-dev/skyline');
 }
 
 function copyRecursive(src: string, dest: string) {
