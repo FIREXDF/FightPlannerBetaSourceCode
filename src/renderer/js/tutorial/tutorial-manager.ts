@@ -716,6 +716,13 @@ class TutorialManager {
   }
 
   shouldSkipStep(step: TutorialStep) {
+    // Skip steps pointing at a sidebar tab that is not present in the UI.
+    if (
+      step.requiredTab &&
+      !document.querySelector(`.sidebar-btn[data-tab="${step.requiredTab}"]`)
+    ) {
+      return true;
+    }
     return false;
   }
 
