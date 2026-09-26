@@ -2426,7 +2426,7 @@ class SocialGameBananaManager extends SocialManagerBase {
         body: `<p>${this.escapeHtml(
           this.getSocialTranslation(
             'social.slowDependencyCheckMessage',
-            'You can disable dependency checks to speed up downloads and improve responsiveness. FightPlanner will no longer warn about missing requirements before downloading.',
+            'You can disable dependency checks to speed up downloads and improve responsiveness. MOSAIC will no longer warn about missing requirements before downloading.',
           ),
         )}</p>`,
         buttons: [

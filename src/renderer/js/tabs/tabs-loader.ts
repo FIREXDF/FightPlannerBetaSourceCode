@@ -598,7 +598,7 @@ function initializeTabFeatures(tabName) {
 
   if (tabName === 'fightplanner') {
     if (window.fightPlannerManager) {
-      console.log('Initializing FightPlanner tab...');
+      console.log('Initializing MOSAIC tab...');
       window.fightPlannerManager.initialize();
     }
 

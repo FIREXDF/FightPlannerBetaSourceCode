@@ -1,30 +1,30 @@
 class StartupSplashManager {
   overlay: HTMLElement | null;
-  lottieFrame: HTMLElement | null;
-  lottieContainer: HTMLElement | null;
+  stageFrame: HTMLElement | null;
+  stageContainer: HTMLElement | null;
   statusText: HTMLElement | null;
   currentAnimation: any;
+  loadingVideo: HTMLVideoElement | null;
   splashEnabled: boolean;
   splashSoundEnabled: boolean;
   splashSoundPath: string | null;
   startupLaunch: boolean;
   postTutorialIntro: boolean;
   animationWarmupPromise: Promise<void> | null;
-  preloadedLottiePaths: Set<string>;
 
   constructor() {
     this.overlay = null;
-    this.lottieFrame = null;
-    this.lottieContainer = null;
+    this.stageFrame = null;
+    this.stageContainer = null;
     this.statusText = null;
     this.currentAnimation = null;
+    this.loadingVideo = null;
     this.splashEnabled = true;
     this.splashSoundEnabled = true;
     this.splashSoundPath = null;
     this.startupLaunch = false;
     this.postTutorialIntro = false;
     this.animationWarmupPromise = null;
-    this.preloadedLottiePaths = new Set();
   }
 
   isStartupLaunch() {
@@ -81,9 +81,9 @@ class StartupSplashManager {
       'overflow: hidden',
     ].join(';');
 
-    this.lottieContainer = document.createElement('div');
-    this.lottieFrame = document.createElement('div');
-    this.lottieFrame.style.cssText = [
+    this.stageContainer = document.createElement('div');
+    this.stageFrame = document.createElement('div');
+    this.stageFrame.style.cssText = [
       'position: absolute',
       'inset: 0',
       'display: flex',
@@ -93,10 +93,10 @@ class StartupSplashManager {
       'pointer-events: none',
     ].join(';');
 
-    this.lottieContainer.style.cssText = 'width: 100vw; height: 100vh;';
+    this.stageContainer.style.cssText = 'width: 100vw; height: 100vh;';
 
-    this.lottieFrame.appendChild(this.lottieContainer);
-    this.overlay.appendChild(this.lottieFrame);
+    this.stageFrame.appendChild(this.stageContainer);
+    this.overlay.appendChild(this.stageFrame);
     document.body.appendChild(this.overlay);
   }
 
@@ -195,12 +195,7 @@ class StartupSplashManager {
 
     if (!bootCompleted) {
       this.setStatus('Loading mods and interface...');
-      await this.loadAnimation('../images/loading.json', {
-        loop: true,
-        autoplay: true,
-        displayMode: 'contained',
-        preserveAspectRatio: 'xMidYMid meet',
-      });
+      await this.showLoadingVideo();
     }
 
     await trackedBootPromise;
@@ -208,12 +203,7 @@ class StartupSplashManager {
 
   async playLoadingOnlySequence(bootPromise: Promise<void>) {
     this.setStatus('Loading mods and interface...');
-    await this.loadAnimation('../images/loading.json', {
-      loop: true,
-      autoplay: true,
-      displayMode: 'contained',
-      preserveAspectRatio: 'xMidYMid meet',
-    });
+    await this.showLoadingVideo();
     await bootPromise;
   }
 
@@ -224,34 +214,30 @@ class StartupSplashManager {
       warmupTasks.push(window.animationManager.preloadAssets());
     }
 
-    warmupTasks.push(this.preloadLottieAnimation('../images/loading.json'));
+    if (window.preloadLoadingVideo) {
+      warmupTasks.push(window.preloadLoadingVideo());
+    }
 
     await Promise.allSettled(warmupTasks);
   }
 
-  async preloadLottieAnimation(path: string) {
-    if (!window.lottie || !this.overlay || this.preloadedLottiePaths.has(path)) {
+  async showLoadingVideo() {
+    if (!this.stageContainer || !window.mountLoadingVideo) {
       return;
     }
 
-    this.preloadedLottiePaths.add(path);
-
-    const preloadContainer = document.createElement('div');
-    preloadContainer.style.cssText = [
-      'position: absolute',
-      'width: 1px',
-      'height: 1px',
-      'opacity: 0',
-      'pointer-events: none',
-      'overflow: hidden',
-      'inset: auto',
-    ].join(';');
-
-    this.overlay.appendChild(preloadContainer);
+    this.destroyCurrentAnimation();
+    this.applyLayout('contained');
+    this.loadingVideo = window.mountLoadingVideo(this.stageContainer);
 
     await new Promise<void>((resolve) => {
+      const video = this.loadingVideo;
+      if (!video || video.readyState >= 2) {
+        resolve();
+        return;
+      }
+
       let settled = false;
-      let preloadAnimation: any;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
       const resolveOnce = () => {
@@ -266,28 +252,44 @@ class StartupSplashManager {
           timeoutId = null;
         }
 
-        preloadAnimation?.removeEventListener('DOMLoaded', resolveOnce);
-        preloadAnimation?.removeEventListener('data_failed', resolveOnce);
-        preloadAnimation?.destroy();
-        preloadContainer.remove();
+        video.removeEventListener('loadeddata', resolveOnce);
+        video.removeEventListener('canplay', resolveOnce);
+        video.removeEventListener('error', resolveOnce);
         resolve();
       };
 
-      preloadAnimation = window.lottie.loadAnimation({
-        container: preloadContainer,
-        renderer: 'svg',
-        loop: false,
-        autoplay: false,
-        path,
-        rendererSettings: {
-          preserveAspectRatio: 'xMidYMid meet',
-        },
-      });
+      video.addEventListener('loadeddata', resolveOnce);
+      video.addEventListener('canplay', resolveOnce);
+      video.addEventListener('error', resolveOnce);
 
-      preloadAnimation.addEventListener('DOMLoaded', resolveOnce);
-      preloadAnimation.addEventListener('data_failed', resolveOnce);
-      timeoutId = setTimeout(resolveOnce, 4000);
+      timeoutId = setTimeout(resolveOnce, 6000);
+
+      if (video.readyState >= 2) {
+        resolveOnce();
+      }
     });
+  }
+
+  stopLoadingVideo() {
+    if (this.stageContainer && window.unmountLoadingVideo) {
+      window.unmountLoadingVideo(this.stageContainer);
+    }
+
+    this.loadingVideo = null;
+  }
+
+  destroyCurrentAnimation() {
+    if (!this.currentAnimation) {
+      return;
+    }
+
+    try {
+      this.currentAnimation.destroy();
+    } catch (error) {
+      console.warn('[StartupSplash] Could not destroy animation:', error);
+    }
+
+    this.currentAnimation = null;
   }
 
   async prepareAppIntro() {
@@ -315,19 +317,17 @@ class StartupSplashManager {
       preserveAspectRatio: string;
     },
   ) {
-    if (!this.lottieContainer || !window.lottie) {
+    if (!this.stageContainer || !window.lottie) {
       throw new Error('Lottie is not available for startup splash');
     }
 
-    if (this.currentAnimation) {
-      this.currentAnimation.destroy();
-      this.currentAnimation = null;
-    }
+    this.stopLoadingVideo();
+    this.destroyCurrentAnimation();
 
     this.applyLayout(options.displayMode);
-    this.lottieContainer.innerHTML = '';
+    this.stageContainer.innerHTML = '';
     this.currentAnimation = window.lottie.loadAnimation({
-      container: this.lottieContainer,
+      container: this.stageContainer,
       renderer: 'svg',
       loop: options.loop,
       autoplay: options.autoplay,
@@ -347,26 +347,26 @@ class StartupSplashManager {
   }
 
   applyLayout(displayMode: 'fullscreen' | 'contained') {
-    if (!this.lottieFrame || !this.lottieContainer) {
+    if (!this.stageFrame || !this.stageContainer) {
       return;
     }
 
     if (displayMode === 'fullscreen') {
-      this.lottieFrame.style.justifyContent = 'center';
-      this.lottieFrame.style.alignItems = 'center';
-      this.lottieContainer.style.width = '100vw';
-      this.lottieContainer.style.height = '100vh';
-      this.lottieContainer.style.maxWidth = 'none';
-      this.lottieContainer.style.maxHeight = 'none';
+      this.stageFrame.style.justifyContent = 'center';
+      this.stageFrame.style.alignItems = 'center';
+      this.stageContainer.style.width = '100vw';
+      this.stageContainer.style.height = '100vh';
+      this.stageContainer.style.maxWidth = 'none';
+      this.stageContainer.style.maxHeight = 'none';
     } else {
-      this.lottieFrame.style.justifyContent = 'center';
-      this.lottieFrame.style.alignItems = 'center';
-      this.lottieContainer.style.width = 'min(24vw, 220px)';
-      this.lottieContainer.style.height = 'min(24vw, 220px)';
-      this.lottieContainer.style.minWidth = '120px';
-      this.lottieContainer.style.minHeight = '120px';
-      this.lottieContainer.style.maxWidth = '220px';
-      this.lottieContainer.style.maxHeight = '220px';
+      this.stageFrame.style.justifyContent = 'center';
+      this.stageFrame.style.alignItems = 'center';
+      this.stageContainer.style.width = 'min(24vw, 220px)';
+      this.stageContainer.style.height = 'min(24vw, 220px)';
+      this.stageContainer.style.minWidth = '120px';
+      this.stageContainer.style.minHeight = '120px';
+      this.stageContainer.style.maxWidth = '220px';
+      this.stageContainer.style.maxHeight = '220px';
     }
   }
 
@@ -446,20 +446,19 @@ class StartupSplashManager {
   async finishStartup() {
     document.body.classList.remove('startup-boot-pending');
 
+    this.stopLoadingVideo();
+
     if (this.overlay) {
       this.overlay.style.opacity = '0';
       await new Promise((resolve) => setTimeout(resolve, 320));
       this.overlay.remove();
     }
 
-    if (this.currentAnimation) {
-      this.currentAnimation.destroy();
-      this.currentAnimation = null;
-    }
+    this.destroyCurrentAnimation();
 
     this.overlay = null;
-    this.lottieFrame = null;
-    this.lottieContainer = null;
+    this.stageFrame = null;
+    this.stageContainer = null;
     this.statusText = null;
 
     if (this.splashEnabled && window.animationManager?.playIntroAnimation) {

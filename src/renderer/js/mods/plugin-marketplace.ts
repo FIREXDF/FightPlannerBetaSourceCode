@@ -211,7 +211,7 @@ class PluginMarketplace {
       const repoCheckResponse = await fetch(repoCheckUrl, {
         headers: {
           Accept: 'application/vnd.github.v3+json',
-          'User-Agent': 'FightPlanner-Plugin-Marketplace',
+          'User-Agent': 'MOSAIC-Plugin-Marketplace',
         },
       });
 
@@ -246,7 +246,7 @@ class PluginMarketplace {
       const latestResponse = await fetch(latestUrl, {
         headers: {
           Accept: 'application/vnd.github.v3+json',
-          'User-Agent': 'FightPlanner-Plugin-Marketplace',
+          'User-Agent': 'MOSAIC-Plugin-Marketplace',
         },
       });
 
@@ -265,7 +265,7 @@ class PluginMarketplace {
         const allReleasesResponse = await fetch(allReleasesUrl, {
           headers: {
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': 'FightPlanner-Plugin-Marketplace',
+            'User-Agent': 'MOSAIC-Plugin-Marketplace',
           },
         });
 

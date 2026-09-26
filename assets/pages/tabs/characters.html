@@ -43,9 +43,19 @@
       <div id="characters-grid" class="characters-grid">
         <div class="characters-loading">
           <div
-            id="characters-loading-lottie"
+            id="characters-loading-video"
             style="width: 100px; height: 100px"
-          ></div>
+          >
+            <video
+              class="mosaic-loading-video"
+              src="../images/loading.webm"
+              autoplay
+              loop
+              muted
+              playsinline
+              aria-hidden="true"
+            ></video>
+          </div>
           <p data-i18n="characters.loading">Loading characters...</p>
         </div>
       </div>

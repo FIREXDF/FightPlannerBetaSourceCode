@@ -870,7 +870,7 @@ class SocialProfileManager extends SocialFeedManager {
           </span>
           <p>${benefit(
             'social.supporterBenefitsModalIntro',
-            'Support FightPlanner and unlock extra benefits for your profile and projects.',
+            'Support MOSAIC and unlock extra benefits for your profile and projects.',
           )}</p>
         </div>
         <ul class="social-supporter-benefits-list">
@@ -927,7 +927,7 @@ class SocialProfileManager extends SocialFeedManager {
         <p>${this.escapeHtml(
           this.getSocialTranslation(
             'social.supporterCheckoutModalBody',
-            'Use the same email on Ko-fi as your FightPlanner account so the payment can be linked automatically.',
+            'Use the same email on Ko-fi as your MOSAIC account so the payment can be linked automatically.',
           ),
         )}</p>
         <div class="social-supporter-checkout-email">
@@ -935,7 +935,7 @@ class SocialProfileManager extends SocialFeedManager {
           <span>${this.escapeHtml(
             this.getSocialTranslation(
               'social.supporterCheckoutAccountEmail',
-              'FightPlanner account:',
+              'MOSAIC account:',
             ),
           )} <strong>${accountEmail}</strong></span>
         </div>
@@ -1454,8 +1454,8 @@ ${this.renderProfileBadgeVisual(meta)}
     const overlay = document.querySelector<HTMLElement>(
       '#social-crop-upload-loading',
     );
-    const lottieContainer = document.querySelector<HTMLElement>(
-      '#social-crop-upload-lottie',
+    const videoContainer = document.querySelector<HTMLElement>(
+      '#social-crop-upload-video',
     );
     const closeButton =
       document.querySelector<HTMLButtonElement>('#social-crop-close');
@@ -1471,27 +1471,14 @@ ${this.renderProfileBadgeVisual(meta)}
     if (cancelButton) cancelButton.disabled = isLoading;
     if (zoomInput) zoomInput.disabled = isLoading;
 
-    if (isLoading && lottieContainer && window.lottie) {
-      if (this.profileMediaUploadAnim) return;
-      lottieContainer.innerHTML = '';
-      this.profileMediaUploadAnim = window.lottie.loadAnimation({
-        container: lottieContainer,
-        renderer: 'svg',
-        loop: true,
-        autoplay: true,
-        path: '../images/loading.json',
-      });
+    if (isLoading && videoContainer) {
+      this.profileMediaUploadAnim = window.mountLoadingVideo(videoContainer);
       return;
     }
 
-    if (!isLoading && this.profileMediaUploadAnim) {
-      try {
-        this.profileMediaUploadAnim.destroy();
-      } catch (error) {
-        console.warn('Error destroying upload animation:', error);
-      }
+    if (!isLoading) {
+      window.unmountLoadingVideo(videoContainer);
       this.profileMediaUploadAnim = null;
-      if (lottieContainer) lottieContainer.innerHTML = '';
     }
   }
 

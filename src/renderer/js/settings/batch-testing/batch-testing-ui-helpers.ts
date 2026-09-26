@@ -38,7 +38,7 @@ class BatchTestingUiHelpers {
         ),
         description: this.t(
           'settings.batchTestingReadyDesc',
-          'Choose where to begin, then FightPlanner will disable groups step by step until the likely cause is isolated.',
+          'Choose where to begin, then MOSAIC will disable groups step by step until the likely cause is isolated.',
         ),
         resumeTitle: this.t(
           'settings.batchTestingResumeButton',
@@ -69,7 +69,7 @@ class BatchTestingUiHelpers {
         ),
         description: this.t(
           'settings.batchTestingFoundDesc',
-          'FightPlanner isolated {{culprit}}. Reopen the session to choose what to do next.',
+          'MOSAIC isolated {{culprit}}. Reopen the session to choose what to do next.',
           { culprit: culpritLabel },
         ),
         resumeTitle: this.t(
@@ -151,7 +151,7 @@ class BatchTestingUiHelpers {
       ),
       description: this.t(
         'settings.batchTestingRunningDesc',
-        'FightPlanner is narrowing the suspect pool. You can leave this screen and resume at any time.',
+        'MOSAIC is narrowing the suspect pool. You can leave this screen and resume at any time.',
       ),
       resumeTitle: this.t(
         'settings.batchTestingResumeButton',

@@ -332,7 +332,7 @@ export default class FppHandler {
                 manifest = FppHandler.parseManifestXml(fs.readFileSync(manifestPath, 'utf-8'));
                 if (parseInt(manifest.fpp_version) > 2) {
                     fs.rmSync(tempDir, { recursive: true, force: true });
-                    return { success: false, error: 'This FPP file requires a newer version of FightPlanner' };
+                    return { success: false, error: 'This FPP file requires a newer version of MOSAIC' };
                 }
             }
 

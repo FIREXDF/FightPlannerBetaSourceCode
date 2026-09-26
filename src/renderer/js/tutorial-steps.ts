@@ -123,12 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let steps = [
     {
       icon: 'bi-stars',
-      title: 'Welcome to FightPlanner',
+      title: 'Welcome to MOSAIC',
       description: 'Your all-in-one mod manager for Super Smash Bros Ultimate',
       content: `
 <div style="text-align: center;">
     <h3 style="color: #fff; margin-bottom: 12px; font-size: 20px; font-weight: 600;">Let's get you started</h3>
-    <p style="margin-bottom: 20px; color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6;">This quick tutorial will help you set up FightPlanner 4 in just a few steps.</p>
+    <p style="margin-bottom: 20px; color: rgba(255,255,255,0.7); font-size: 15px; line-height: 1.6;">This quick tutorial will help you set up MOSAIC 4 in just a few steps.</p>
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left;">
         <div style="padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); transition: transform 0.2s ease;">
@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 
     <h3 style="color: #fff; margin-bottom: 12px; font-size: 24px; font-weight: 700;">Is your Switch modded?</h3>
-    <p style="margin-bottom: 20px; color: rgba(255,255,255,0.6); font-size: 14px;">FightPlanner needs a modded Switch before installing Skyline, ARCropolis, and Smash mods.</p>
+    <p style="margin-bottom: 20px; color: rgba(255,255,255,0.6); font-size: 14px;">MOSAIC needs a modded Switch before installing Skyline, ARCropolis, and Smash mods.</p>
 
     <div style="display: flex; gap: 20px; max-width: 500px; margin: 0 auto;">
         <label class="switch-modded-option" data-value="yes" style="flex: 1; position: relative; cursor: pointer;">
@@ -1199,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
                     <i class="bi bi-check-circle-fill" style="color: #4caf50; font-size: 32px; margin-bottom: 12px;"></i>
                     <p style="color: #fff; margin-bottom: 16px;">Great! ARCropolis is working correctly.</p>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px;">Next, choose whether FightPlanner should sync mods from this PC or read them directly from your mounted Switch SD card.</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px;">Next, choose whether MOSAIC should sync mods from this PC or read them directly from your mounted Switch SD card.</p>
                 </div>
             `;
           if (nextBtn) {
@@ -1216,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
                     <i class="bi bi-exclamation-triangle-fill" style="color: #ff4d4d; font-size: 32px; margin-bottom: 12px;"></i>
                     <p style="color: #fff; margin-bottom: 16px;">ARCropolis is not working.</p>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 12px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a> to get help with installation.</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 12px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">MOSAIC Discord</a> to get help with installation.</p>
                     <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 16px;">You can continue the tutorial, but mods may not work until ARCropolis is properly installed.</p>
                     <button id="change-answer-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 2px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;">
                         Change my answer
@@ -1244,11 +1244,11 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       icon: 'bi-device-hdd',
       title: 'Real Hardware Library',
-      description: 'Choose how FightPlanner should manage Switch mods',
+      description: 'Choose how MOSAIC should manage Switch mods',
       content: `
 <div style="text-align: center;">
     <h3 style="color: #fff; margin-bottom: 12px; font-size: 22px; font-weight: 700;">How do you want to manage your mods?</h3>
-    <p style="margin: 0 auto 24px; max-width: 560px; color: rgba(255,255,255,0.68); font-size: 14px; line-height: 1.6;">Choose whether FightPlanner keeps a local mod library on this PC and syncs it to your Switch, or reads the mounted Switch SD card directly.</p>
+    <p style="margin: 0 auto 24px; max-width: 560px; color: rgba(255,255,255,0.68); font-size: 14px; line-height: 1.6;">Choose whether MOSAIC keeps a local mod library on this PC and syncs it to your Switch, or reads the mounted Switch SD card directly.</p>
 
     <div style="display: flex; gap: 16px; max-width: 680px; margin: 0 auto;">
         <label class="hardware-library-option" data-value="local" style="flex: 1; position: relative; cursor: pointer;">
@@ -1256,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="hardware-library-card">
                 <i class="bi bi-pc-display" style="font-size: 30px; color: #7a9bff; margin-bottom: 12px;"></i>
                 <strong style="display: block; color: #fff; margin-bottom: 8px;">Keep mods on this PC and sync</strong>
-                <span style="display: block; color: rgba(255,255,255,0.62); font-size: 13px; line-height: 1.5;">Recommended if you want FightPlanner to keep your library locally, then send mods to your Switch when needed.</span>
+                <span style="display: block; color: rgba(255,255,255,0.62); font-size: 13px; line-height: 1.5;">Recommended if you want MOSAIC to keep your library locally, then send mods to your Switch when needed.</span>
                 <i class="bi bi-check-circle-fill check-icon" style="display: none; position: absolute; top: 12px; right: 12px; color: #4caf50; font-size: 20px;"></i>
             </div>
         </label>
@@ -1265,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="hardware-library-card">
                 <i class="bi bi-sd-card" style="font-size: 30px; color: #7a9bff; margin-bottom: 12px;"></i>
                 <strong style="display: block; color: #fff; margin-bottom: 8px;">Read mods directly from the Switch</strong>
-                <span style="display: block; color: rgba(255,255,255,0.62); font-size: 13px; line-height: 1.5;">FightPlanner uses the mounted Switch SD card as the library. No separate PC sync step is needed.</span>
+                <span style="display: block; color: rgba(255,255,255,0.62); font-size: 13px; line-height: 1.5;">MOSAIC uses the mounted Switch SD card as the library. No separate PC sync step is needed.</span>
                 <i class="bi bi-check-circle-fill check-icon" style="display: none; position: absolute; top: 12px; right: 12px; color: #4caf50; font-size: 20px;"></i>
             </div>
         </label>
@@ -1396,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <strong style="color: #fff;">Select your Switch SD card to use direct mode.</strong>
               </div>
               <p style="margin: 0 0 12px 0; color: rgba(255,255,255,0.64); line-height: 1.5;">
-                FightPlanner needs the mounted SD card location before it can read mods directly from the Switch.
+                MOSAIC needs the mounted SD card location before it can read mods directly from the Switch.
               </p>
               ${
                 currentSdDrive
@@ -1618,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (status) {
               status.innerHTML = `
                 <div style="background: rgba(122, 155, 255, 0.1); border: 1px solid rgba(122, 155, 255, 0.25); border-radius: 10px; padding: 12px; color: rgba(255,255,255,0.78); font-size: 13px;">
-                  Next, choose the local folder where FightPlanner should keep your mod library.
+                  Next, choose the local folder where MOSAIC should keep your mod library.
                 </div>
               `;
             }
@@ -2239,7 +2239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
                     <i class="bi bi-exclamation-triangle-fill" style="color: #ff4d4d; font-size: 32px; margin-bottom: 12px;"></i>
                     <p style="color: #fff; margin-bottom: 16px;">ARCropolis is not working.</p>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 16px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank" style="color: #7a9bff; text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(122, 155, 255, 0.3); transition: all 0.2s;">FightPlanner Discord</a> for assistance.</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 16px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank" style="color: #7a9bff; text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(122, 155, 255, 0.3); transition: all 0.2s;">MOSAIC Discord</a> for assistance.</p>
                     <button id="change-answer-yuzu-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 2px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;">
                         Change my answer
                     </button>
@@ -2720,7 +2720,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
                     <i class="bi bi-exclamation-triangle-fill" style="color: #ff4d4d; font-size: 32px; margin-bottom: 12px;"></i>
                     <p style="color: #fff; margin-bottom: 16px;">ARCropolis is not working.</p>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 16px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank" style="color: #7a9bff; text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(122, 155, 255, 0.3); transition: all 0.2s;">FightPlanner Discord</a> for assistance.</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 16px;">Please join the <a href="https://discord.gg/2zT5Rg46bG" target="_blank" style="color: #7a9bff; text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(122, 155, 255, 0.3); transition: all 0.2s;">MOSAIC Discord</a> for assistance.</p>
                     <button id="change-answer-ryujinx-btn" style="padding: 10px 20px; background: rgba(122, 155, 255, 0.2); color: #7a9bff; border: 2px solid rgba(122, 155, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;">
                         Change my answer
                     </button>
@@ -2748,7 +2748,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       icon: 'bi-folder2-open',
       title: 'Configure Your Paths',
-      description: 'Point FightPlanner to your mods folder',
+      description: 'Point MOSAIC to your mods folder',
       content: `
 <div style="text-align: center;">
     <h3 style="color: #fff; margin-bottom: 14px; font-size: 20px;">Where are your mods?</h3>
@@ -3017,7 +3017,7 @@ document.addEventListener('DOMContentLoaded', () => {
       content: `
 <div style="text-align: center;">
     <h3 style="color: #fff; margin-bottom: 14px; font-size: 20px;">One-click install</h3>
-    <p style="margin-bottom: 28px; color: rgba(255,255,255,0.7);">Simply click <strong style="color: #fff;">"Install with FightPlanner"</strong> on GameBanana.</p>
+    <p style="margin-bottom: 28px; color: rgba(255,255,255,0.7);">Simply click <strong style="color: #fff;">"Install with MOSAIC"</strong> on GameBanana.</p>
     
     <div style="background: rgba(20, 20, 20, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 24px; position: relative; overflow: hidden;">
         
@@ -3025,7 +3025,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="background: #181a1e; border-radius: 4px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #2f3136;">
             <img src="../images/logo.png" style="width: 32px; height: 32px; filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.2));">
             <div style="display: flex; flex-direction: column; text-align: left; gap: 0px;">
-                <span style="color: #ffd700; font-weight: 800; font-size: 14px; line-height: 1; text-shadow: 0 0 15px rgba(255, 215, 0, 0.4); font-family: 'Segoe UI', sans-serif;">FightPlanner</span>
+                <span style="color: #ffd700; font-weight: 800; font-size: 14px; line-height: 1; text-shadow: 0 0 15px rgba(255, 215, 0, 0.4); font-family: 'Segoe UI', sans-serif;">MOSAIC</span>
                 <span style="color: #fff; font-weight: 800; font-size: 11px; line-height: 1.2; text-shadow: 0 0 10px rgba(255,255,255,0.5); font-family: 'Segoe UI', sans-serif;">1-CLICK INSTALL</span>
             </div>
         </div>
@@ -3061,7 +3061,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     <h3 style="color: #fff; margin-bottom: 16px; font-size: 24px;">Ready to go!</h3>
     <p style="margin-bottom: 32px; color: rgba(255,255,255,0.7); max-width: 400px; margin-left: auto; margin-right: auto;">
-        FightPlanner is configured and ready. Start downloading mods or explore the settings to customize your experience.
+        MOSAIC is configured and ready. Start downloading mods or explore the settings to customize your experience.
     </p>
     
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 460px; margin: 0 auto;">
@@ -3723,7 +3723,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button type="button" data-tutorial-install-retry style="padding: 8px 12px; border: 0; border-radius: 7px; background: #7a9bff; color: #fff; cursor: pointer; font-weight: 600;"><i class="bi bi-arrow-clockwise"></i> Retry installation</button>
         </div>
         <pre data-tutorial-error-output hidden style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; margin: 0 0 14px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.28); color: rgba(255,255,255,0.8); font: 12px/1.45 monospace;">${escapeTutorialHtml(details)}</pre>
-        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">If it continues, share the details with the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">FightPlanner Discord</a>.</p>
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0;">If it continues, share the details with the <a href="https://discord.gg/2zT5Rg46bG" target="_blank">MOSAIC Discord</a>.</p>
       </div>
     `;
 

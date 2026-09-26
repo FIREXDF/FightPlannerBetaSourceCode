@@ -93,7 +93,7 @@ function migrateAccidentalFightPlanner4DefaultStore(
   fs.renameSync(oldConfigPath, backupPath);
 
   console.log(
-    'Removed accidental FightPlanner 4 default electron-store config. Backup:',
+    'Removed accidental MOSAIC 4 default electron-store config. Backup:',
     backupPath,
   );
 

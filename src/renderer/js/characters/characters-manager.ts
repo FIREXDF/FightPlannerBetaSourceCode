@@ -3999,22 +3999,16 @@ ${image}
     if (container) {
       container.innerHTML = `
 <div class="characters-loading">
-<div id="characters-loading-lottie" style="width: 100px; height: 100px;"></div>
+<div id="characters-loading-video" style="width: 100px; height: 100px;">
+<video class="mosaic-loading-video" src="../images/loading.webm" autoplay loop muted playsinline aria-hidden="true"></video>
+</div>
 <p>Loading characters...</p>
 <p id="characters-loading-status" style="font-size: 13px; color: var(--text-muted); margin-top: 8px;"></p>
 </div>
 `;
-      const lottieContainer = document.getElementById(
-        'characters-loading-lottie',
-      );
-      if (lottieContainer && window.lottie) {
-        window.lottie.loadAnimation({
-          container: lottieContainer,
-          renderer: 'svg',
-          loop: true,
-          autoplay: true,
-          path: '../../assets/images/loading.json',
-        });
+      const videoContainer = document.getElementById('characters-loading-video');
+      if (videoContainer) {
+        window.mountLoadingVideo(videoContainer);
       }
     }
     this.updateCharacterCount(0);

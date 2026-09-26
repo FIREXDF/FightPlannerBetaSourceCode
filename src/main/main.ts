@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, session } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import './user-data-migration';
 import store from './store';
 import { initializeProtocol } from './main-protocol-setup';
 import { createTutorialWindow } from './tutorial-window';

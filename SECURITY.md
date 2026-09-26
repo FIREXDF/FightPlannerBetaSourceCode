@@ -2,7 +2,7 @@
 
 ## 🔐 Supported Versions
 
-Only the latest stable release of **FightPlanner** is actively supported with security updates.
+Only the latest stable release of **MOSAIC** is actively supported with security updates.
 
 | Version | Supported |
 | ------- | --------- |
@@ -15,7 +15,7 @@ We strongly recommend always using the most recent version to benefit from the l
 
 ## 🚨 Reporting a Vulnerability
 
-If you discover a security vulnerability in **FightPlanner**, please **do not open a public GitHub issue**.
+If you discover a security vulnerability in **MOSAIC**, please **do not open a public GitHub issue**.
 
 You can report it securely using **one of the following methods**:
 
@@ -49,7 +49,7 @@ We kindly ask security researchers to:
 - Avoid exploiting vulnerabilities beyond what is necessary for testing
 - Respect user data and privacy at all times
 
-We sincerely appreciate your efforts to help keep **FightPlanner** secure
+We sincerely appreciate your efforts to help keep **MOSAIC** secure
 
 ---
 

@@ -97,7 +97,7 @@ function validateBackup(value: unknown): FightPlannerConfigBackup {
     !backup.store ||
     !Array.isArray(backup.dataFiles)
   ) {
-    throw new Error('Invalid FightPlanner backup file');
+    throw new Error('Invalid MOSAIC backup file');
   }
 
   return {
@@ -179,10 +179,10 @@ const ConfigBackupHandlers = {
         .toISOString()
         .slice(0, 10)}.json`;
       const result = await dialog.showSaveDialog(win, {
-        title: 'Export FightPlanner Configuration',
+        title: 'Export MOSAIC Configuration',
         defaultPath,
         filters: [
-          { name: 'FightPlanner Config Backup', extensions: ['json'] },
+          { name: 'MOSAIC Config Backup', extensions: ['json'] },
           { name: 'All Files', extensions: ['*'] },
         ],
       });
@@ -223,10 +223,10 @@ const ConfigBackupHandlers = {
     try {
       const win = BrowserWindow.fromWebContents(common.event.sender)!;
       const result = await dialog.showOpenDialog(win, {
-        title: 'Restore FightPlanner Configuration',
+        title: 'Restore MOSAIC Configuration',
         properties: ['openFile'],
         filters: [
-          { name: 'FightPlanner Config Backup', extensions: ['json'] },
+          { name: 'MOSAIC Config Backup', extensions: ['json'] },
           { name: 'All Files', extensions: ['*'] },
         ],
       });
@@ -247,9 +247,9 @@ const ConfigBackupHandlers = {
           buttons: ['Cancel', 'Restore anyway'],
           defaultId: 0,
           cancelId: 0,
-          title: 'FightPlanner version mismatch',
+          title: 'MOSAIC version mismatch',
           message:
-            'This backup was created with a different FightPlanner version.',
+            'This backup was created with a different MOSAIC version.',
           detail: `Backup version: ${backup.appVersion}\nCurrent version: ${currentAppVersion}\n\nRestoring it may break or downgrade some settings if the configuration format changed. Continue only if you trust this backup.`,
         });
 

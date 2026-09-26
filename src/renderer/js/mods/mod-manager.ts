@@ -549,7 +549,7 @@ class ModManager {
     const message = document.createElement('p');
     message.textContent = this.t(
       'tools.modsPathUnavailableMessage',
-      'FightPlanner cannot access the configured mods folder. Check the path in Settings or reconnect the drive.',
+      'MOSAIC cannot access the configured mods folder. Check the path in Settings or reconnect the drive.',
     );
 
     const path = document.createElement('code');

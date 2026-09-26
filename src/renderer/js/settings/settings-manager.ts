@@ -3984,7 +3984,7 @@ class SettingsManager {
     if (splashSoundPathInput) {
       const defaultSoundLabel =
         window.i18n?.t?.('settings.startupSplashSoundPathPlaceholder') ||
-        'Default FightPlanner sound';
+        'Default MOSAIC sound';
       splashSoundPathInput.value =
         this.settings.startupSplashSoundPath || defaultSoundLabel;
       splashSoundPathInput.disabled =
@@ -5180,7 +5180,7 @@ class SettingsManager {
         );
       }
     } catch (error) {
-      console.error('Failed to export FightPlanner configuration:', error);
+      console.error('Failed to export MOSAIC configuration:', error);
       this.showToast(
         this.translate('toasts.configBackupExportFailed'),
         'error',
@@ -5222,7 +5222,7 @@ class SettingsManager {
         );
       }
     } catch (error) {
-      console.error('Failed to restore FightPlanner configuration:', error);
+      console.error('Failed to restore MOSAIC configuration:', error);
       this.showToast(
         this.translate('toasts.configBackupRestoreFailed'),
         'error',

@@ -28,7 +28,7 @@ const FppHandlers = {
             const result = await dialog.showSaveDialog(mainWindow, {
                 title: 'Save FPP File',
                 defaultPath: `${name}.fpp`,
-                filters: [{ name: 'FightPlanner Pack', extensions: ['fpp'] }],
+                filters: [{ name: 'MOSAIC Pack', extensions: ['fpp'] }],
             });
 
             if (result.canceled || !result.filePath) {
@@ -102,7 +102,7 @@ const FppHandlers = {
 
             const result = await dialog.showOpenDialog(mainWindow, {
                 title: 'Open FPP File',
-                filters: [{ name: 'FightPlanner Pack', extensions: ['fpp'] }],
+                filters: [{ name: 'MOSAIC Pack', extensions: ['fpp'] }],
                 properties: ['openFile'],
             });
 

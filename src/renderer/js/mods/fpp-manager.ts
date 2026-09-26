@@ -2,7 +2,6 @@ export class FppManager {
     isCreating: boolean = false;
     isInstalling: boolean = false;
     fppThumbnailPath: string | null = null;
-    private lottieInstance: any = null;
 
     init() {
         this.isCreating = false;
@@ -356,18 +355,9 @@ export class FppManager {
             const statusEl = document.getElementById('fpp-create-status');
             if (statusEl) statusEl.textContent = t('fpp.status.initializing', 'Initializing...');
 
-            const lottieContainer = document.getElementById('fpp-create-lottie');
-            if (lottieContainer && (window as any).lottie) {
-                if (this.lottieInstance) {
-                    this.lottieInstance.destroy();
-                }
-                this.lottieInstance = (window as any).lottie.loadAnimation({
-                    container: lottieContainer,
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: true,
-                    path: '../images/loading.json'
-                });
+            const videoContainer = document.getElementById('fpp-create-video');
+            if (videoContainer) {
+                window.mountLoadingVideo(videoContainer);
             }
         }
 
@@ -393,9 +383,9 @@ export class FppManager {
             }
         } finally {
             this.isCreating = false;
-            if (this.lottieInstance) {
-                this.lottieInstance.destroy();
-                this.lottieInstance = null;
+            const videoContainer = document.getElementById('fpp-create-video');
+            if (videoContainer) {
+                window.unmountLoadingVideo(videoContainer);
             }
             if (loadingOverlay) loadingOverlay.style.display = 'none';
         }

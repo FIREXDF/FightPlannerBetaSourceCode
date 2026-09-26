@@ -231,7 +231,7 @@ class SmartRenameManager {
       'position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10001; opacity: 0; transition: opacity 0.3s ease;';
 
     const container = document.createElement('div');
-    container.id = 'smart-rename-lottie-container';
+    container.id = 'smart-rename-loading-video';
     container.style.cssText = 'width: 120px; height: 120px;';
     overlay.appendChild(container);
 
@@ -243,15 +243,7 @@ class SmartRenameManager {
 
     document.body.appendChild(overlay);
 
-    if (window.lottie) {
-      window.lottie.loadAnimation({
-        container,
-        renderer: 'svg',
-        loop: true,
-        autoplay: true,
-        path: '../../assets/images/loading.json',
-      });
-    }
+    window.mountLoadingVideo(container);
 
     requestAnimationFrame(() => {
       overlay.style.opacity = '1';
@@ -271,6 +263,7 @@ class SmartRenameManager {
     return new Promise((resolve) => {
       overlay.style.opacity = '0';
       setTimeout(() => {
+        window.unmountLoadingVideo(overlay);
         overlay.remove();
         resolve();
       }, 300);

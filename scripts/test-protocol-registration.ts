@@ -37,7 +37,7 @@ exec(
 
         console.log('\n✅ Tests complete!');
         console.log(
-          '\nIf protocol is not registered, try running FightPlanner as Administrator once.',
+          '\nIf protocol is not registered, try running MOSAIC as Administrator once.',
         );
       },
     );

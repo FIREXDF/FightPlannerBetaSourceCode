@@ -24,7 +24,7 @@ async function getGitHubRelease(repo: string, tag?: string): Promise<{
       path: releasePath,
       method: 'GET',
       headers: {
-        'User-Agent': 'FightPlanner-Installer',
+        'User-Agent': 'MOSAIC-Installer',
         Accept: 'application/vnd.github.v3+json',
       },
     };
@@ -149,7 +149,7 @@ export function downloadArcropolis(
         downloadUrl,
         {
           headers: {
-            'User-Agent': 'FightPlanner-ARCropolis-Installer',
+            'User-Agent': 'MOSAIC-ARCropolis-Installer',
           },
         },
         (res) => {

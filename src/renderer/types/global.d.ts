@@ -114,6 +114,12 @@ declare global {
     };
 
     lottie: LottiePlayer;
+    mountLoadingVideo: (
+      container: HTMLElement | null,
+    ) => HTMLVideoElement | null;
+    unmountLoadingVideo: (container: HTMLElement | null) => void;
+    preloadLoadingVideo: () => Promise<void>;
+    LOADING_VIDEO_SRC: string;
     gsap: typeof gsap;
     Flip?: any;
     __flipPluginRegistered?: boolean;

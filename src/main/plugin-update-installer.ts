@@ -43,7 +43,7 @@ export default class PluginUpdateInstaller {
           url,
           {
             headers: {
-              'User-Agent': 'FightPlanner-Plugin-Updater',
+              'User-Agent': 'MOSAIC-Plugin-Updater',
             },
           },
           (res) => {

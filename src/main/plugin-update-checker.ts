@@ -67,7 +67,7 @@ export default class PluginUpdateChecker {
     return new Promise((resolve, reject) => {
       const options = {
         headers: {
-          'User-Agent': 'FightPlanner-Plugin-Updater',
+          'User-Agent': 'MOSAIC-Plugin-Updater',
         },
       };
 

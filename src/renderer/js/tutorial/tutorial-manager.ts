@@ -45,7 +45,7 @@ class TutorialManager {
     this.steps = [
       {
         kind: 'intro',
-        title: "Let's guide you to FightPlanner",
+        title: "Let's guide you to MOSAIC",
         description:
           'A quick tour will show what each main part of the app does.',
         placement: 'center',
@@ -53,7 +53,7 @@ class TutorialManager {
       {
         kind: 'language',
         title: 'Choose your language',
-        description: 'Pick the language you want to use in FightPlanner.',
+        description: 'Pick the language you want to use in MOSAIC.',
         placement: 'center',
       },
       {
@@ -268,7 +268,7 @@ class TutorialManager {
         kind: 'spotlight',
         title: '1-click install links',
         description:
-          'Open a GameBanana mod in your browser, then click a fightplanner: 1-click install link. FightPlanner will wait here until the install modal appears.',
+          'Open a GameBanana mod in your browser, then click a fightplanner: 1-click install link. MOSAIC will wait here until the install modal appears.',
         requiredVisible: '#install-confirm-modal',
         target: '#install-confirm-modal .modal-btn-primary',
         placement: 'top',
@@ -287,7 +287,7 @@ class TutorialManager {
         kind: 'intro',
         title: 'Tutorial complete',
         description:
-          'You know the main tabs and the install flow now. Enjoy FightPlanner.',
+          'You know the main tabs and the install flow now. Enjoy MOSAIC.',
         placement: 'center',
       },
     ];
@@ -665,7 +665,7 @@ class TutorialManager {
     );
     if (fightPlannerChoice) {
       fightPlannerChoice.textContent = this.guideText(
-        'Install inside FightPlanner',
+        'Install inside MOSAIC',
       );
     }
 
@@ -716,7 +716,6 @@ class TutorialManager {
   }
 
   shouldSkipStep(step: TutorialStep) {
-    // Skip steps pointing at a sidebar tab that is not present in the UI.
     if (
       step.requiredTab &&
       !document.querySelector(`.sidebar-btn[data-tab="${step.requiredTab}"]`)

@@ -13,7 +13,7 @@ import downloadsStore from './store-downloads';
 
 const packageJson = require('../../package.json');
 
-const USER_AGENT = `FightPlanner/${packageJson.version} (Electron ${process.versions.electron}; Node ${process.versions.node}; ${process.platform})`;
+const USER_AGENT = `MOSAIC/${packageJson.version} (Electron ${process.versions.electron}; Node ${process.versions.node}; ${process.platform})`;
 
 export interface ProtocolHandlerEvents {
   'mod-install-confirm-request': {
@@ -128,11 +128,11 @@ export default class ProtocolHandler {
           app.setAsDefaultProtocolClient('fightplanner', process.execPath, [
             path.resolve(process.argv[1]),
           ]);
-          console.log('FightPlanner protocol registered (dev mode)');
+          console.log('MOSAIC protocol registered (dev mode)');
         }
       } else {
         app.setAsDefaultProtocolClient('fightplanner');
-        console.log('FightPlanner protocol registered (production)');
+        console.log('MOSAIC protocol registered (production)');
       }
 
       this.registerProtocolInRegistry();
@@ -223,7 +223,7 @@ export default class ProtocolHandler {
 
           const desktopFileContent = [
             `[Desktop Entry]`,
-            `Name=FightPlanner`,
+            `Name=MOSAIC`,
             `Exec=${execLine}`,
             `Type=Application`,
             `Terminal=false`,
@@ -308,7 +308,7 @@ export default class ProtocolHandler {
       console.log('Command string:', commandString);
 
       const commands = [
-        `reg add "HKCU\\Software\\Classes\\fightplanner" /ve /d "URL:FightPlanner Protocol" /f`,
+        `reg add "HKCU\\Software\\Classes\\fightplanner" /ve /d "URL:MOSAIC Protocol" /f`,
         `reg add "HKCU\\Software\\Classes\\fightplanner" /v "URL Protocol" /t REG_SZ /d "" /f`,
         `reg add "HKCU\\Software\\Classes\\fightplanner\\DefaultIcon" /ve /d "${process.execPath.replace(
           /\\/g,
@@ -1299,7 +1299,7 @@ export default class ProtocolHandler {
   }
 
   showError(message) {
-    dialog.showErrorBox('FightPlanner Protocol Error', message);
+    dialog.showErrorBox('MOSAIC Protocol Error', message);
   }
 
   async handleFppBatchDownload(packName: string, urls: string[], fppPath: string) {

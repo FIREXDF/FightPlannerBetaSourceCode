@@ -253,7 +253,7 @@ class CustomizationManager {
           <i class="bi bi-exclamation-triangle-fill"></i> Warning: Potentially Dangerous Operation
         </p>
         <p style="color: #cccccc; line-height: 1.6;">
-          You are about to load a custom JavaScript file. This file will have <strong>full access</strong> to FightPlanner and can:
+          You are about to load a custom JavaScript file. This file will have <strong>full access</strong> to MOSAIC and can:
         </p>
       </div>
       <ul style="color: #aaaaaa; margin-left: 20px; line-height: 1.8; margin-bottom: 20px;">

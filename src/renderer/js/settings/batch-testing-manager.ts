@@ -857,7 +857,7 @@ class BatchTestingManager {
               ${this.escapeHtml(
                 this.t(
                   'settings.batchTestingPrompt',
-                  'These items are currently disabled. Launch the game, test the issue, then tell FightPlanner whether it works now.',
+                  'These items are currently disabled. Launch the game, test the issue, then tell MOSAIC whether it works now.',
                 ),
               )}
             </div>
@@ -1066,7 +1066,7 @@ class BatchTestingManager {
               ${this.escapeHtml(
                 this.t(
                   'settings.batchTestingPrompt',
-                  'These items are currently disabled. Launch the game, test the issue, then tell FightPlanner whether it works now.',
+                  'These items are currently disabled. Launch the game, test the issue, then tell MOSAIC whether it works now.',
                 ),
               )}
             </p>

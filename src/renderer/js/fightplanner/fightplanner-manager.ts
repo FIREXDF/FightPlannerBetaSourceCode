@@ -70,7 +70,7 @@ class FightPlannerManager {
       },
     ];
     this.applySidebarPrideTabsEnabled(this.areSidebarPrideTabsEnabled());
-    console.log('FightPlanner Manager created');
+    console.log('MOSAIC Manager created');
   }
 
   async initialize() {
@@ -79,7 +79,7 @@ class FightPlannerManager {
       return;
     }
 
-    console.log('Initializing FightPlanner tab...');
+    console.log('Initializing MOSAIC tab...');
     this.applySavedLogoVariant();
     await this.loadVersionInfo();
     this.setupOldTestersToggle();
@@ -338,7 +338,7 @@ class FightPlannerManager {
   }
 
   async reinitialize() {
-    console.log('Reinitializing FightPlanner tab...');
+    console.log('Reinitializing MOSAIC tab...');
     this.applySavedLogoVariant();
     await this.loadVersionInfo();
     this.setupOldTestersToggle();
@@ -349,7 +349,7 @@ class FightPlannerManager {
 if (typeof window !== 'undefined') {
   window.fightPlannerManager = new FightPlannerManager();
   window.fightPlannerManager.applySavedLogoVariant();
-  console.log('FightPlanner Manager initialized globally');
+  console.log('MOSAIC Manager initialized globally');
 }
 
 export { type FightPlannerManager };

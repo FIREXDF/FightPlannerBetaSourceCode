@@ -408,7 +408,7 @@ const ModHandlers = {
       const saveResult = await dialog.showSaveDialog(mainWindow, {
         title: 'Save FPP File',
         defaultPath: `${safeName}.fpp`,
-        filters: [{ name: 'FightPlanner Pack', extensions: ['fpp'] }],
+        filters: [{ name: 'MOSAIC Pack', extensions: ['fpp'] }],
       });
 
       if (saveResult.canceled || !saveResult.filePath) {
