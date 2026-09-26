@@ -1,11 +1,5 @@
 import RPC from 'discord-rpc';
 
-/**
- * Name Discord shows next to the activity ("Playing …").
- * Recent Discord clients honour `activity.name`, which lets us brand the
- * presence independently from the application name registered for the
- * client ID in the Discord Developer Portal.
- */
 const APPLICATION_NAME = 'MOSAIC';
 
 interface ActivityData {
@@ -126,10 +120,6 @@ export default class DiscordRPCManager {
     }
   }
 
-  /**
-   * discord-rpc's setActivity() drops unknown fields, so the payload goes
-   * straight to SET_ACTIVITY to keep our display name.
-   */
   sendActivity(activity: ActivityPayload) {
     if (!this.client || typeof this.client.request !== 'function') {
       this.client?.setActivity(activity);
