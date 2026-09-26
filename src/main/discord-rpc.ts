@@ -1,6 +1,7 @@
 import RPC from 'discord-rpc';
 
 const APPLICATION_NAME = 'MOSAIC';
+const LARGE_IMAGE_KEY = 'fpneo';
 
 interface ActivityData {
   tab: string;
@@ -13,7 +14,8 @@ interface ActivityPayload {
   name: string;
   details: string;
   state?: string;
-  startTimestamp: number;
+  timestamps: { start: number };
+  assets: { large_image: string };
   instance: boolean;
 }
 
@@ -104,7 +106,8 @@ export default class DiscordRPCManager {
     const activity: ActivityPayload = {
       name: APPLICATION_NAME,
       details: this.currentActivity.details,
-      startTimestamp: this.startTimestamp,
+      timestamps: { start: this.startTimestamp },
+      assets: { large_image: LARGE_IMAGE_KEY },
       instance: false,
     };
 
@@ -122,7 +125,7 @@ export default class DiscordRPCManager {
 
   sendActivity(activity: ActivityPayload) {
     if (!this.client || typeof this.client.request !== 'function') {
-      this.client?.setActivity(activity);
+      this.sendActivityFallback(activity);
       return;
     }
 
@@ -130,19 +133,25 @@ export default class DiscordRPCManager {
       this.client.request('SET_ACTIVITY', { pid: process.pid, activity }),
     ).catch((error: { message?: string } | undefined) => {
       console.warn(
-        'Discord RPC rejected activity.name, falling back to setActivity:',
+        'Discord RPC rejected the activity payload, falling back to setActivity:',
         error?.message ?? error,
       );
-
-      try {
-        this.client?.setActivity(activity);
-      } catch (fallbackError) {
-        console.error(
-          '❌ Error updating Discord presence:',
-          fallbackError.message,
-        );
-      }
+      this.sendActivityFallback(activity);
     });
+  }
+
+  sendActivityFallback(activity: ActivityPayload) {
+    try {
+      this.client?.setActivity({
+        details: activity.details,
+        state: activity.state,
+        startTimestamp: activity.timestamps.start,
+        largeImageKey: activity.assets.large_image,
+        instance: activity.instance,
+      });
+    } catch (error) {
+      console.error('❌ Error updating Discord presence:', error.message);
+    }
   }
 
   setModsTab(modCount: number = 0) {

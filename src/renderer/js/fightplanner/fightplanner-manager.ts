@@ -19,6 +19,7 @@ class FightPlannerManager {
     this.logoStorageKey = 'fightplanner_logo_variant';
     this.sidebarPrideTabsStorageKey = 'sidebar_pride_tabs_enabled';
     this.defaultLogoVariantId = 'pride';
+    // TRANS RIGHTS ARE HUMAN RIGHTS!! FUCK HOMOPHOBIC AND TRANSPHOBIC PEOPLE!
     this.logoVariants = [
       {
         id: 'default',
