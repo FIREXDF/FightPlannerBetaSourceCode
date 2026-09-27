@@ -2171,6 +2171,28 @@ ${character.isGroup ? `<span class="character-css-group-count">${groupSize}</spa
     this.renderCssEditor();
   }
 
+  setCssInspectorSaving(saving: boolean) {
+    const inspector = document.querySelector<HTMLElement>(
+      '#character-css-inspector',
+    );
+    if (!inspector) {
+      return;
+    }
+
+    if (saving) {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement && inspector.contains(activeElement)) {
+        activeElement.blur();
+      }
+      inspector.setAttribute('aria-busy', 'true');
+    } else {
+      inspector.removeAttribute('aria-busy');
+    }
+
+    inspector.inert = saving;
+    inspector.classList.toggle('is-saving', saving);
+  }
+
   renderCssInspector() {
     const inspector = document.querySelector<HTMLElement>(
       '#character-css-inspector',
@@ -3913,9 +3935,14 @@ ${image}
 
     this.cssSaving = true;
     this.renderCssEditor();
+    this.setCssInspectorSaving(true);
 
     try {
       const renamedCharacters = Object.fromEntries(this.cssRenamedCharacters);
+      const characterUpdates = Object.fromEntries(this.cssCharacterUpdates);
+      const charactersById = new Map(
+        this.getAllCssCharacters().map((character) => [character.id, character]),
+      );
       const result = await window.electronAPI.saveCharacterCssLayout({
         visibleCharacterIds: this.cssVisibleCharacters.map(
           (character) => character.id,
@@ -3931,11 +3958,62 @@ ${image}
         ),
         createdGroups: [...this.cssCreatedGroups.values()],
         renamedCharacters,
-        characterUpdates: Object.fromEntries(this.cssCharacterUpdates),
+        characterUpdates,
       });
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to save character CSS layout');
+      }
+
+      const selectedCharacterId = this.cssSelectedCharacterId;
+      const updatedSelectedCharacterId = selectedCharacterId
+        ? characterUpdates[selectedCharacterId]?.uiCharaId?.trim() ||
+          selectedCharacterId
+        : null;
+      let layoutRefreshed = false;
+
+      try {
+        const refreshedLayout = await window.electronAPI.getCharacterCssLayout();
+        if (!refreshedLayout.success) {
+          throw new Error(
+            refreshedLayout.error || 'Failed to refresh character CSS layout',
+          );
+        }
+
+        this.cssVisibleCharacters = refreshedLayout.visibleCharacters.map(
+          (entry) => this.hydrateCssCharacter(entry),
+        );
+        this.cssHiddenCharacters = refreshedLayout.hiddenCharacters.map(
+          (entry) => this.hydrateCssCharacter(entry),
+        );
+        this.cssGroups = this.hydrateCssGroups(refreshedLayout.groups);
+        if (
+          updatedSelectedCharacterId &&
+          this.findCssCharacter(updatedSelectedCharacterId)
+        ) {
+          this.cssSelectedCharacterId = updatedSelectedCharacterId;
+        }
+        layoutRefreshed = true;
+      } catch (error) {
+        console.warn(
+          '[CharactersManager] Failed to refresh CSS layout after save:',
+          error,
+        );
+      }
+
+      if (!layoutRefreshed) {
+        for (const [characterId, update] of Object.entries(characterUpdates)) {
+          const updatedId = update.uiCharaId?.trim();
+          const character = charactersById.get(characterId);
+          if (!updatedId || !character) {
+            continue;
+          }
+
+          character.id = updatedId;
+          if (this.cssSelectedCharacterId === characterId) {
+            this.cssSelectedCharacterId = updatedId;
+          }
+        }
       }
 
       this.cssDirty = false;
@@ -3958,6 +4036,7 @@ ${image}
     } finally {
       this.cssSaving = false;
       this.renderCssEditor();
+      this.setCssInspectorSaving(false);
     }
   }
 

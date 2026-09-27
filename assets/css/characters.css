@@ -1224,6 +1224,14 @@ body.no-animations .character-css-slots-table td.is-conflict {
   );
   box-shadow: var(--shadow-md);
   overflow: auto;
+  transition: filter 180ms ease;
+}
+
+.character-css-inspector.is-saving {
+  filter: brightness(0.58);
+  pointer-events: none;
+  user-select: none;
+  cursor: wait;
 }
 
 .character-css-inspector-empty {
