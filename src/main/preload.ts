@@ -292,6 +292,9 @@ const electronAPI = {
 } as const;
 
 const tutorialAPI = {
+  getAppVersion: invokeAppHandler('get-app-version'),
+  loadLocale: invokeSystemHandler('load-locale'),
+
   // Settings & File System
   selectFolder: invokeFileHandler('select-folder'),
   saveSetting: invokeStoreHandler('store-set'),

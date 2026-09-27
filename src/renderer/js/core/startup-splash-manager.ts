@@ -1,9 +1,13 @@
+const STARTUP_SPLASH_VIDEO_SRC = '../images/SplashScreen.webm';
+const STARTUP_SPLASH_VIDEO_DURATION_MS = 3000;
+
 class StartupSplashManager {
   overlay: HTMLElement | null;
   stageFrame: HTMLElement | null;
   stageContainer: HTMLElement | null;
   statusText: HTMLElement | null;
-  currentAnimation: any;
+  splashVideo: HTMLVideoElement | null;
+  splashAudio: HTMLAudioElement | null;
   loadingVideo: HTMLVideoElement | null;
   splashEnabled: boolean;
   splashSoundEnabled: boolean;
@@ -17,7 +21,8 @@ class StartupSplashManager {
     this.stageFrame = null;
     this.stageContainer = null;
     this.statusText = null;
-    this.currentAnimation = null;
+    this.splashVideo = null;
+    this.splashAudio = null;
     this.loadingVideo = null;
     this.splashEnabled = true;
     this.splashSoundEnabled = true;
@@ -47,10 +52,6 @@ class StartupSplashManager {
 
     this.animationWarmupPromise = this.warmupAnimationAssets();
 
-    // Pre-cache heavy panels (stages layout + character CSS) BEFORE the
-    // splash animation plays so their IPC payload deserialization does not
-    // stutter the Lottie animation. Capped to avoid stalling startup if the
-    // backend is slow.
     await Promise.race([
       this.runEarlyPrefetches(),
       new Promise((resolve) => setTimeout(resolve, 1500)),
@@ -178,18 +179,8 @@ class StartupSplashManager {
       bootCompleted = true;
     });
 
-    const splashPromise = this.loadAnimation('../images/SplashScreen.json', {
-      loop: false,
-      autoplay: true,
-      displayMode: 'fullscreen',
-      preserveAspectRatio: 'xMidYMid slice',
-    });
-
+    const splashFinished = this.playSplashVideo();
     this.playSplashAudio();
-
-    const splashFinished = splashPromise.then(
-      (animation) => this.waitForAnimationEnd(animation, 12000),
-    );
 
     await splashFinished;
 
@@ -218,7 +209,154 @@ class StartupSplashManager {
       warmupTasks.push(window.preloadLoadingVideo());
     }
 
+    if (this.splashEnabled) {
+      warmupTasks.push(this.preloadSplashVideo());
+    }
     await Promise.allSettled(warmupTasks);
+  }
+
+  async preloadSplashVideo() {
+    if (!document.body) {
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.src = STARTUP_SPLASH_VIDEO_SRC;
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.style.cssText =
+      'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;';
+    document.body.appendChild(video);
+    this.splashVideo = video;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        video.removeEventListener('loadeddata', done);
+        video.removeEventListener('canplay', done);
+        video.removeEventListener('error', done);
+      };
+
+      function done() {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve();
+      }
+
+      video.addEventListener('loadeddata', done);
+      video.addEventListener('canplay', done);
+      video.addEventListener('error', done);
+      timeoutId = setTimeout(done, 6000);
+
+      if (video.readyState >= 2) {
+        done();
+      }
+    });
+  }
+
+  async playSplashVideo() {
+    if (!this.stageContainer) {
+      return;
+    }
+
+    this.stopLoadingVideo();
+    this.applyLayout('fullscreen');
+    this.stageContainer.innerHTML = '';
+
+    const video = this.splashVideo || document.createElement('video');
+    video.className = 'startup-splash-video';
+    if (video.getAttribute('src') !== STARTUP_SPLASH_VIDEO_SRC) {
+      video.src = STARTUP_SPLASH_VIDEO_SRC;
+    }
+    video.preload = 'auto';
+    video.autoplay = false;
+    video.loop = false;
+    video.muted = true;
+    video.playsInline = true;
+    video.disablePictureInPicture = true;
+    video.setAttribute('aria-hidden', 'true');
+    video.style.cssText =
+      'display:block;width:100%;height:100%;object-fit:cover;';
+    this.stageContainer.appendChild(video);
+    this.splashVideo = video;
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let durationTimeout: ReturnType<typeof setTimeout> | null = null;
+      let startupTimeout: ReturnType<typeof setTimeout> | null = null;
+
+      const startDuration = () => {
+        if (durationTimeout || settled) {
+          return;
+        }
+        if (startupTimeout) {
+          clearTimeout(startupTimeout);
+          startupTimeout = null;
+        }
+        durationTimeout = setTimeout(
+          finish,
+          STARTUP_SPLASH_VIDEO_DURATION_MS,
+        );
+      };
+
+      const cleanup = () => {
+        if (startupTimeout) {
+          clearTimeout(startupTimeout);
+        }
+        if (durationTimeout) {
+          clearTimeout(durationTimeout);
+        }
+        video.removeEventListener('playing', startDuration);
+        video.removeEventListener('error', finish);
+        video.pause();
+        this.stopSplashAudio();
+        resolve();
+      };
+
+      function finish() {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+      }
+
+      video.addEventListener('playing', startDuration);
+      video.addEventListener('error', finish);
+      startupTimeout = setTimeout(finish, 8000);
+      video.play().then(startDuration).catch((error) => {
+        console.warn(
+          '[StartupSplash] Could not play startup splash video:',
+          error,
+        );
+        finish();
+      });
+    });
+  }
+
+  stopSplashVideo() {
+    this.stopVideo(this.splashVideo);
+    this.splashVideo = null;
+  }
+
+  stopVideo(video: HTMLVideoElement | null) {
+    if (!video) {
+      return;
+    }
+
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    video.remove();
   }
 
   async showLoadingVideo() {
@@ -226,7 +364,7 @@ class StartupSplashManager {
       return;
     }
 
-    this.destroyCurrentAnimation();
+    this.stopSplashVideo();
     this.applyLayout('contained');
     this.loadingVideo = window.mountLoadingVideo(this.stageContainer);
 
@@ -278,74 +416,6 @@ class StartupSplashManager {
     this.loadingVideo = null;
   }
 
-  destroyCurrentAnimation() {
-    if (!this.currentAnimation) {
-      return;
-    }
-
-    try {
-      this.currentAnimation.destroy();
-    } catch (error) {
-      console.warn('[StartupSplash] Could not destroy animation:', error);
-    }
-
-    this.currentAnimation = null;
-  }
-
-  async prepareAppIntro() {
-    if (!this.splashEnabled || !window.animationManager?.prepareIntroAnimation) {
-      return;
-    }
-
-    if (this.animationWarmupPromise) {
-      await Promise.race([
-        this.animationWarmupPromise,
-        new Promise((resolve) => setTimeout(resolve, 500)),
-      ]);
-    }
-
-    window.animationManager.prepareIntroAnimation();
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-  }
-
-  async loadAnimation(
-    path: string,
-    options: {
-      loop: boolean;
-      autoplay: boolean;
-      displayMode: 'fullscreen' | 'contained';
-      preserveAspectRatio: string;
-    },
-  ) {
-    if (!this.stageContainer || !window.lottie) {
-      throw new Error('Lottie is not available for startup splash');
-    }
-
-    this.stopLoadingVideo();
-    this.destroyCurrentAnimation();
-
-    this.applyLayout(options.displayMode);
-    this.stageContainer.innerHTML = '';
-    this.currentAnimation = window.lottie.loadAnimation({
-      container: this.stageContainer,
-      renderer: 'svg',
-      loop: options.loop,
-      autoplay: options.autoplay,
-      path,
-      rendererSettings: {
-        preserveAspectRatio: options.preserveAspectRatio,
-      },
-    });
-
-    await new Promise<void>((resolve) => {
-      const animation = this.currentAnimation;
-      animation.addEventListener('DOMLoaded', () => resolve());
-      animation.addEventListener('data_failed', () => resolve());
-    });
-
-    return this.currentAnimation;
-  }
-
   applyLayout(displayMode: 'fullscreen' | 'contained') {
     if (!this.stageFrame || !this.stageContainer) {
       return;
@@ -370,24 +440,6 @@ class StartupSplashManager {
     }
   }
 
-  async waitForAnimationEnd(animation: any, fallbackMs: number) {
-    await new Promise<void>((resolve) => {
-      let settled = false;
-      const resolveOnce = () => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        resolve();
-      };
-
-      animation.addEventListener('complete', resolveOnce);
-      animation.addEventListener('data_failed', resolveOnce);
-      setTimeout(resolveOnce, fallbackMs);
-    });
-  }
-
   playSplashAudio() {
     if (!this.splashEnabled || !this.splashSoundEnabled) {
       return;
@@ -400,18 +452,24 @@ class StartupSplashManager {
           ? this.localPathToFileUrl(this.splashSoundPath)
           : defaultSound,
       );
+      this.splashAudio = audio;
       audio.volume = 0.8;
+
       audio.addEventListener(
         'error',
         () => {
-          if (!this.splashSoundPath) {
+          if (!this.splashSoundPath || this.splashAudio !== audio) {
             return;
           }
 
           const fallbackAudio = new Audio(defaultSound);
+          this.splashAudio = fallbackAudio;
           fallbackAudio.volume = 0.8;
           fallbackAudio.play().catch((error) => {
-            console.warn('[StartupSplash] Fallback splash audio blocked:', error);
+            console.warn(
+              '[StartupSplash] Fallback splash audio blocked:',
+              error,
+            );
           });
         },
         { once: true },
@@ -422,6 +480,16 @@ class StartupSplashManager {
     } catch (error) {
       console.warn('[StartupSplash] Could not start splash audio:', error);
     }
+  }
+
+  stopSplashAudio() {
+    if (!this.splashAudio) {
+      return;
+    }
+
+    this.splashAudio.pause();
+    this.splashAudio.currentTime = 0;
+    this.splashAudio = null;
   }
 
   localPathToFileUrl(filePath: string) {
@@ -443,18 +511,37 @@ class StartupSplashManager {
     }
   }
 
+  async prepareAppIntro() {
+    if (
+      !this.splashEnabled ||
+      !window.animationManager?.prepareIntroAnimation
+    ) {
+      return;
+    }
+
+    if (this.animationWarmupPromise) {
+      await Promise.race([
+        this.animationWarmupPromise,
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+    }
+
+    window.animationManager.prepareIntroAnimation();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+  }
+
   async finishStartup() {
     document.body.classList.remove('startup-boot-pending');
 
     this.stopLoadingVideo();
+    this.stopSplashVideo();
+    this.stopSplashAudio();
 
     if (this.overlay) {
       this.overlay.style.opacity = '0';
       await new Promise((resolve) => setTimeout(resolve, 320));
       this.overlay.remove();
     }
-
-    this.destroyCurrentAnimation();
 
     this.overlay = null;
     this.stageFrame = null;

@@ -3191,6 +3191,8 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('ðŸ” Initializing tutorial...');
     console.log('ðŸ” window.tutorialAPI:', window.tutorialAPI);
 
+    await initializeWelcomeBranding();
+
     if (window.tutorialAPI && window.tutorialAPI.getMigrationStatus) {
       try {
         console.log('ðŸ” Calling getMigrationStatus...');
@@ -3275,8 +3277,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tutorialDevMode) {
       createDevPanel();
       // Skip startup animation
-      document.querySelector<HTMLElement>('#lottie-animation')!.style.display =
-        'none';
+      document.querySelector<HTMLElement>(
+        '#intro-tutorial-frame',
+      )!.style.display = 'none';
       document.querySelector<HTMLElement>('#welcome-text')!.style.display =
         'none';
       document.querySelector<HTMLElement>(
@@ -3295,9 +3298,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function initializeWelcomeBranding() {
+    if (!window.tutorialAPI?.getAppVersion) {
+      return;
+    }
+
+    try {
+      const versionInfo = await window.tutorialAPI.getAppVersion();
+      const savedLocale = localStorage.getItem('fightplanner_locale');
+      const rawAppName =
+        typeof versionInfo?.name === 'string' ? versionInfo.name.trim() : '';
+      const appName = /^fightplanner$/i.test(rawAppName)
+        ? 'FightPlanner'
+        : /^mosaic$/i.test(rawAppName)
+          ? 'MOSAIC'
+          : rawAppName || 'MOSAIC';
+      const locale =
+        typeof savedLocale === 'string' && ['en', 'fr'].includes(savedLocale)
+          ? savedLocale
+          : 'en';
+      const result = await window.tutorialAPI.loadLocale(locale);
+      const translations = result?.success
+        ? (result.translations as Record<string, any>)
+        : null;
+      const welcomeTitle = translations?.tutorial?.welcomeTitle;
+      if (typeof welcomeTitle === 'string') {
+        const localizedAppName = welcomeTitle.match(/MOSAIC|FightPlanner/i)?.[0];
+        const title = localizedAppName
+          ? welcomeTitle.replace(localizedAppName, appName)
+          : appName;
+        const titleElement = document.querySelector<HTMLElement>(
+          '#welcome-text h1',
+        );
+        if (titleElement) {
+          titleElement.textContent = title;
+        }
+      }
+
+      const welcomeSubtitle = translations?.tutorial?.welcomeSubtitle;
+      if (typeof welcomeSubtitle === 'string') {
+        const subtitleElement = document.querySelector<HTMLElement>(
+          '#welcome-text p',
+        );
+        if (subtitleElement) {
+          subtitleElement.textContent = welcomeSubtitle;
+        }
+      }
+    } catch (error) {
+      console.warn('[Tutorial] Could not load welcome branding:', error);
+    }
+  }
+
   function startAnimation() {
-    const lottieContainer =
-      document.querySelector<HTMLElement>('#lottie-animation');
+    const introFrame = document.querySelector<HTMLElement>(
+      '#intro-tutorial-frame',
+    );
+    const introVideo = document.querySelector<HTMLVideoElement>(
+      '#intro-tutorial-video',
+    );
     const welcomeText = document.querySelector<HTMLElement>('#welcome-text');
     const screenshotPreview = document.querySelector<HTMLElement>(
       '#screenshot-preview',
@@ -3314,59 +3372,85 @@ document.addEventListener('DOMContentLoaded', () => {
     const tutorialWindow =
       document.querySelector<HTMLElement>('.tutorial-window');
 
-    const animation = window.lottie.loadAnimation({
-      container: lottieContainer!,
-      renderer: 'svg',
-      loop: false,
-      autoplay: false,
-      path: '../images/animation.json',
-    });
+    let timelineStarted = false;
+    const startTimeline = (introPlayed: boolean) => {
+      if (timelineStarted) {
+        return;
+      }
+      timelineStarted = true;
+      const welcomeDelay = introPlayed ? 3500 : 0;
 
-    setTimeout(() => {
-      animation.play();
-    }, 200);
+      const hideIntro = () => {
+        if (!introFrame) {
+          return;
+        }
 
-    setTimeout(() => {
-      tutorialWindow!.classList.add('white-bg');
-    }, 2330 + 200);
+        introFrame.style.opacity = '0';
+        setTimeout(() => {
+          introFrame.style.display = 'none';
+          introVideo?.pause();
+        }, 500);
+      };
 
-    setTimeout(() => {
-      lottieContainer!.style.opacity = '0';
-    }, 3200);
-
-    setTimeout(() => {
-      welcomeText!.classList.add('show');
-    }, 3500);
-
-    setTimeout(() => {
-      screenshotPreview!.classList.add('show');
-    }, 4500);
-
-    setTimeout(() => {
-      welcomeText!.classList.add('move-up');
-      screenshotPreview!.classList.add('slide-up');
-      screenshotPreview!.classList.add('clear');
-    }, 5000);
-
-    setTimeout(() => {
-      welcomeText!.style.opacity = '0';
-      screenshotPreview!.style.opacity = '0';
-      lottieContainer!.style.display = 'none';
-    }, 8000);
-
-    setTimeout(async () => {
-      welcomeText!.style.display = 'none';
-      screenshotPreview!.style.display = 'none';
-      tutorialContainer!.style.display = 'flex';
-      await window.tutorialAPI?.tutorialIntroComplete?.();
-
-      await renderProgressDots();
-      renderStep(0);
+      setTimeout(
+        () => tutorialWindow?.classList.add('white-bg'),
+        Math.max(0, welcomeDelay - 1000),
+      );
+      setTimeout(hideIntro, Math.max(0, welcomeDelay - 300));
+      setTimeout(() => welcomeText?.classList.add('show'), welcomeDelay);
+      setTimeout(() => {
+        screenshotPreview?.classList.add('show');
+      }, welcomeDelay + 1000);
 
       setTimeout(() => {
-        tutorialContainer!.classList.add('show');
-      }, 50);
-    }, 9000);
+        welcomeText?.classList.add('move-up');
+        screenshotPreview?.classList.add('slide-up');
+        screenshotPreview?.classList.add('clear');
+      }, welcomeDelay + 1500);
+
+      setTimeout(() => {
+        welcomeText?.style.setProperty('opacity', '0');
+        screenshotPreview?.style.setProperty('opacity', '0');
+      }, welcomeDelay + 4500);
+
+      setTimeout(async () => {
+        welcomeText?.style.setProperty('display', 'none');
+        screenshotPreview?.style.setProperty('display', 'none');
+        introFrame?.style.setProperty('display', 'none');
+        tutorialContainer!.style.display = 'flex';
+        await window.tutorialAPI?.tutorialIntroComplete?.();
+
+        await renderProgressDots();
+        renderStep(0);
+
+        setTimeout(() => {
+          tutorialContainer!.classList.add('show');
+        }, 50);
+      }, welcomeDelay + 5500);
+    };
+
+    if (!introVideo || !introFrame) {
+      startTimeline(false);
+      return;
+    }
+
+    introVideo.addEventListener(
+      'playing',
+      () => startTimeline(true),
+      { once: true },
+    );
+    introVideo.addEventListener(
+      'error',
+      () => startTimeline(false),
+      { once: true },
+    );
+    introVideo.play().then(
+      () => startTimeline(true),
+      (error) => {
+        console.warn('[Tutorial] Could not play intro video:', error);
+        startTimeline(false);
+      },
+    );
   }
 
   let previousVisibleSteps: number[] = [];
