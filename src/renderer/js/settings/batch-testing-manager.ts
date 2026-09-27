@@ -18,6 +18,12 @@ type CategoryState = {
   disabled: Array<ModStateEntry | PluginStateEntry>;
 };
 
+type DuplicatePlugin = {
+  name: string;
+  activePaths: string[];
+  disabledPaths: string[];
+};
+
 type CategorySnapshot = {
   category: BatchCategory;
   label: string;
@@ -369,6 +375,169 @@ class BatchTestingManager {
     return selected?.value === 'plugins' ? 'plugins' : 'mods';
   }
 
+  findDuplicatePlugins(state: CategoryState | null) {
+    if (!state) {
+      return [];
+    }
+
+    const pluginsByName = new Map<string, DuplicatePlugin>();
+    for (const [status, plugins] of [
+      ['active', state.active],
+      ['disabled', state.disabled],
+    ] as const) {
+      for (const plugin of plugins) {
+        const pluginKey = plugin.name.toLowerCase();
+        const duplicate = pluginsByName.get(pluginKey) || {
+          name: plugin.name,
+          activePaths: [],
+          disabledPaths: [],
+        };
+        duplicate[status === 'active' ? 'activePaths' : 'disabledPaths'].push(
+          plugin.path,
+        );
+        pluginsByName.set(pluginKey, duplicate);
+      }
+    }
+
+    return [...pluginsByName.values()].filter(
+      (plugin) => plugin.activePaths.length + plugin.disabledPaths.length > 1,
+    );
+  }
+
+  async showDuplicatePluginsDialog(
+    snapshot: CategorySnapshot,
+    duplicates: DuplicatePlugin[],
+  ) {
+    const hasDisabledDuplicates = duplicates.some(
+      (plugin) => plugin.disabledPaths.length > 0,
+    );
+    let disabledPluginsPath: string | null = null;
+
+    if (snapshot.basePath && hasDisabledDuplicates) {
+      try {
+        const disabledFolderResult = await window.tutorialAPI.joinPath(
+          snapshot.basePath,
+          '..',
+          'disabled_plugins',
+        );
+        if (disabledFolderResult.success) {
+          disabledPluginsPath = disabledFolderResult.path;
+        }
+      } catch (error) {
+        console.warn(
+          '[BatchTesting] Failed to resolve disabled plugins folder:',
+          error,
+        );
+      }
+    }
+
+    const duplicateList = duplicates
+      .map(
+        (plugin) => `
+          <div style="padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(255,255,255,0.04);">
+            <strong style="display: block; margin-bottom: 8px; color: var(--text-primary);">${this.escapeHtml(plugin.name)}</strong>
+            ${plugin.activePaths
+              .map(
+                (pluginPath) =>
+                  `<div style="margin-top: 4px; color: var(--text-secondary); overflow-wrap: anywhere;"><span>${this.escapeHtml(this.t('settings.batchTestingDuplicateActiveLabel', 'Active'))}:</span> <code>${this.escapeHtml(pluginPath)}</code></div>`,
+              )
+              .join('')}
+            ${plugin.disabledPaths
+              .map(
+                (pluginPath) =>
+                  `<div style="margin-top: 4px; color: var(--text-secondary); overflow-wrap: anywhere;"><span>${this.escapeHtml(this.t('settings.batchTestingDuplicateDisabledLabel', 'Disabled'))}:</span> <code>${this.escapeHtml(pluginPath)}</code></div>`,
+              )
+              .join('')}
+          </div>
+        `,
+      )
+      .join('');
+
+    this.renderModal(
+      this.t(
+        'settings.batchTestingDuplicateTitle',
+        'Duplicate plugins detected',
+      ),
+      `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <p style="margin: 0; color: var(--text-secondary); line-height: 1.6;">
+            ${this.escapeHtml(
+              this.t(
+                'settings.batchTestingDuplicateMessage',
+                'Batch Testing cannot safely distinguish plugins with the same filename. Keep only one copy of each .nro name across the active and disabled_plugins folders. Move extra copies to a backup folder outside both locations, or remove them only after making a backup, then recheck.',
+              ),
+            )}
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px; max-height: 36vh; overflow: auto;">
+            ${duplicateList}
+          </div>
+        </div>
+      `,
+      [
+        {
+          label: this.t('common.close', 'Close'),
+          type: 'secondary',
+          onClick: () => this.closeModal(),
+        },
+        ...(snapshot.basePath
+          ? [
+              {
+                label: this.t(
+                  'settings.batchTestingDuplicateOpenActive',
+                  'Open active plugins folder',
+                ),
+                type: 'secondary' as const,
+                onClick: async () => {
+                  const result = await window.electronAPI.openFolder(
+                    snapshot.basePath!,
+                  );
+                  if (!result.success) {
+                    this.showToast(
+                      result.error || 'Unable to open plugins folder',
+                      'warning',
+                    );
+                  }
+                },
+              },
+              ...(disabledPluginsPath
+                ? [
+                    {
+                      label: this.t(
+                        'settings.batchTestingDuplicateOpenDisabled',
+                        'Open disabled_plugins folder',
+                      ),
+                      type: 'secondary' as const,
+                      onClick: async () => {
+                        const result = await window.electronAPI.openFolder(
+                          disabledPluginsPath,
+                        );
+                        if (!result.success) {
+                          this.showToast(
+                            result.error ||
+                              'Unable to open disabled_plugins folder',
+                            'warning',
+                          );
+                        }
+                      },
+                    },
+                  ]
+                : []),
+            ]
+          : []),
+        {
+          label: this.t(
+            'settings.batchTestingDuplicateRescan',
+            'Recheck plugins',
+          ),
+          type: 'primary',
+          onClick: async () => {
+            await this.openStartModal();
+          },
+        },
+      ],
+    );
+  }
+
   async openStartModal() {
     if (this.session?.running) {
       this.showToast(
@@ -390,6 +559,17 @@ class BatchTestingManager {
           ? error.message
           : String(error || 'Unknown error'),
         'warning',
+      );
+      return;
+    }
+
+    const duplicatePlugins = this.findDuplicatePlugins(
+      snapshots.plugins.lastState,
+    );
+    if (duplicatePlugins.length > 0) {
+      await this.showDuplicatePluginsDialog(
+        snapshots.plugins,
+        duplicatePlugins,
       );
       return;
     }
@@ -484,6 +664,17 @@ class BatchTestingManager {
           ? error.message
           : String(error || 'Unknown error'),
         'warning',
+      );
+      return;
+    }
+
+    const duplicatePlugins = this.findDuplicatePlugins(
+      sessionSnapshots.plugins.lastState,
+    );
+    if (duplicatePlugins.length > 0) {
+      await this.showDuplicatePluginsDialog(
+        sessionSnapshots.plugins,
+        duplicatePlugins,
       );
       return;
     }
