@@ -202,6 +202,11 @@ export {};
           window.toastManager.success('toasts.infoTomlSaved');
         }
         const savedModPath = this.currentModPath;
+        window.dispatchEvent(
+          new CustomEvent('mod-info-updated', {
+            detail: { modPath: savedModPath },
+          }),
+        );
         this.closeAdvancedInfoModal();
 
         if (savedModPath) {

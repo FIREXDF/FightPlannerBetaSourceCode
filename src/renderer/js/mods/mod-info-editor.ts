@@ -74,6 +74,11 @@ class ModInfoEditor {
         }
 
         if (this.currentModPath) {
+          window.dispatchEvent(
+            new CustomEvent('mod-info-updated', {
+              detail: { modPath: this.currentModPath },
+            }),
+          );
           await window.modManager?.refreshSelectedModInfo(this.currentModPath);
         }
       } else {

@@ -315,6 +315,9 @@ class ModManager {
     const allMods = this.mapFolderStateToMods(result);
     const nextMods = new Map(allMods.map((mod) => [mod.path, mod]));
     const changedPaths = new Set(forcedChangedPaths);
+    const addedPaths = [...nextMods.keys()].filter(
+      (path) => !previousMods.has(path),
+    );
 
     for (const [path, mod] of nextMods) {
       const previous = previousMods.get(path);
@@ -350,7 +353,10 @@ class ModManager {
     this.scheduleNroLimitCheck();
     window.dispatchEvent(
       new CustomEvent('mods-library-updated', {
-        detail: { changedPaths: [...changedPaths] },
+        detail: {
+          changedPaths: [...changedPaths],
+          addedPaths,
+        },
       }),
     );
   }

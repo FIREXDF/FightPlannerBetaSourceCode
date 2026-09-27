@@ -99,6 +99,8 @@ class CharactersManager {
   cssSourceImporting: boolean;
   pendingModRefreshPaths: Set<string>;
   incrementalRefreshPromise: Promise<void> | null;
+  staleMovesetModPaths: Set<string>;
+  isRefreshingMovesets: boolean;
 
   constructor() {
     this.characters = new Map();
@@ -127,16 +129,29 @@ class CharactersManager {
     this.cssSourceImporting = false;
     this.pendingModRefreshPaths = new Set();
     this.incrementalRefreshPromise = null;
+    this.staleMovesetModPaths = new Set();
+    this.isRefreshingMovesets = false;
 
     window.addEventListener('mods-library-updated', (event) => {
       if (!this.initialized) return;
 
-      const changedPaths = (event as CustomEvent<{ changedPaths?: string[] }>)
-        .detail?.changedPaths;
-      if (changedPaths) {
-        this.queueIncrementalRefresh(changedPaths);
+      const detail = (event as CustomEvent<{
+        changedPaths?: string[];
+        addedPaths?: string[];
+      }>).detail;
+      if (detail?.changedPaths) {
+        void this.detectMovesetLibraryChanges(
+          detail.changedPaths,
+          detail.addedPaths || [],
+        );
       } else {
         void this.refresh();
+      }
+    });
+    window.addEventListener('mod-info-updated', (event) => {
+      const detail = (event as CustomEvent<{ modPath?: string }>).detail;
+      if (detail?.modPath) {
+        void this.handleModInfoUpdated(detail.modPath);
       }
     });
     window.addEventListener('mod-conflicts-updated', () => {
@@ -228,6 +243,7 @@ class CharactersManager {
     this.setupEventListeners();
     this.renderCharacters();
     this.initialized = true;
+    this.renderMovesetRefreshNotice();
   }
 
   setupEventListeners() {
@@ -304,9 +320,26 @@ class CharactersManager {
       });
     }
 
+    const movesetsRefreshButton = document.querySelector<HTMLButtonElement>(
+      '#character-movesets-refresh-btn',
+    );
+    if (movesetsRefreshButton) {
+      const replacement = movesetsRefreshButton.cloneNode(
+        true,
+      ) as HTMLButtonElement;
+      movesetsRefreshButton.parentNode?.replaceChild(
+        replacement,
+        movesetsRefreshButton,
+      );
+      replacement.addEventListener('click', () => {
+        void this.refreshMovesets();
+      });
+    }
+
     const movesetsBackButton = document.querySelector<HTMLButtonElement>(
       '#character-movesets-back-btn',
     );
+
     if (movesetsBackButton) {
       const replacement = movesetsBackButton.cloneNode(
         true,
@@ -507,25 +540,25 @@ class CharactersManager {
     this.updateCharacterCount(characters.length);
   }
 
-  async scanMods() {
+  async scanMods(): Promise<boolean> {
     console.log('Scanning mods for character data...');
 
     if (!window.settingsManager || !window.settingsManager.hasModsPath()) {
       console.warn('No mods path configured');
       this.renderEmptyState();
-      return;
+      return false;
     }
 
     const modsPath = window.settingsManager.getModsPath();
     if (!modsPath) {
       console.warn('Mods path is null');
       this.renderEmptyState();
-      return;
+      return false;
     }
 
     if (!window.electronAPI || !window.electronAPI.readModsFolder) {
       console.error('Electron API not available');
-      return;
+      return false;
     }
 
     try {
@@ -533,7 +566,7 @@ class CharactersManager {
 
       if (!result.success) {
         console.error('Error reading mods:', result.error);
-        return;
+        return false;
       }
 
       this.characters.clear();
@@ -572,8 +605,10 @@ class CharactersManager {
       );
 
       console.log(`Found ${this.characters.size} characters with mods`);
+      return true;
     } catch (error) {
       console.error('Failed to scan mods:', error);
+      return false;
     }
   }
 
@@ -770,6 +805,177 @@ class CharactersManager {
 
     this.renderChangedCharacters(affectedCharacterIds);
     this.renderMovesetTracker();
+  }
+
+  modPathHasMoveset(modPath: string) {
+    return [...this.movesetCharacters.values()].some((character) =>
+      character.mods.some((mod) => mod.path === modPath),
+    );
+  }
+
+  async detectMovesetLibraryChanges(
+    changedPaths: string[],
+    addedPaths: string[] = [],
+  ) {
+    const addedPathSet = new Set(addedPaths);
+    const existingChangedPaths = changedPaths.filter(
+      (modPath) => !addedPathSet.has(modPath),
+    );
+    if (existingChangedPaths.length > 0) {
+      this.queueIncrementalRefresh(existingChangedPaths);
+    }
+
+    const recommendedPaths = await this.recommendRefreshForNewMods(addedPaths);
+    const newModsToRefresh = addedPaths.filter(
+      (modPath) => !recommendedPaths.has(modPath),
+    );
+    if (newModsToRefresh.length > 0) {
+      this.queueIncrementalRefresh(newModsToRefresh);
+    }
+
+    const currentPaths = new Set(
+      (window.modManager?.mods || []).map((mod) => mod.path),
+    );
+    this.staleMovesetModPaths.forEach((modPath) => {
+      if (!currentPaths.has(modPath)) {
+        this.staleMovesetModPaths.delete(modPath);
+      }
+    });
+    this.renderMovesetRefreshNotice();
+  }
+
+  async recommendRefreshForNewMods(modPaths: string[]) {
+    const recommendedPaths = new Set<string>();
+    if (!this.initialized || !window.electronAPI?.scanMod) {
+      return recommendedPaths;
+    }
+
+    const modsByPath = new Map(
+      (window.modManager?.mods || []).map((mod) => [mod.path, mod]),
+    );
+
+    await Promise.all(
+      modPaths.map(async (modPath) => {
+        const mod = modsByPath.get(modPath);
+        if (!mod) {
+          return;
+        }
+
+        try {
+          const [modInfo, scanResult] = await Promise.all([
+            this.getModInfo(mod),
+            window.electronAPI.scanMod(mod.path),
+          ]);
+          if (
+            scanResult.success &&
+            scanResult.data.fighterNames.length > 0 &&
+            this.isMovesetModInfo(modInfo, mod.name)
+          ) {
+            recommendedPaths.add(modPath);
+            this.markMovesetsStale(modPath);
+          }
+        } catch (error) {
+          console.warn(`Failed to inspect new mod ${mod.name}:`, error);
+        }
+      }),
+    );
+
+    return recommendedPaths;
+  }
+
+  async handleModInfoUpdated(modPath: string) {
+    if (!this.initialized) {
+      return;
+    }
+
+    if (this.modPathHasMoveset(modPath)) {
+      this.markMovesetsStale(modPath);
+      return;
+    }
+
+    const mod = window.modManager?.mods.find((entry) => entry.path === modPath);
+    if (!mod) {
+      return;
+    }
+
+    const modInfo = await this.getModInfo(mod);
+    if (!this.isMovesetModInfo(modInfo, mod.name)) {
+      return;
+    }
+
+    const scanResult = await window.electronAPI?.scanMod?.(modPath);
+    if (scanResult?.success && scanResult.data.fighterNames.length > 0) {
+      this.markMovesetsStale(modPath);
+    }
+  }
+
+  markMovesetsStale(modPath: string) {
+    this.staleMovesetModPaths.add(modPath);
+    this.renderMovesetRefreshNotice();
+    const notice = document.querySelector<HTMLElement>(
+      '#character-movesets-refresh-notice',
+    );
+    const movesetsView = document.querySelector<HTMLElement>(
+      '#character-movesets-view',
+    );
+    if (notice && movesetsView && !movesetsView.hidden) {
+      notice.hidden = false;
+      movesetsView.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  renderMovesetRefreshNotice() {
+    const notice = document.querySelector<HTMLElement>(
+      '#character-movesets-refresh-notice',
+    );
+    if (!notice) {
+      return;
+    }
+
+    notice.hidden = this.staleMovesetModPaths.size === 0;
+    const button = notice.querySelector<HTMLButtonElement>(
+      '#character-movesets-refresh-btn',
+    );
+    if (button) {
+      button.disabled = this.isRefreshingMovesets;
+      button.classList.toggle('is-loading', this.isRefreshingMovesets);
+      button.setAttribute('aria-busy', String(this.isRefreshingMovesets));
+      const icon = button.querySelector('i');
+      if (icon) {
+        icon.className = this.isRefreshingMovesets
+          ? 'bi bi-arrow-repeat'
+          : 'bi bi-arrow-clockwise';
+      }
+      const label = this.t(
+        this.isRefreshingMovesets
+          ? 'characters.refreshingMovesets'
+          : 'characters.refreshMovesets',
+        this.isRefreshingMovesets ? 'Refreshing...' : 'Refresh Movesets',
+      );
+      const labelElement = button.querySelector<HTMLElement>(
+        'span[data-i18n="characters.refreshMovesets"]',
+      );
+      if (labelElement) {
+        labelElement.textContent = label;
+      }
+    }
+  }
+
+  async refreshMovesets() {
+    if (this.isRefreshingMovesets) {
+      return;
+    }
+
+    this.isRefreshingMovesets = true;
+    this.renderMovesetRefreshNotice();
+
+    try {
+      await this.incrementalRefreshPromise;
+      await this.refresh();
+    } finally {
+      this.isRefreshingMovesets = false;
+      this.renderMovesetRefreshNotice();
+    }
   }
 
   async getModInfo(mod: Pick<Mod, 'name' | 'path'>) {
@@ -1320,6 +1526,7 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
       return;
     }
 
+    const wasAtTop = list.scrollTop <= 24;
     const movesetGroups = Array.from(this.movesetCharacters.values()).sort(
       (a, b) => {
         const numA = parseFloat(a.info.number.replace('ε', '.5'));
@@ -1333,17 +1540,25 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
     );
 
     if (count) {
-      count.textContent = `${totalMovesets} moveset mod${totalMovesets !== 1 ? 's' : ''}`;
+      count.textContent = this.t(
+        'characters.movesetModCount',
+        `${totalMovesets} moveset mod${totalMovesets !== 1 ? 's' : ''}`,
+        { count: String(totalMovesets) },
+      );
     }
+    this.renderMovesetRefreshNotice();
 
     if (movesetGroups.length === 0) {
       list.innerHTML = `
 <div class="characters-empty-state character-movesets-empty">
 <i class="bi bi-controller"></i>
-<h3>No moveset mods found</h3>
-<p>Moveset mods show here when a character mod's info.toml says moveset.</p>
+<h3>${this.t('characters.noMovesetMods', 'No moveset mods found')}</h3>
+<p>${this.t('characters.noMovesetModsHint', "Moveset mods show here when a character mod's info.toml says moveset.")}</p>
 </div>
 `;
+      if (wasAtTop) {
+        list.scrollTop = 0;
+      }
       return;
     }
 
@@ -1372,6 +1587,10 @@ ${this.renderCharacterSlotBadges(mod.slots, 'Slot unknown')}
           void this.openAddMovesetToCssFlow(characterId);
         });
       });
+
+    if (wasAtTop) {
+      list.scrollTop = 0;
+    }
   }
 
   renderMovesetCharacterGroup(character: CharacterMovesetGroup) {
@@ -4061,7 +4280,9 @@ ${image}
     this.showLoading();
     this.characters.clear();
     this.movesetCharacters.clear();
-    await this.scanMods();
+    if (await this.scanMods()) {
+      this.staleMovesetModPaths.clear();
+    }
     this.renderCharacters();
     this.renderMovesetTracker();
   }
