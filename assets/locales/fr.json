@@ -2,7 +2,6 @@
   "app": {
     "title": "MOSAIC",
     "version": "4.0.0",
-    "publicBetaTest": "Beta Test Public",
     "ready": "Prêt"
   },
   "titlebar": {
@@ -1255,7 +1254,6 @@
   },
   "fightplanner": {
     "subtitle": "Un gestionnaire de mods moderne pour Super Smash Bros. Ultimate",
-    "publicBetaTest": "Beta Test Public",
     "logoStyleHint": "Clic droit pour changer le style du logo",
     "coreTeam": "Équipe Principale",
     "supporters": "Supporters",

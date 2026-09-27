@@ -1,1 +1,1 @@
-# MOSAIC 4 Public Beta Test source code
+# MOSAIC 4 source code
