@@ -126,7 +126,7 @@ export class GameBananaMarketplace {
   private async installFile(button: HTMLElement) {
     const url = button.dataset.marketplaceFile;
     if (!url) return;
-    await window.electronAPI.openFightPlannerLink(url.startsWith('fightplanner:') ? url : `fightplanner:${url}`);
+    await window.electronAPI.openFightPlannerLink(/^(?:fightplanner|mosaic):/i.test(url) ? url : `fightplanner:${url}`);
   }
 
   private updatePagination() {

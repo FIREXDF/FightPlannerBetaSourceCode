@@ -81,9 +81,13 @@ class ModOperations {
             this.modManager.fetchMods();
           } else {
             if (window.toastManager) {
-              window.toastManager.error('toasts.failedToRenameMod', 3000, {
-                error: result.error,
-              });
+              window.toastManager.error(
+                result.code === 'MOD_IN_USE'
+                  ? 'toasts.modInUse'
+                  : 'toasts.failedToRenameMod',
+                4000,
+                { error: result.error },
+              );
             }
           }
         }
@@ -118,9 +122,13 @@ class ModOperations {
         this.modManager.fetchMods();
       } else {
         if (window.toastManager) {
-          window.toastManager.error('toasts.failedToToggleMod', 3000, {
-            error: result.error,
-          });
+          window.toastManager.error(
+            result.code === 'MOD_IN_USE'
+              ? 'toasts.modInUse'
+              : 'toasts.failedToToggleMod',
+            4000,
+            { error: result.error },
+          );
         }
       }
     }
@@ -159,7 +167,10 @@ class ModOperations {
       return;
     }
 
-    if (!window.electronAPI?.toggleMod) {
+    const electronAPI = window.electronAPI;
+    const modsPath = this.modManager.modsPath;
+
+    if (!electronAPI?.toggleMod) {
       window.toastManager?.error('toasts.failedToToggleMods', 3000, {
         error: 'toggleMod API unavailable',
       });
@@ -168,22 +179,31 @@ class ModOperations {
 
     const failedMods: Array<{ mod: Mod; error: string }> = [];
     let successCount = 0;
+    let inUseCount = 0;
+    const toggleConcurrency = Math.min(
+      4,
+      Math.max(2, Math.floor((navigator.hardwareConcurrency || 4) / 2)),
+    );
 
-    for (const mod of modsToToggle) {
-      const result = await window.electronAPI.toggleMod(
-        mod.path!,
-        this.modManager.modsPath,
-      );
+    await this.runWithConcurrency(
+      modsToToggle,
+      toggleConcurrency,
+      async (mod: Mod) => {
+        const result = await electronAPI.toggleMod(mod.path!, modsPath);
 
-      if (result.success) {
-        successCount++;
-      } else {
-        failedMods.push({
-          mod,
-          error: result.error || 'Unknown error',
-        });
-      }
-    }
+        if (result.success) {
+          successCount++;
+        } else {
+          if (result.code === 'MOD_IN_USE') {
+            inUseCount++;
+          }
+          failedMods.push({
+            mod,
+            error: result.error || 'Unknown error',
+          });
+        }
+      },
+    );
 
     if (successCount > 0 && failedMods.length === 0) {
       window.toastManager?.success(
@@ -200,14 +220,38 @@ class ModOperations {
         error: failedMods.length,
       });
     } else if (failedMods.length > 0) {
-      window.toastManager?.error('toasts.failedToToggleMods', 4000, {
-        error: failedMods[0].error,
-      });
+      const allInUse = inUseCount > 0 && inUseCount === failedMods.length;
+      window.toastManager?.error(
+        allInUse ? 'toasts.modsInUse' : 'toasts.failedToToggleMods',
+        4000,
+        {
+          error: failedMods[0].error,
+        },
+      );
     }
 
     if (successCount > 0) {
       await this.modManager.fetchMods();
     }
+  }
+
+  async runWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T, index: number) => Promise<void>,
+  ) {
+    let nextIndex = 0;
+    const workerCount = Math.min(concurrency, items.length);
+
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (nextIndex < items.length) {
+          const currentIndex = nextIndex;
+          nextIndex += 1;
+          await worker(items[currentIndex], currentIndex);
+        }
+      }),
+    );
   }
 
   async openModFolder(mod: Mod) {

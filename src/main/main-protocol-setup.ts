@@ -7,12 +7,18 @@ let rendererReady = false;
 let startupProtocolCaptured = false;
 const pendingProtocolUrls: string[] = [];
 
+const PROTOCOL_SCHEMES = ['fightplanner', 'mosaic'];
+const PROTOCOL_URL_PREFIX = new RegExp(
+  `^(?:${PROTOCOL_SCHEMES.join('|')}):`,
+  'i',
+);
+
 function extractProtocolUrl(args: string[]): string | null {
   for (const arg of args) {
     if (typeof arg !== 'string') continue;
 
     const candidate = arg.trim().replace(/^"(.*)"$/, '$1');
-    if (/^fightplanner:/i.test(candidate)) {
+    if (PROTOCOL_URL_PREFIX.test(candidate)) {
       return `fightplanner:${candidate.slice(candidate.indexOf(':') + 1)}`;
     }
   }
@@ -90,7 +96,7 @@ app.on('second-instance', (_event, commandLine) => {
     dispatchOrQueueProtocolUrl(protocolUrl);
   } else if (process.platform === 'linux') {
     console.log(
-      '[protocol][linux] second-instance did not include a fightplanner URL',
+      '[protocol][linux] second-instance did not include a protocol URL',
     );
   }
 });
@@ -124,9 +130,9 @@ export function initializeProtocol(window: BrowserWindow) {
       pendingProtocolUrls.push(protocolUrl);
     } else if (process.platform === 'linux') {
       console.log(
-        '[protocol][linux] no URL in argv at startup. isDefaultProtocolClient=%s',
+        '[protocol][linux] no URL in argv at startup. isDefaultProtocolClient=%j',
         app.isDefaultProtocolClient
-          ? app.isDefaultProtocolClient('fightplanner')
+          ? PROTOCOL_SCHEMES.map((scheme) => app.isDefaultProtocolClient(scheme))
           : 'n/a',
       );
     }

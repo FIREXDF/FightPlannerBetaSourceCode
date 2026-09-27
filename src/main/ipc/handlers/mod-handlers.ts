@@ -22,6 +22,41 @@ import {
 } from '../../mod-utils/mod-scanner';
 import { SlotChanger } from '../../mod-utils/slot-changer';
 
+const MOD_LOCK_ERROR_CODES = new Set(['EPERM', 'EACCES', 'EBUSY']);
+const MOD_RENAME_RETRY_DELAYS_MS = [0, 50, 100, 250];
+
+const isModInUseError = (error: unknown) =>
+  MOD_LOCK_ERROR_CODES.has(
+    String((error as NodeJS.ErrnoException | undefined)?.code || ''),
+  );
+
+const waitForModLock = (delayMs: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+
+const renameModFolderWithRetry = async (from: string, to: string) => {
+  let lastLockError: unknown;
+
+  for (const delayMs of MOD_RENAME_RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await waitForModLock(delayMs);
+    }
+
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (!isModInUseError(error)) {
+        throw error;
+      }
+      lastLockError = error;
+    }
+  }
+
+  throw lastLockError;
+};
+
 export type ModHandlers = typeof ModHandlers;
 
 const ModHandlers = {
@@ -446,10 +481,16 @@ const ModHandlers = {
           'A mod with this name already exists',
         );
       }
-      fs.renameSync(modPath, newPath);
+      await renameModFolderWithRetry(modPath, newPath);
       return { success: true, newPath };
     } catch (error) {
       handleError(error, 'rename-mod');
+      if (isModInUseError(error)) {
+        return createErrorResponse(
+          ErrorCodes.MOD_IN_USE,
+          'This mod folder is currently in use by another program. Close the game, the emulator or any window browsing this folder and try again',
+        );
+      }
       return createErrorResponse(ErrorCodes.MOD_RENAME_ERROR, error.message);
     }
   },
@@ -557,7 +598,7 @@ const ModHandlers = {
         );
       }
 
-      fs.renameSync(modPath, targetPath);
+      await renameModFolderWithRetry(modPath, targetPath);
       console.log('[ModHandlers] Toggle mod complete:', {
         modPath,
         targetPath,
@@ -571,6 +612,12 @@ const ModHandlers = {
       };
     } catch (error) {
       handleError(error, 'toggle-mod');
+      if (isModInUseError(error)) {
+        return createErrorResponse(
+          ErrorCodes.MOD_IN_USE,
+          'This mod folder is currently in use by another program. Close the game, the emulator or any window browsing this folder and try again',
+        );
+      }
       return createErrorResponse(ErrorCodes.MOD_RENAME_ERROR, error.message);
     }
   },

@@ -15,6 +15,12 @@ const packageJson = require('../../package.json');
 
 const USER_AGENT = `MOSAIC/${packageJson.version} (Electron ${process.versions.electron}; Node ${process.versions.node}; ${process.platform})`;
 
+const PROTOCOL_SCHEMES = ['fightplanner', 'mosaic'];
+const PROTOCOL_URL_PREFIX = new RegExp(
+  `^(?:${PROTOCOL_SCHEMES.join('|')}):`,
+  'i',
+);
+
 export interface ProtocolHandlerEvents {
   'mod-install-confirm-request': {
     url: string;
@@ -125,46 +131,52 @@ export default class ProtocolHandler {
     if (process.platform === 'win32') {
       if (process.defaultApp) {
         if (process.argv.length >= 2) {
-          app.setAsDefaultProtocolClient('fightplanner', process.execPath, [
-            path.resolve(process.argv[1]),
-          ]);
+          for (const scheme of PROTOCOL_SCHEMES) {
+            app.setAsDefaultProtocolClient(scheme, process.execPath, [
+              path.resolve(process.argv[1]),
+            ]);
+          }
           console.log('MOSAIC protocol registered (dev mode)');
         }
       } else {
-        app.setAsDefaultProtocolClient('fightplanner');
+        for (const scheme of PROTOCOL_SCHEMES) {
+          app.setAsDefaultProtocolClient(scheme);
+        }
         console.log('MOSAIC protocol registered (production)');
       }
 
       this.registerProtocolInRegistry();
     } else if (process.platform === 'darwin') {
       try {
-        const before = app.isDefaultProtocolClient
-          ? app.isDefaultProtocolClient('fightplanner')
-          : undefined;
-        console.log(
-          `[protocol][${process.platform}] before registration isDefault=${before}`,
-        );
-        if (process.defaultApp && process.argv.length >= 2) {
-          const ok = app.setAsDefaultProtocolClient(
-            'fightplanner',
-            process.execPath,
-            [path.resolve(process.argv[1])],
-          );
+        for (const scheme of PROTOCOL_SCHEMES) {
+          const before = app.isDefaultProtocolClient
+            ? app.isDefaultProtocolClient(scheme)
+            : undefined;
           console.log(
-            `[protocol][${process.platform}] register dev returned=${ok}`,
+            `[protocol][${process.platform}] before registration isDefault(${scheme})=${before}`,
           );
-        } else {
-          const ok = app.setAsDefaultProtocolClient('fightplanner');
+          if (process.defaultApp && process.argv.length >= 2) {
+            const ok = app.setAsDefaultProtocolClient(
+              scheme,
+              process.execPath,
+              [path.resolve(process.argv[1])],
+            );
+            console.log(
+              `[protocol][${process.platform}] register dev returned=${ok}`,
+            );
+          } else {
+            const ok = app.setAsDefaultProtocolClient(scheme);
+            console.log(
+              `[protocol][${process.platform}] register prod returned=${ok}`,
+            );
+          }
+          const after = app.isDefaultProtocolClient
+            ? app.isDefaultProtocolClient(scheme)
+            : undefined;
           console.log(
-            `[protocol][${process.platform}] register prod returned=${ok}`,
+            `[protocol][${process.platform}] after registration isDefault(${scheme})=${after}`,
           );
         }
-        const after = app.isDefaultProtocolClient
-          ? app.isDefaultProtocolClient('fightplanner')
-          : undefined;
-        console.log(
-          `[protocol][${process.platform}] after registration isDefault=${after}`,
-        );
       } catch (e) {
         console.warn(
           'Protocol registration skipped (' + process.platform + '):',
@@ -173,11 +185,13 @@ export default class ProtocolHandler {
       }
     } else if (process.platform === 'linux') {
       try {
-        const before = app.isDefaultProtocolClient
-          ? app.isDefaultProtocolClient('fightplanner')
-          : undefined;
         console.log(
-          `[protocol][${process.platform}] before registration isDefault=${before}`,
+          `[protocol][${process.platform}] before registration isDefault=%j`,
+          app.isDefaultProtocolClient
+            ? PROTOCOL_SCHEMES.map((scheme) =>
+                app.isDefaultProtocolClient(scheme),
+              )
+            : 'n/a',
         );
 
         const executable = process.env.APPIMAGE || process.execPath;
@@ -227,7 +241,7 @@ export default class ProtocolHandler {
             `Exec=${execLine}`,
             `Type=Application`,
             `Terminal=false`,
-            `MimeType=x-scheme-handler/fightplanner;`,
+            `MimeType=${PROTOCOL_SCHEMES.map((scheme) => `x-scheme-handler/${scheme};`).join('')}`,
             `NoDisplay=true`,
           ].join('\n');
 
@@ -249,16 +263,20 @@ export default class ProtocolHandler {
             );
           }
 
-          try {
-            execSync(
-              `xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/fightplanner`,
-            );
-            console.log(`[protocol][linux] Registered with xdg-mime`);
-          } catch (xdgError) {
-            console.warn(
-              `[protocol][linux] xdg-mime registration failed:`,
-              xdgError.message,
-            );
+          for (const scheme of PROTOCOL_SCHEMES) {
+            try {
+              execSync(
+                `xdg-mime default ${electronAppDesktopFileName} x-scheme-handler/${scheme}`,
+              );
+              console.log(
+                `[protocol][linux] Registered with xdg-mime (${scheme})`,
+              );
+            } catch (xdgError) {
+              console.warn(
+                `[protocol][linux] xdg-mime registration failed (${scheme}):`,
+                xdgError.message,
+              );
+            }
           }
         } catch (desktopError) {
           console.warn(
@@ -268,19 +286,23 @@ export default class ProtocolHandler {
         }
 
         // also try the electron method as fallback
-        const ok = app.setAsDefaultProtocolClient(
-          'fightplanner',
-          executable,
-          execArgs,
-        );
-        console.log(`[protocol][${process.platform}] register returned=${ok}`);
+        for (const scheme of PROTOCOL_SCHEMES) {
+          const ok = app.setAsDefaultProtocolClient(
+            scheme,
+            executable,
+            execArgs,
+          );
+          console.log(
+            `[protocol][${process.platform}] register returned(${scheme})=${ok}`,
+          );
 
-        const after = app.isDefaultProtocolClient
-          ? app.isDefaultProtocolClient('fightplanner')
-          : undefined;
-        console.log(
-          `[protocol][${process.platform}] after registration isDefault=${after}`,
-        );
+          const after = app.isDefaultProtocolClient
+            ? app.isDefaultProtocolClient(scheme)
+            : undefined;
+          console.log(
+            `[protocol][${process.platform}] after registration isDefault(${scheme})=${after}`,
+          );
+        }
       } catch (e) {
         console.warn(
           'Protocol registration skipped (' + process.platform + '):',
@@ -307,15 +329,19 @@ export default class ProtocolHandler {
 
       console.log('Command string:', commandString);
 
-      const commands = [
-        `reg add "HKCU\\Software\\Classes\\fightplanner" /ve /d "URL:MOSAIC Protocol" /f`,
-        `reg add "HKCU\\Software\\Classes\\fightplanner" /v "URL Protocol" /t REG_SZ /d "" /f`,
-        `reg add "HKCU\\Software\\Classes\\fightplanner\\DefaultIcon" /ve /d "${process.execPath.replace(
+      const registryKeys = PROTOCOL_SCHEMES.map(
+        (scheme) => `HKCU\\Software\\Classes\\${scheme}`,
+      );
+
+      const commands = registryKeys.flatMap((registryKey) => [
+        `reg add "${registryKey}" /ve /d "URL:MOSAIC Protocol" /f`,
+        `reg add "${registryKey}" /v "URL Protocol" /t REG_SZ /d "" /f`,
+        `reg add "${registryKey}\\DefaultIcon" /ve /d "${process.execPath.replace(
           /\\/g,
           '\\\\',
         )},0" /f`,
-        `reg add "HKCU\\Software\\Classes\\fightplanner\\shell\\open\\command" /ve /d "${commandString}" /f`,
-      ];
+        `reg add "${registryKey}\\shell\\open\\command" /ve /d "${commandString}" /f`,
+      ]);
 
       let commandsExecuted = 0;
       commands.forEach((cmd, index) => {
@@ -336,15 +362,17 @@ export default class ProtocolHandler {
           if (commandsExecuted === commands.length) {
             console.log('Protocol registration in registry completed!');
 
-            exec(
-              'reg query "HKCU\\Software\\Classes\\fightplanner\\shell\\open\\command"',
-              (error, stdout, _stderr) => {
-                if (!error) {
-                  console.log('✓ Protocol verified in registry:');
-                  console.log(stdout);
-                }
-              },
-            );
+            for (const registryKey of registryKeys) {
+              exec(
+                `reg query "${registryKey}\\shell\\open\\command"`,
+                (error, stdout, _stderr) => {
+                  if (!error) {
+                    console.log('✓ Protocol verified in registry:');
+                    console.log(stdout);
+                  }
+                },
+              );
+            }
           }
         });
       });
@@ -357,7 +385,7 @@ export default class ProtocolHandler {
     console.log('[protocol] Handling deep link:', url);
 
     try {
-      const cleanUrl = url.replace('fightplanner:', '');
+      const cleanUrl = url.replace(PROTOCOL_URL_PREFIX, '');
       const strippedUrl = cleanUrl.replace(/^\/+/, '');
 
       const pairingMatch = strippedUrl.match(/^registerKey,(\d+),([a-zA-Z0-9_-]+)$/i);
@@ -424,7 +452,7 @@ export default class ProtocolHandler {
       });
     } catch (error) {
       console.error('Error handling deep link:', error);
-      const cleanUrl = url.replace('fightplanner:', '');
+      const cleanUrl = url.replace(PROTOCOL_URL_PREFIX, '');
       this.processingUrls.delete(cleanUrl);
       this.showError(`Installation failed: ${error.message}`);
       this.sendToRenderer('mod-install-error', { error: error.message });

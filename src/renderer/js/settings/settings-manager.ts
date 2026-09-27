@@ -51,6 +51,7 @@ class SettingsManager {
       theme: 'dark',
       sidebarPrideTabsEnabled: true,
       enhancedStatusBar: true,
+      discordRpcEnabled: true,
       startupSplashEnabled: true,
       startupSplashSoundEnabled: true,
       startupSplashSoundPath: null,
@@ -496,6 +497,7 @@ class SettingsManager {
       ['#conflict-detection-enabled', '#settings-diagnostics-conflicts'],
       ['#clear-temp-files-btn', '#settings-diagnostics-maintenance'],
       ['#batch-testing-btn', '#settings-diagnostics-batch'],
+      ['#discord-rpc-enabled', '#settings-interface-behavior'],
     ].forEach(([sectionSelector, targetSelector]) => {
       moveSection(sectionSelector, targetSelector);
     });
@@ -1081,6 +1083,20 @@ class SettingsManager {
         'Install confirm toggle:',
         installConfirmToggle ? 'already has listener' : 'not found',
       );
+    }
+
+    const discordRpcToggle = document.querySelector<HTMLInputElement>(
+      '#discord-rpc-enabled',
+    );
+    if (discordRpcToggle && !discordRpcToggle.dataset.listenerAttached) {
+      discordRpcToggle.addEventListener('change', async () => {
+        const enabled = discordRpcToggle.checked;
+        this.settings.discordRpcEnabled = enabled;
+        await window.electronAPI?.setDiscordRpcEnabled?.(enabled);
+        this.saveSettings();
+      });
+      discordRpcToggle.dataset.listenerAttached = 'true';
+      this.loadDiscordRpcSetting();
     }
 
     const switchIp = document.querySelector<HTMLInputElement>('#switch-ip');
@@ -4586,6 +4602,9 @@ class SettingsManager {
       const showNsfwDiscoverPreviews = await window.electronAPI.store.get(
         'showNsfwDiscoverPreviews',
       );
+      const discordRpcEnabled = await window.electronAPI.store.get(
+        'discordRpcEnabled',
+      );
       const normalizedSwitchTransferMethod =
         this.normalizeSwitchTransferMethod(switchTransferMethod);
       return {
@@ -4653,6 +4672,7 @@ class SettingsManager {
           checkDependenciesOnDiscoverDownload !== false,
         hideNsfwDiscoverMods: hideNsfwDiscoverMods !== false,
         showNsfwDiscoverPreviews: showNsfwDiscoverPreviews === true,
+        discordRpcEnabled: discordRpcEnabled !== false,
       };
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -4701,6 +4721,7 @@ class SettingsManager {
         checkDependenciesOnDiscoverDownload: true,
         hideNsfwDiscoverMods: true,
         showNsfwDiscoverPreviews: false,
+        discordRpcEnabled: true,
       };
     }
   }
@@ -4861,6 +4882,10 @@ class SettingsManager {
       await window.electronAPI.store.set(
         'appSoundEnabled',
         this.settings.appSoundEnabled || {},
+      );
+      await window.electronAPI.store.set(
+        'discordRpcEnabled',
+        this.settings.discordRpcEnabled !== false,
       );
       window.hardwareConnectionManager?.refresh?.();
     } catch (error) {
@@ -5067,6 +5092,22 @@ class SettingsManager {
         },
       },
     );
+  }
+
+  async loadDiscordRpcSetting() {
+    try {
+      const discordRpcEnabled = await window.electronAPI.store.get(
+        'discordRpcEnabled',
+      );
+      const discordRpcToggle = document.querySelector<HTMLInputElement>(
+        '#discord-rpc-enabled',
+      );
+      if (discordRpcToggle) {
+        discordRpcToggle.checked = discordRpcEnabled !== false;
+      }
+    } catch (error) {
+      console.error('Failed to load Discord RPC setting:', error);
+    }
   }
 
   async loadInstallConfirmSetting() {

@@ -24,11 +24,11 @@ import DiscordRPCManager from '../discord-rpc';
 /**
  * Register all IPC handlers for the application
  * @param {Electron.IpcMain} ipcMain - Electron IPC main instance
- * @param {Object|null} discordRPC - Discord RPC manager instance (optional)
+ * @param getDiscordRPC - Resolver returning the current Discord RPC manager (optional)
  */
 export function registerAllHandlers(
   ipcMain: IpcMain,
-  discordRPC: DiscordRPCManager | null = null,
+  getDiscordRPC: () => DiscordRPCManager | null = () => null,
 ) {
   registerWindowHandlers(ipcMain);
   registerFileHandlers(ipcMain);
@@ -40,7 +40,7 @@ export function registerAllHandlers(
   registerTutorialHandlers(ipcMain);
   registerMigrationHandlers(ipcMain);
   registerSwitchTransferHandlers(ipcMain);
-  registerDiscordHandlers(ipcMain, discordRPC);
+  registerDiscordHandlers(ipcMain, getDiscordRPC);
   registerAppHandlers(ipcMain);
   registerUpdateHandlers(ipcMain);
   registerAnalyticsHandlers(ipcMain);

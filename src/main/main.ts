@@ -272,7 +272,7 @@ function createWindow(options: CreateWindowOptions = {}) {
     mainWindow.loadFile(loadPath);
   }
 
-  if (!discordRPC) {
+  if (!discordRPC && store.get('discordRpcEnabled') !== false) {
     discordRPC = new DiscordRPCManager();
     discordRPC.connect().catch((err) => {
       console.warn('Could not connect to Discord:', err.message);
@@ -321,7 +321,28 @@ if (!gotTheLock) {
 
   app.whenReady().then(async () => {
     setupWebUsbPermissions();
-    registerAllHandlers(ipcMain, discordRPC);
+    registerAllHandlers(ipcMain, () => discordRPC);
+
+    ipcMain.handle(
+      'set-discord-rpc-enabled',
+      async (_event, enabled: boolean) => {
+        store.set('discordRpcEnabled', enabled);
+
+        if (enabled) {
+          if (!discordRPC) {
+            discordRPC = new DiscordRPCManager();
+            discordRPC.connect().catch((err) => {
+              console.warn('Could not connect to Discord:', err.message);
+            });
+          }
+        } else if (discordRPC) {
+          discordRPC.disconnect();
+          discordRPC = null;
+        }
+
+        return { success: true };
+      },
+    );
 
     // Initialize PostHog analytics
     initPosthog();

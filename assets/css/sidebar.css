@@ -66,7 +66,7 @@
 }
 
 .sidebar-btn[data-tab='fightplanner'] {
-  --sidebar-tab-icon: url('../images/icons/fightplanner.svg');
+  --sidebar-tab-icon: url('../images/icons/mosaic.png');
 }
 
 .sidebar-btn svg,

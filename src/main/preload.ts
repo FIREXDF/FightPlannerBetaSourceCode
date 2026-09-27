@@ -199,6 +199,8 @@ const electronAPI = {
   maximize: invokeWindowHandler('maximize-window'),
   close: invokeWindowHandler('close-window'),
   updateDiscordRPC: invokeDiscordHandler('discord-rpc-update'),
+  setDiscordRpcEnabled: (enabled: boolean) =>
+    ipcRenderer.invoke('set-discord-rpc-enabled', enabled),
 
   // Analytics
   trackEvent: invokeAnalyticsHandler('analytics-track-event'),

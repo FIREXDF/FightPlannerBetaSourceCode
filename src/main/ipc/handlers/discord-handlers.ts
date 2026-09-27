@@ -57,11 +57,11 @@ const DiscordHandlers = {
 /**
  * Register all IPC event handlers related to Discord RPC operations
  * @param {Electron.IpcMain} ipcMain - Electron IPC main instance
- * @param discordRPC - Discord RPC manager instance
+ * @param getDiscordRPC - Resolver returning the current Discord RPC manager
  */
 export function registerDiscordHandlers(
   ipcMain: IpcMain,
-  discordRPC: DiscordRPCManager | null,
+  getDiscordRPC: () => DiscordRPCManager | null,
 ) {
   for (const channel of Object.keys(DiscordHandlers) as Array<
     keyof typeof DiscordHandlers
@@ -71,7 +71,7 @@ export function registerDiscordHandlers(
     }>;
 
     ipcMain.handle(channel, (event, ...rest: unknown[]) => {
-      return handler({ event, discordRPC }, ...rest);
+      return handler({ event, discordRPC: getDiscordRPC() }, ...rest);
     });
   }
 }

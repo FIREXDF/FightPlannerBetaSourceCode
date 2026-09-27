@@ -2045,7 +2045,7 @@ ${this.renderProfileBadgeVisual(meta)}
         const link = btn!.getAttribute('data-link');
         if (
           link &&
-          link.startsWith('fightplanner:') &&
+          /^(?:fightplanner|mosaic):/i.test(link) &&
           window.electronAPI &&
           window.electronAPI.openFightPlannerLink
         ) {
@@ -2294,7 +2294,7 @@ ${this.renderProfileBadgeVisual(meta)}
             if (!shouldContinue) return false;
 
             this.registerPendingGameBananaSocialDownload(downloadUrl);
-            const protocolUrl = downloadUrl.startsWith('fightplanner:')
+            const protocolUrl = /^(?:fightplanner|mosaic):/i.test(downloadUrl)
               ? downloadUrl
               : `fightplanner:${downloadUrl}`;
             await window.electronAPI.openFightPlannerLink(protocolUrl);

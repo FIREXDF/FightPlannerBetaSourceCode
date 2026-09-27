@@ -585,7 +585,7 @@ class SocialFeedManager extends SocialGameBananaManager {
     // - For own mods: show Re-download if installed, Download if not
     // - For other users' mods: show Download button if they have a fightplanner link
     let downloadButton = '';
-    if (mod.link && mod.link.startsWith('fightplanner:')) {
+    if (mod.link && /^(?:fightplanner|mosaic):/i.test(mod.link)) {
       const downloadText = this.escapeHtml(
         this.getSocialTranslation('social.download', 'Download'),
       );

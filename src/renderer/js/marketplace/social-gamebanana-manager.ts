@@ -861,7 +861,7 @@ class SocialGameBananaManager extends SocialManagerBase {
           if (!shouldContinue) return;
 
           this.registerPendingGameBananaSocialDownload(downloadUrl);
-          const protocolUrl = downloadUrl.startsWith('fightplanner:')
+          const protocolUrl = /^(?:fightplanner|mosaic):/i.test(downloadUrl)
             ? downloadUrl
             : `fightplanner:${downloadUrl}`;
           await window.electronAPI.openFightPlannerLink(protocolUrl);

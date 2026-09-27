@@ -869,9 +869,15 @@ export class ConflictModalManager {
     );
 
     if (!result.success) {
-      window.toastManager?.error('toasts.failedToToggleMod', 3000, {
-        error: result.error || 'Unknown error',
-      });
+      window.toastManager?.error(
+        result.code === 'MOD_IN_USE'
+          ? 'toasts.modInUse'
+          : 'toasts.failedToToggleMod',
+        4000,
+        {
+          error: result.error || 'Unknown error',
+        },
+      );
       return;
     }
 

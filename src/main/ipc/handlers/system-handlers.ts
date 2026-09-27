@@ -138,10 +138,10 @@ const SystemHandlers = {
 
   ['open-fightplanner-link']: async (common: BaseHandlerArg, url: string) => {
     try {
-      if (!url || !url.startsWith('fightplanner:')) {
+      if (!url || !/^(?:fightplanner|mosaic):/i.test(url)) {
         return createErrorResponse(
           ErrorCodes.INVALID_PROTOCOL_LINK,
-          'Invalid fightplanner link',
+          'Invalid protocol link',
         );
       }
       const handler = getProtocolHandler();

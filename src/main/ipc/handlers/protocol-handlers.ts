@@ -280,7 +280,9 @@ const ProtocolHandlers = {
                       entry?._sInstallerName || '',
                     ).toLowerCase();
                     return (
-                      entry?._sDownloadUrl?.startsWith('fightplanner:') &&
+                      /^(?:fightplanner|mosaic):/i.test(
+                        String(entry?._sDownloadUrl || ''),
+                      ) &&
                       (alias === 'fightplanner' || installer === 'fightplanner')
                     );
                   });
@@ -336,7 +338,10 @@ const ProtocolHandlers = {
     let downloadedPath = '';
 
     try {
-      const cleanUrl = String(downloadUrl || '').replace(/^fightplanner:/i, '');
+      const cleanUrl = String(downloadUrl || '').replace(
+        /^(?:fightplanner|mosaic):/i,
+        '',
+      );
       const resolvedUrl =
         (await protocolHandler.resolveGameBananaDownloadUrl(cleanUrl)) ||
         cleanUrl;

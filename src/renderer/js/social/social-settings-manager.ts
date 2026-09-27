@@ -534,7 +534,7 @@ class SocialSettingsManager extends SocialProfileManager {
             link,
           );
 
-          if (link.startsWith('fightplanner:')) {
+          if (/^(?:fightplanner|mosaic):/i.test(link)) {
             if (window.electronAPI && window.electronAPI.openFightPlannerLink) {
               await window.electronAPI.openFightPlannerLink(link);
             } else {
