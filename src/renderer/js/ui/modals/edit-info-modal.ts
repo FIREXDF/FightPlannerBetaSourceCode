@@ -125,8 +125,8 @@ export {};
         }
         await this.refreshEditInfoPreview?.();
 
-        if (window.modManager && window.modManager.selectedMod) {
-          await window.modManager.selectMod(window.modManager.selectedMod.id);
+        if (this.currentModPath) {
+          await window.modManager?.refreshSelectedModInfo(this.currentModPath);
         }
       } else {
         if (window.toastManager) {
@@ -201,10 +201,11 @@ export {};
         if (window.toastManager) {
           window.toastManager.success('toasts.infoTomlSaved');
         }
+        const savedModPath = this.currentModPath;
         this.closeAdvancedInfoModal();
 
-        if (window.modManager && window.modManager.selectedMod) {
-          window.modManager.selectMod(window.modManager.selectedMod.id);
+        if (savedModPath) {
+          await window.modManager?.refreshSelectedModInfo(savedModPath);
         }
       } else {
         if (window.toastManager) {

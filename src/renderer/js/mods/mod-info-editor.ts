@@ -73,8 +73,8 @@ class ModInfoEditor {
           window.toastManager.success('toasts.infoTomlSaved');
         }
 
-        if (window.modManager && window.modManager.selectedMod) {
-          await window.modManager.selectMod(window.modManager.selectedMod.id);
+        if (this.currentModPath) {
+          await window.modManager?.refreshSelectedModInfo(this.currentModPath);
         }
       } else {
         if (window.toastManager) {

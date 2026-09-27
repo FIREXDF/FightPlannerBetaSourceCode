@@ -1136,6 +1136,19 @@ class ModManager {
     return optimalHeight;
   }
 
+  async refreshSelectedModInfo(modPath: string) {
+    const selectedMods = this.getCurrentSelectedMods();
+    if (selectedMods.length !== 1 || selectedMods[0].path !== modPath) {
+      return;
+    }
+
+    const updateToken = ++this.selectionUpdateToken;
+    await Promise.all([
+      this.updateSelectionInfo(selectedMods, updateToken),
+      this.updatePreview(selectedMods, updateToken),
+    ]);
+  }
+
   async selectMod(
     modId: string,
     forceUpdateOrOptions: boolean | SelectModOptions = false,
