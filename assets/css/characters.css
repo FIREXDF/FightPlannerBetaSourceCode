@@ -112,6 +112,7 @@
 }
 
 .character-movesets-refresh-notice {
+  flex: 0 0 auto;
   min-height: 52px;
   display: flex;
   align-items: center;
@@ -420,6 +421,22 @@
 }
 
 @media (max-width: 760px) {
+  .characters-top-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .characters-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .characters-search {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
   .character-movesets-refresh-notice {
     align-items: flex-start;
     flex-wrap: wrap;

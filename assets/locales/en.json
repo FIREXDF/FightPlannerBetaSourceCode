@@ -1206,7 +1206,7 @@
     "movesetModCount": "{{count}} moveset mod(s)",
     "noMovesetMods": "No moveset mods found",
     "noMovesetModsHint": "Moveset mods appear here when their mod info identifies them as movesets.",
-    "movesetsRefreshHint": "A new Moveset mod was installed or its info changed. Refresh is recommended to update this list.",
+    "movesetsRefreshHint": "A new mod was installed, or a mod's category changed to Moveset. Refreshing the tracker is recommended.",
     "refreshMovesets": "Refresh Movesets",
     "refreshingMovesets": "Refreshing...",
     "modActionsHint": "Right-click for mod actions",

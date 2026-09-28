@@ -133,8 +133,6 @@ class CharactersManager {
     this.isRefreshingMovesets = false;
 
     window.addEventListener('mods-library-updated', (event) => {
-      if (!this.initialized) return;
-
       const detail = (event as CustomEvent<{
         changedPaths?: string[];
         addedPaths?: string[];
@@ -234,6 +232,7 @@ class CharactersManager {
       console.log('Characters already initialized, skipping refresh.');
       this.setupEventListeners();
       this.renderCharacters();
+      this.renderMovesetRefreshNotice();
       return;
     }
 
@@ -813,7 +812,7 @@ class CharactersManager {
     );
   }
 
-  async detectMovesetLibraryChanges(
+  detectMovesetLibraryChanges(
     changedPaths: string[],
     addedPaths: string[] = [],
   ) {
@@ -821,17 +820,11 @@ class CharactersManager {
     const existingChangedPaths = changedPaths.filter(
       (modPath) => !addedPathSet.has(modPath),
     );
-    if (existingChangedPaths.length > 0) {
+    if (this.initialized && existingChangedPaths.length > 0) {
       this.queueIncrementalRefresh(existingChangedPaths);
     }
 
-    const recommendedPaths = await this.recommendRefreshForNewMods(addedPaths);
-    const newModsToRefresh = addedPaths.filter(
-      (modPath) => !recommendedPaths.has(modPath),
-    );
-    if (newModsToRefresh.length > 0) {
-      this.queueIncrementalRefresh(newModsToRefresh);
-    }
+    addedPaths.forEach((modPath) => this.markMovesetsStale(modPath));
 
     const currentPaths = new Set(
       (window.modManager?.mods || []).map((mod) => mod.path),
@@ -844,50 +837,7 @@ class CharactersManager {
     this.renderMovesetRefreshNotice();
   }
 
-  async recommendRefreshForNewMods(modPaths: string[]) {
-    const recommendedPaths = new Set<string>();
-    if (!this.initialized || !window.electronAPI?.scanMod) {
-      return recommendedPaths;
-    }
-
-    const modsByPath = new Map(
-      (window.modManager?.mods || []).map((mod) => [mod.path, mod]),
-    );
-
-    await Promise.all(
-      modPaths.map(async (modPath) => {
-        const mod = modsByPath.get(modPath);
-        if (!mod) {
-          return;
-        }
-
-        try {
-          const [modInfo, scanResult] = await Promise.all([
-            this.getModInfo(mod),
-            window.electronAPI.scanMod(mod.path),
-          ]);
-          if (
-            scanResult.success &&
-            scanResult.data.fighterNames.length > 0 &&
-            this.isMovesetModInfo(modInfo, mod.name)
-          ) {
-            recommendedPaths.add(modPath);
-            this.markMovesetsStale(modPath);
-          }
-        } catch (error) {
-          console.warn(`Failed to inspect new mod ${mod.name}:`, error);
-        }
-      }),
-    );
-
-    return recommendedPaths;
-  }
-
   async handleModInfoUpdated(modPath: string) {
-    if (!this.initialized) {
-      return;
-    }
-
     if (this.modPathHasMoveset(modPath)) {
       this.markMovesetsStale(modPath);
       return;
@@ -899,12 +849,7 @@ class CharactersManager {
     }
 
     const modInfo = await this.getModInfo(mod);
-    if (!this.isMovesetModInfo(modInfo, mod.name)) {
-      return;
-    }
-
-    const scanResult = await window.electronAPI?.scanMod?.(modPath);
-    if (scanResult?.success && scanResult.data.fighterNames.length > 0) {
+    if (this.isMovesetModInfo(modInfo, mod.name)) {
       this.markMovesetsStale(modPath);
     }
   }
@@ -912,16 +857,9 @@ class CharactersManager {
   markMovesetsStale(modPath: string) {
     this.staleMovesetModPaths.add(modPath);
     this.renderMovesetRefreshNotice();
-    const notice = document.querySelector<HTMLElement>(
-      '#character-movesets-refresh-notice',
-    );
-    const movesetsView = document.querySelector<HTMLElement>(
-      '#character-movesets-view',
-    );
-    if (notice && movesetsView && !movesetsView.hidden) {
-      notice.hidden = false;
-      movesetsView.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    document
+      .querySelector<HTMLElement>('#character-movesets-refresh-notice')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   renderMovesetRefreshNotice() {
@@ -1007,7 +945,7 @@ class CharactersManager {
       .join(' ')
       .toLowerCase();
 
-    return /\bmovesets?\b/.test(searchableInfo);
+    return searchableInfo.includes('moveset');
   }
 
   getSlotsByResolvedFighterId(pathData: Record<string, Record<string, any>>) {

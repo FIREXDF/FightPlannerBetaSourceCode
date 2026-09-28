@@ -51,6 +51,7 @@ type ModSortOrder = 'name-asc' | 'added-desc' | 'modified-desc';
 
 class ModManager {
   mods: Mod[];
+  hasLoadedMods: boolean;
   selectedMod: Mod | null;
   selectedMods: Mod[];
   modListContainer: HTMLElement | null;
@@ -82,6 +83,7 @@ class ModManager {
 
   constructor() {
     this.mods = [];
+    this.hasLoadedMods = false;
     this.selectedMod = null;
     this.selectedMods = [];
     this.modListContainer = null;
@@ -259,6 +261,7 @@ class ModManager {
 
   async loadMods(modsData: Mod[]) {
     this.mods = modsData;
+    this.hasLoadedMods = true;
     this.renderModList(true);
 
     if (window.discordRPCClient) {
@@ -315,9 +318,9 @@ class ModManager {
     const allMods = this.mapFolderStateToMods(result);
     const nextMods = new Map(allMods.map((mod) => [mod.path, mod]));
     const changedPaths = new Set(forcedChangedPaths);
-    const addedPaths = [...nextMods.keys()].filter(
-      (path) => !previousMods.has(path),
-    );
+    const addedPaths = this.hasLoadedMods
+      ? [...nextMods.keys()].filter((path) => !previousMods.has(path))
+      : [];
 
     for (const [path, mod] of nextMods) {
       const previous = previousMods.get(path);
@@ -336,6 +339,7 @@ class ModManager {
     }
 
     await this.loadMods(allMods);
+    this.hasLoadedMods = true;
     this.clearBatchTestingOverride();
     this.loadCategoriesInBackground(allMods);
 

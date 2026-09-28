@@ -38,6 +38,27 @@
     </div>
   </div>
 
+  <div
+    class="character-movesets-refresh-notice"
+    id="character-movesets-refresh-notice"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+    <span data-i18n="characters.movesetsRefreshHint">
+      A new Moveset mod was installed or its info changed. Refreshing the tracker is recommended.
+    </span>
+    <button
+      class="input-btn"
+      id="character-movesets-refresh-btn"
+      type="button"
+    >
+      <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+      <span data-i18n="characters.refreshMovesets">Refresh Movesets</span>
+    </button>
+  </div>
+
   <div class="characters-stage" id="characters-stage">
     <div class="characters-content" id="characters-browser-view">
       <div id="characters-grid" class="characters-grid">
@@ -62,26 +83,6 @@
     </div>
 
     <div class="character-movesets-view" id="character-movesets-view" hidden>
-      <div
-        class="character-movesets-refresh-notice"
-        id="character-movesets-refresh-notice"
-        role="status"
-        aria-live="polite"
-        hidden
-      >
-        <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-        <span data-i18n="characters.movesetsRefreshHint">
-          A new Moveset mod was installed or its info changed. Refresh is recommended to update this list.
-        </span>
-        <button
-          class="input-btn"
-          id="character-movesets-refresh-btn"
-          type="button"
-        >
-          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-          <span data-i18n="characters.refreshMovesets">Refresh Movesets</span>
-        </button>
-      </div>
       <div class="character-movesets-toolbar">
         <button
           class="input-btn"
