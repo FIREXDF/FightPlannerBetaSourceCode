@@ -104,6 +104,69 @@ async function switchTab(tabName) {
   }
 }
 
+const MOSAIC_RELEASES_URL = 'https://github.com/FIREXDF/MOSAIC/releases';
+
+function showMosaicMigrationPrompt(onClose?: () => void) {
+  const modalManager = window.modalManager;
+  const i18n = window.i18n;
+  if (!modalManager || !i18n?.t) {
+    return false;
+  }
+
+  const t = (key: string) => i18n.t(key);
+  const openMosaicReleases = async () => {
+    try {
+      await window.electronAPI.openUrl(MOSAIC_RELEASES_URL);
+      return true;
+    } catch (error) {
+      console.error('[MosaicMigration] Failed to open releases page:', error);
+      return false;
+    }
+  };
+  const body = document.createElement('div');
+  body.className = 'mosaic-migration-body';
+
+  const message = document.createElement('p');
+  message.className = 'mosaic-migration-message';
+  message.textContent = t('modals.mosaicMigration.message');
+
+  const releasesLink = document.createElement('a');
+  releasesLink.className = 'mosaic-migration-link';
+  releasesLink.href = MOSAIC_RELEASES_URL;
+  releasesLink.target = '_blank';
+  releasesLink.rel = 'noreferrer';
+  releasesLink.textContent = t('modals.mosaicMigration.releasesLink');
+  releasesLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    void openMosaicReleases();
+  });
+
+  body.append(message, releasesLink);
+
+  const modal = modalManager.showCustomModal({
+    id: 'mosaic-migration-modal',
+    title: t('modals.mosaicMigration.title'),
+    body,
+    buttons: [
+      {
+        text: t('modals.mosaicMigration.download'),
+        type: 'primary',
+        onClick: openMosaicReleases,
+      },
+      {
+        text: t('modals.mosaicMigration.continue'),
+        type: 'secondary',
+      },
+    ],
+    onClose,
+    clickOverlayToClose: !onClose,
+  });
+
+  modal.classList.add('mosaic-migration-modal');
+  modal.querySelector<HTMLButtonElement>('.modal-btn-primary')?.focus();
+  return true;
+}
+
 const sidebarButtons = document.querySelectorAll<HTMLElement>('.sidebar-btn');
 sidebarButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -143,8 +206,20 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   const params = new URLSearchParams(window.location.search);
-  if (params.get('postTutorialIntro') === 'true') {
+  const shouldShowTutorialIntro = params.get('postTutorialIntro') === 'true';
+  const showTutorialIntro = () =>
     setTimeout(() => window.tutorial?.showInApp?.(), 800);
+
+  await window.settingsManager?.readyPromise;
+  if (window.i18n && Object.keys(window.i18n.translations).length === 0) {
+    await window.i18n.init(window.i18n.getSavedLocale());
+  }
+
+  const promptShown = showMosaicMigrationPrompt(
+    shouldShowTutorialIntro ? showTutorialIntro : undefined,
+  );
+  if (shouldShowTutorialIntro && !promptShown) {
+    showTutorialIntro();
   }
 
   setTimeout(() => {

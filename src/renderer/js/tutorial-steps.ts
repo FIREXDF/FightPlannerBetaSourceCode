@@ -107,6 +107,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  const createMosaicMigrationStep = () => {
+    let locale = 'en';
+    try {
+      locale =
+        localStorage.getItem('fightplanner_locale') === 'fr' ? 'fr' : 'en';
+    } catch {
+      // Use English if this tutorial window cannot read the saved app language.
+    }
+
+    const copy =
+      locale === 'fr'
+        ? {
+            title: 'FightPlanner est devenu Mosaic',
+            description: 'Cette version de FightPlanner est obsolète.',
+            heading: 'Découvrez Mosaic',
+            message:
+              'FightPlanner est devenu Mosaic. Cette version de FightPlanner est obsolète. Téléchargez la dernière version de Mosaic depuis la page officielle des versions :',
+            link: 'Télécharger Mosaic sur GitHub',
+          }
+        : {
+            title: 'FightPlanner is now Mosaic',
+            description: 'This version of FightPlanner is outdated.',
+            heading: 'Meet Mosaic',
+            message:
+              'FightPlanner is now Mosaic. This version of FightPlanner is outdated. Download the latest version of Mosaic from the official releases page:',
+            link: 'Download Mosaic on GitHub',
+          };
+
+    return {
+      icon: 'bi-arrow-up-right-circle',
+      title: copy.title,
+      description: copy.description,
+      content: `
+<div style="text-align: center;">
+    <div style="width: 64px; height: 64px; background: rgba(122, 155, 255, 0.14); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+        <i class="bi bi-arrow-up-right-circle" style="font-size: 32px; color: #7a9bff;"></i>
+    </div>
+    <h3 style="color: #fff; margin-bottom: 12px; font-size: 22px;">${copy.heading}</h3>
+    <p style="margin: 0 auto 20px; max-width: 560px; color: rgba(255,255,255,0.72); line-height: 1.6;">${copy.message}</p>
+    <a class="tutorial-btn tutorial-btn-primary" href="https://github.com/FIREXDF/MOSAIC/releases" target="_blank" rel="noreferrer" style="display: inline-flex; text-decoration: none;">
+        <i class="bi bi-download"></i> ${copy.link}
+    </a>
+</div>
+`,
+    };
+  };
+
   // Check for restored dev mode state
   try {
     const restoredState = localStorage.getItem('tutorialDevState');
@@ -3200,6 +3247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       console.log('tutorialAPI or getMigrationStatus not available');
     }
+
+    steps.splice(1, 0, createMosaicMigrationStep());
 
     console.log('Total tutorial steps:', steps.length);
 

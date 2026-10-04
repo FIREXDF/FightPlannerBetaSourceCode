@@ -916,6 +916,13 @@
     "seeConfigJsonDesc": "Open the configuration file in your default editor"
   },
   "modals": {
+    "mosaicMigration": {
+      "title": "FightPlanner is now Mosaic",
+      "message": "This version of FightPlanner is outdated. FightPlanner has moved to Mosaic. Download the latest version from the official releases page.",
+      "releasesLink": "View Mosaic releases on GitHub",
+      "download": "Download Mosaic",
+      "continue": "Continue using FightPlanner"
+    },
     "nroLimit": {
       "title": "NRO limit exceeded",
       "message": "{{count}} active .nro files detected. The limit is {{limit}} in emulator and real hardware modes. Disable or remove {{overflow}} .nro file(s).",

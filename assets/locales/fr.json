@@ -915,6 +915,13 @@
     "seeConfigJsonDesc": "Ouvrir le fichier de configuration dans votre éditeur par défaut"
   },
   "modals": {
+    "mosaicMigration": {
+      "title": "FightPlanner est devenu Mosaic",
+      "message": "Cette version de FightPlanner est obsolète. FightPlanner est maintenant Mosaic. Téléchargez la dernière version depuis la page officielle des versions.",
+      "releasesLink": "Voir les versions de Mosaic sur GitHub",
+      "download": "Télécharger Mosaic",
+      "continue": "Continuer avec FightPlanner"
+    },
     "nroLimit": {
       "title": "Limite .nro dépassée",
       "message": "{{count}} fichiers .nro actifs détectés. La limite est de {{limit}}, en émulateur comme sur vraie Switch. Désactivez ou retirez {{overflow}} fichier(s) .nro.",

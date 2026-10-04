@@ -1,3 +1,37 @@
+#mosaic-migration-modal {
+  width: min(540px, calc(100vw - 32px));
+  min-width: 0;
+}
+
+#mosaic-migration-modal .mosaic-migration-body {
+  display: grid;
+  gap: 14px;
+}
+
+#mosaic-migration-modal .mosaic-migration-message {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+#mosaic-migration-modal .mosaic-migration-link {
+  color: var(--accent-color);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+#mosaic-migration-modal .mosaic-migration-link:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (max-width: 520px) {
+  #mosaic-migration-modal .modal-footer {
+    flex-wrap: wrap;
+  }
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
